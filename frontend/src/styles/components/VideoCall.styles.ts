@@ -5,14 +5,23 @@ export const videoCallStyles = {
     height: '100vh',
     display: 'flex',
     flexDirection: 'column',
-    bgcolor: (theme: Theme) => theme.palette.mode === 'dark' ? 'grey.900' : 'grey.100',
+    bgcolor: '#000',
     position: 'relative',
+    overflow: 'hidden',
   },
 
   videoGrid: {
     flex: 1,
     p: 2,
     overflowY: 'auto',
+    display: 'grid',
+    gap: 2,
+    gridTemplateColumns: {
+      xs: '1fr',
+      sm: 'repeat(auto-fit, minmax(300px, 1fr))',
+    },
+    alignContent: 'center',
+    justifyContent: 'center',
   },
 
   videoWrapper: {
@@ -22,6 +31,9 @@ export const videoCallStyles = {
     paddingBottom: '56.25%', // 16:9 aspect ratio
     borderRadius: 2,
     overflow: 'hidden',
+    bgcolor: 'grey.900',
+    border: '1px solid',
+    borderColor: 'grey.800',
   },
 
   videoPlaceholder: {
@@ -55,11 +67,15 @@ export const videoCallStyles = {
     bottom: 0,
     left: 0,
     right: 0,
-    p: 1,
-    bgcolor: 'rgba(0, 0, 0, 0.5)',
+    p: 1.5,
+    background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    transition: 'opacity 0.2s ease-in-out',
+    '&:hover': {
+      opacity: 1,
+    },
   },
 
   participantName: {
@@ -76,30 +92,84 @@ export const videoCallStyles = {
   },
 
   controlBar: {
-    p: 2,
-    bgcolor: (theme: Theme) => theme.palette.mode === 'dark' ? 'grey.900' : 'background.paper',
-    borderTop: 1,
-    borderColor: 'divider',
+    py: 3,
+    px: 4,
+    bgcolor: 'rgba(0, 0, 0, 0.9)',
+    backdropFilter: 'blur(10px)',
+    borderTop: '1px solid',
+    borderColor: 'grey.800',
+    transition: 'all 0.3s ease-in-out',
   },
 
   controls: {
-    direction: 'row',
-    spacing: 2,
-    justifyContent: 'center',
+    maxWidth: '800px',
+    margin: '0 auto',
+    width: '100%',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    '& .control-group': {
+      display: 'flex',
+      gap: 2,
+      padding: 1,
+      borderRadius: 2,
+      transition: 'all 0.2s ease-in-out',
+    },
+    '& .MuiIconButton-root': {
+      transition: 'all 0.2s ease-in-out',
+      '&:hover': {
+        transform: 'scale(1.1)',
+      },
+    },
+    '@media (max-width: 600px)': {
+      gap: 3,
+      justifyContent: 'center',
+      '& .control-group': {
+        flex: '0 0 auto',
+        justifyContent: 'center',
+      },
+    },
   },
 
   controlButton: (active: boolean) => ({
-    bgcolor: active ? 'action.selected' : 'action.hover',
+    width: 56,
+    height: 56,
+    bgcolor: active ? 'primary.main' : 'error.main',
+    color: 'white',
     '&:hover': {
-      bgcolor: active ? 'action.selected' : 'action.focus',
+      bgcolor: active ? 'primary.dark' : 'error.dark',
+      boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
     },
+    transition: 'all 0.2s ease-in-out',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
   }),
 
   endCallButton: {
+    width: 56,
+    height: 56,
     bgcolor: 'error.main',
     color: 'white',
     '&:hover': {
       bgcolor: 'error.dark',
+      transform: 'scale(1.1)',
+      boxShadow: '0 4px 8px rgba(255,0,0,0.3)',
+    },
+    transition: 'all 0.2s ease-in-out',
+    boxShadow: '0 2px 4px rgba(255,0,0,0.2)',
+  },
+
+  '@keyframes pulse': {
+    '0%': {
+      transform: 'scale(1)',
+      opacity: 1,
+    },
+    '50%': {
+      transform: 'scale(1.2)',
+      opacity: 0.7,
+    },
+    '100%': {
+      transform: 'scale(1)',
+      opacity: 1,
     },
   },
 };

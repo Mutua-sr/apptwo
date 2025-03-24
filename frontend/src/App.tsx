@@ -34,14 +34,14 @@ const theme = createTheme({
 });
 
 // Protected Route Component
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const ProtectedRoute: React.FC<{ children: React.ReactNode; noLayout?: boolean }> = ({ children, noLayout }) => {
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  return <MainLayout>{children}</MainLayout>;
+  return noLayout ? <>{children}</> : <MainLayout>{children}</MainLayout>;
 };
 
 // Public Route Component
@@ -85,7 +85,7 @@ const AppRoutes = () => {
       <Route
         path="/chat/:roomId"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute noLayout>
             <ChatRoom type="direct" />
           </ProtectedRoute>
         }
@@ -93,7 +93,7 @@ const AppRoutes = () => {
       <Route
         path="/classroom-chat/:roomId"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute noLayout>
             <ChatRoom type="classroom" />
           </ProtectedRoute>
         }
@@ -101,7 +101,7 @@ const AppRoutes = () => {
       <Route
         path="/community-chat/:roomId"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute noLayout>
             <ChatRoom type="community" />
           </ProtectedRoute>
         }

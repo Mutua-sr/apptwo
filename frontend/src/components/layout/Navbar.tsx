@@ -1,6 +1,5 @@
 import React from 'react';
-import { AppBar, Toolbar, IconButton, Typography, Badge, Avatar } from '@mui/material';
-import { Notifications as NotificationsIcon } from '@mui/icons-material';
+import { AppBar, Toolbar, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
 const Navbar: React.FC = () => {
@@ -21,32 +20,6 @@ const Navbar: React.FC = () => {
           </Typography>
         </div>
 
-        <div className="flex items-center space-x-4">
-          <IconButton
-            size="large"
-            aria-label="show notifications"
-            color="inherit"
-            onClick={() => navigate('/notifications')}
-          >
-            <Badge badgeContent={3} color="error">
-              <NotificationsIcon />
-            </Badge>
-          </IconButton>
-
-          <IconButton
-            size="large"
-            edge="end"
-            aria-label="account"
-            aria-haspopup="true"
-            onClick={() => navigate('/profile')}
-          >
-            <Avatar
-              alt="User Profile"
-              src="https://ui-avatars.com/api/?name=John+Doe&background=random"
-              sx={{ width: 32, height: 32 }}
-            />
-          </IconButton>
-        </div>
       </Toolbar>
     </AppBar>
   );

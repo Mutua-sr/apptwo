@@ -1,13 +1,15 @@
 import { Context } from '../types';
 import logger from '../config/logger';
+import DatabaseService from '../services/database'; // Import DatabaseService
+import { Classroom, Community, Post } from '../types'; // Import necessary types
 
 const resolvers = {
   Query: {
     // Classroom queries
     classrooms: async (_: any, { page = 1, limit = 10 }: { page: number; limit: number }, context: Context) => {
       try {
-        // TODO: Implement actual database query
-        return [];
+        const classrooms = await DatabaseService.list<Classroom>({ limit, skip: (page - 1) * limit });
+        return classrooms;
       } catch (error) {
         logger.error('Error fetching classrooms:', error);
         throw new Error('Failed to fetch classrooms');
@@ -16,8 +18,8 @@ const resolvers = {
 
     classroom: async (_: any, { id }: { id: string }, context: Context) => {
       try {
-        // TODO: Implement actual database query
-        return null;
+        const classroom = await DatabaseService.read<Classroom>(id);
+        return classroom;
       } catch (error) {
         logger.error(`Error fetching classroom ${id}:`, error);
         throw new Error('Failed to fetch classroom');
@@ -27,8 +29,8 @@ const resolvers = {
     // Community queries
     communities: async (_: any, { page = 1, limit = 10 }: { page: number; limit: number }, context: Context) => {
       try {
-        // TODO: Implement actual database query
-        return [];
+        const communities = await DatabaseService.list<Community>({ limit, skip: (page - 1) * limit });
+        return communities;
       } catch (error) {
         logger.error('Error fetching communities:', error);
         throw new Error('Failed to fetch communities');
@@ -37,8 +39,8 @@ const resolvers = {
 
     community: async (_: any, { id }: { id: string }, context: Context) => {
       try {
-        // TODO: Implement actual database query
-        return null;
+        const community = await DatabaseService.read<Community>(id);
+        return community;
       } catch (error) {
         logger.error(`Error fetching community ${id}:`, error);
         throw new Error('Failed to fetch community');
@@ -48,8 +50,8 @@ const resolvers = {
     // Post queries
     posts: async (_: any, { page = 1, limit = 10 }: { page: number; limit: number }, context: Context) => {
       try {
-        // TODO: Implement actual database query
-        return [];
+        const posts = await DatabaseService.list<Post>({ limit, skip: (page - 1) * limit });
+        return posts;
       } catch (error) {
         logger.error('Error fetching posts:', error);
         throw new Error('Failed to fetch posts');
@@ -58,8 +60,8 @@ const resolvers = {
 
     post: async (_: any, { id }: { id: string }, context: Context) => {
       try {
-        // TODO: Implement actual database query
-        return null;
+        const post = await DatabaseService.read<Post>(id);
+        return post;
       } catch (error) {
         logger.error(`Error fetching post ${id}:`, error);
         throw new Error('Failed to fetch post');
@@ -81,8 +83,8 @@ const resolvers = {
     // Classroom mutations
     createClassroom: async (_: any, { input }: any, context: Context) => {
       try {
-        // TODO: Implement actual database mutation
-        return null;
+        const newClassroom = await DatabaseService.create<Classroom>(input);
+        return newClassroom;
       } catch (error) {
         logger.error('Error creating classroom:', error);
         throw new Error('Failed to create classroom');
@@ -91,8 +93,8 @@ const resolvers = {
 
     updateClassroom: async (_: any, { id, input }: any, context: Context) => {
       try {
-        // TODO: Implement actual database mutation
-        return null;
+        const updatedClassroom = await DatabaseService.update<Classroom>(id, input);
+        return updatedClassroom;
       } catch (error) {
         logger.error(`Error updating classroom ${id}:`, error);
         throw new Error('Failed to update classroom');
@@ -101,7 +103,7 @@ const resolvers = {
 
     deleteClassroom: async (_: any, { id }: { id: string }, context: Context) => {
       try {
-        // TODO: Implement actual database mutation
+        await DatabaseService.delete(id);
         return true;
       } catch (error) {
         logger.error(`Error deleting classroom ${id}:`, error);
@@ -112,8 +114,8 @@ const resolvers = {
     // Community mutations
     createCommunity: async (_: any, { input }: any, context: Context) => {
       try {
-        // TODO: Implement actual database mutation
-        return null;
+        const newCommunity = await DatabaseService.create<Community>(input);
+        return newCommunity;
       } catch (error) {
         logger.error('Error creating community:', error);
         throw new Error('Failed to create community');
@@ -122,8 +124,8 @@ const resolvers = {
 
     updateCommunity: async (_: any, { id, input }: any, context: Context) => {
       try {
-        // TODO: Implement actual database mutation
-        return null;
+        const updatedCommunity = await DatabaseService.update<Community>(id, input);
+        return updatedCommunity;
       } catch (error) {
         logger.error(`Error updating community ${id}:`, error);
         throw new Error('Failed to update community');
@@ -132,7 +134,7 @@ const resolvers = {
 
     deleteCommunity: async (_: any, { id }: { id: string }, context: Context) => {
       try {
-        // TODO: Implement actual database mutation
+        await DatabaseService.delete(id);
         return true;
       } catch (error) {
         logger.error(`Error deleting community ${id}:`, error);
@@ -143,8 +145,8 @@ const resolvers = {
     // Post mutations
     createPost: async (_: any, { input }: any, context: Context) => {
       try {
-        // TODO: Implement actual database mutation
-        return null;
+        const newPost = await DatabaseService.create<Post>(input);
+        return newPost;
       } catch (error) {
         logger.error('Error creating post:', error);
         throw new Error('Failed to create post');
@@ -153,8 +155,8 @@ const resolvers = {
 
     updatePost: async (_: any, { id, input }: any, context: Context) => {
       try {
-        // TODO: Implement actual database mutation
-        return null;
+        const updatedPost = await DatabaseService.update<Post>(id, input);
+        return updatedPost;
       } catch (error) {
         logger.error(`Error updating post ${id}:`, error);
         throw new Error('Failed to update post');
@@ -163,7 +165,7 @@ const resolvers = {
 
     deletePost: async (_: any, { id }: { id: string }, context: Context) => {
       try {
-        // TODO: Implement actual database mutation
+        await DatabaseService.delete(id);
         return true;
       } catch (error) {
         logger.error(`Error deleting post ${id}:`, error);

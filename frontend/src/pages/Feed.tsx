@@ -334,9 +334,6 @@ const Feed: React.FC = () => {
 
   return (
     <Box sx={{ maxWidth: 600, mx: 'auto', p: 2 }}>
-      {/* Header */}
-      <Typography variant="h6" sx={{ mb: 2 }}>Feed</Typography>
-
       {/* Search */}
       <TextField
         fullWidth

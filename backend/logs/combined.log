@@ -39,3 +39,7 @@
 {"level":"info","message":"Database initialized successfully","timestamp":"2025-03-24T07:01:40.579Z"}
 {"level":"info","message":"🚀 Server ready at http://localhost:8000","timestamp":"2025-03-24T07:01:40.626Z"}
 {"level":"info","message":"🚀 GraphQL ready at http://localhost:8000/graphql","timestamp":"2025-03-24T07:01:40.626Z"}
+{"level":"info","message":"Mock in-memory database initialized","timestamp":"2025-03-24T21:35:45.767Z"}
+{"level":"info","message":"Database initialized successfully","timestamp":"2025-03-24T21:35:45.771Z"}
+{"level":"info","message":"🚀 Server ready at http://localhost:8000","timestamp":"2025-03-24T21:35:45.815Z"}
+{"level":"info","message":"🚀 GraphQL ready at http://localhost:8000/graphql","timestamp":"2025-03-24T21:35:45.815Z"}

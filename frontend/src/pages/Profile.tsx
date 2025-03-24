@@ -138,23 +138,6 @@ const Profile: React.FC = () => {
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ 
-        bgcolor: 'primary.main', 
-        color: 'white',
-        px: 2,
-        py: 1.5,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <Typography variant="h6">
-          Profile
-        </Typography>
-        <IconButton color="inherit" size="small" onClick={() => handleMenuClick('settings')}>
-          <SettingsIcon />
-        </IconButton>
-      </Box>
-
-      <Box sx={{ 
         bgcolor: 'primary.main',
         color: 'white',
         px: 2,
