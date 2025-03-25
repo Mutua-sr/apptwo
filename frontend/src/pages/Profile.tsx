@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -9,250 +9,222 @@ import {
   ListItemButton,
   Divider,
   IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Switch,
-  Badge,
-  Snackbar,
+  Stack,
+  CircularProgress,
   Alert,
 } from '@mui/material';
 import {
+  School as SchoolIcon,
+  Group as GroupIcon,
   Settings as SettingsIcon,
-  School as EducationIcon,
-  Star as AchievementsIcon,
-  History as ActivityIcon,
-  Bookmark as SavedIcon,
+  Notifications as NotificationsIcon,
   Help as HelpIcon,
   ExitToApp as LogoutIcon,
-  Group as GroupIcon,
   Edit as EditIcon,
-  Notifications as NotificationsIcon,
-  DarkMode as DarkModeIcon,
-  Lock as LockIcon,
-  Language as LanguageIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { DatabaseService } from '../services/databaseService';
 
-const menuItems = [
-  {
-    icon: <EducationIcon />,
-    text: 'My Learning',
-    badge: '3 Active Courses',
-    action: 'learning'
-  },
-  {
-    icon: <GroupIcon />,
-    text: 'Study Groups',
-    badge: '4 Groups',
-    action: 'groups'
-  },
-  {
-    icon: <AchievementsIcon />,
-    text: 'Achievements',
-    badge: '12 Badges',
-    action: 'achievements'
-  },
-  {
-    icon: <NotificationsIcon />,
-    text: 'Notifications',
-    badge: '3 new',
-    action: 'notifications'
-  },
-  {
-    icon: <DarkModeIcon />,
-    text: 'Dark Mode',
-    isSwitch: true,
-    action: 'darkMode'
-  },
-  {
-    icon: <LockIcon />,
-    text: 'Privacy',
-    action: 'privacy'
-  },
-  {
-    icon: <LanguageIcon />,
-    text: 'Language',
-    badge: 'English',
-    action: 'language'
-  },
-  {
-    icon: <SettingsIcon />,
-    text: 'Settings',
-    action: 'settings'
-  },
-  {
-    icon: <HelpIcon />,
-    text: 'Help & Support',
-    action: 'help'
-  },
-];
+interface UserProfile {
+  _id: string;
+  type: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  role: string;
+  classroomsCount: number;
+  communitiesCount: number;
+}
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
-  const [darkMode, setDarkMode] = useState(false);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [dialogType, setDialogType] = useState('');
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleMenuClick = (action: string) => {
-    switch(action) {
-      case 'darkMode':
-        setDarkMode(!darkMode);
-        setSnackbar({
-          open: true,
-          message: `Dark mode ${!darkMode ? 'enabled' : 'disabled'}`,
-          severity: 'success'
-        });
-        break;
-      case 'privacy':
-      case 'language':
-      case 'settings':
-        setDialogType(action);
-        setOpenDialog(true);
-        break;
-      case 'learning':
-        navigate('/classrooms');
-        break;
-      case 'groups':
-        navigate('/communities');
-        break;
-      default:
-        setSnackbar({
-          open: true,
-          message: 'Feature coming soon!',
-          severity: 'info'
-        });
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
+        const currentUser = await DatabaseService.read<UserProfile>('currentUser');
+        if (currentUser) {
+          // Get counts
+          const [classrooms, communities] = await Promise.all([
+            DatabaseService.find({ type: 'classroom', userId: currentUser._id }),
+            DatabaseService.find({ type: 'community', userId: currentUser._id })
+          ]);
+          
+          setProfile({
+            ...currentUser,
+            classroomsCount: classrooms.length,
+            communitiesCount: communities.length
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+        setError('Failed to load profile');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      // Clear local storage
+      localStorage.removeItem('token');
+      // Redirect to login
+      navigate('/login');
+    } catch (error) {
+      console.error('Error logging out:', error);
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Alert severity="warning">Profile not found</Alert>
+      </Box>
+    );
+  }
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Box sx={{ height: '100%', bgcolor: 'background.paper' }}>
+      {/* Profile Header */}
       <Box sx={{ 
         bgcolor: 'primary.main',
         color: 'white',
-        px: 2,
-        py: 3,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 2,
+        p: 3,
         position: 'relative'
       }}>
-        <Badge
-          overlap="circular"
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-          badgeContent={
-            <IconButton 
-              size="small" 
-              sx={{ bgcolor: 'primary.light' }}
-              onClick={() => setSnackbar({
-                open: true,
-                message: 'Profile photo update coming soon!',
-                severity: 'info'
-              })}
-            >
-              <EditIcon sx={{ fontSize: 12, color: 'white' }} />
-            </IconButton>
-          }
+        <IconButton 
+          sx={{ 
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            color: 'white'
+          }}
         >
+          <EditIcon />
+        </IconButton>
+        
+        <Stack alignItems="center" spacing={2}>
           <Avatar 
             sx={{ 
               width: 80, 
               height: 80,
-              bgcolor: 'primary.dark',
-              fontSize: '2rem',
+              bgcolor: 'primary.light',
+              fontSize: '2rem'
             }}
           >
-            JS
+            {profile.avatar || profile.name.charAt(0)}
           </Avatar>
-        </Badge>
-        <Box>
-          <Typography variant="h6" sx={{ fontWeight: 500 }}>
-            John Smith
-          </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.9 }}>
-            Computer Science Student
-          </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.7 }}>
-            University of Technology • Year 3
-          </Typography>
-        </Box>
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="h6">
+              {profile.name}
+            </Typography>
+            <Typography variant="body2">
+              {profile.email}
+            </Typography>
+            <Typography 
+              variant="caption" 
+              sx={{ 
+                bgcolor: 'primary.light',
+                px: 1,
+                py: 0.5,
+                borderRadius: 1,
+                mt: 1,
+                display: 'inline-block'
+              }}
+            >
+              {profile.role}
+            </Typography>
+          </Box>
+        </Stack>
       </Box>
 
-      <List sx={{ flex: 1, bgcolor: 'background.paper' }}>
-        {menuItems.map((item, index) => (
-          <React.Fragment key={item.text}>
-            <ListItemButton onClick={() => handleMenuClick(item.action)}>
-              <ListItemIcon sx={{ color: 'primary.main' }}>
-                {item.icon}
-              </ListItemIcon>
-              <ListItemText 
-                primary={item.text}
-                secondary={item.badge}
-              />
-              {item.isSwitch && (
-                <Switch
-                  checked={darkMode}
-                  onChange={() => handleMenuClick('darkMode')}
-                  color="primary"
-                />
-              )}
-            </ListItemButton>
-            {index < menuItems.length - 1 && <Divider />}
-          </React.Fragment>
-        ))}
+      {/* Stats */}
+      <Box sx={{ p: 2 }}>
+        <Stack direction="row" spacing={2}>
+          <Box flex={1} sx={{ textAlign: 'center', p: 1 }}>
+            <Typography variant="h6">{profile.classroomsCount}</Typography>
+            <Typography variant="body2" color="text.secondary">Classrooms</Typography>
+          </Box>
+          <Box flex={1} sx={{ textAlign: 'center', p: 1 }}>
+            <Typography variant="h6">{profile.communitiesCount}</Typography>
+            <Typography variant="body2" color="text.secondary">Communities</Typography>
+          </Box>
+        </Stack>
+      </Box>
+
+      <Divider />
+
+      {/* Menu Items */}
+      <List>
+        <ListItemButton>
+          <ListItemIcon>
+            <SchoolIcon />
+          </ListItemIcon>
+          <ListItemText primary="My Classrooms" />
+        </ListItemButton>
+
+        <ListItemButton>
+          <ListItemIcon>
+            <GroupIcon />
+          </ListItemIcon>
+          <ListItemText primary="My Communities" />
+        </ListItemButton>
+
+        <Divider />
+
+        <ListItemButton>
+          <ListItemIcon>
+            <NotificationsIcon />
+          </ListItemIcon>
+          <ListItemText primary="Notifications" />
+        </ListItemButton>
+
+        <ListItemButton>
+          <ListItemIcon>
+            <SettingsIcon />
+          </ListItemIcon>
+          <ListItemText primary="Settings" />
+        </ListItemButton>
+
+        <ListItemButton>
+          <ListItemIcon>
+            <HelpIcon />
+          </ListItemIcon>
+          <ListItemText primary="Help & Support" />
+        </ListItemButton>
+
+        <Divider />
+
+        <ListItemButton onClick={handleLogout}>
+          <ListItemIcon>
+            <LogoutIcon />
+          </ListItemIcon>
+          <ListItemText primary="Logout" />
+        </ListItemButton>
       </List>
-
-      <Box sx={{ p: 2, bgcolor: 'background.paper' }}>
-        <Button
-          fullWidth
-          variant="contained"
-          color="error"
-          startIcon={<LogoutIcon />}
-          onClick={handleLogout}
-        >
-          Logout
-        </Button>
-      </Box>
-
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-        <DialogTitle>
-          {dialogType === 'privacy' && 'Privacy Settings'}
-          {dialogType === 'language' && 'Select Language'}
-          {dialogType === 'settings' && 'App Settings'}
-        </DialogTitle>
-        <DialogContent>
-          <Typography>
-            {dialogType.charAt(0).toUpperCase() + dialogType.slice(1)} settings coming soon!
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
-
-      <Snackbar 
-        open={snackbar.open} 
-        autoHideDuration={3000} 
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert 
-          onClose={() => setSnackbar({ ...snackbar, open: false })} 
-          severity={snackbar.severity as any}
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 };

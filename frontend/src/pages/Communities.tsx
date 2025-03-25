@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -6,6 +6,8 @@ import {
   TextField,
   InputAdornment,
   IconButton,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -13,9 +15,11 @@ import {
   People as PeopleIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { DatabaseService } from '../services/databaseService';
 
 interface Community {
-  id: string;
+  _id: string;
+  type: string;
   name: string;
   description: string;
   members: number;
@@ -23,31 +27,12 @@ interface Community {
   avatar: string;
 }
 
-const mockCommunities: Community[] = [
-  {
-    id: '1',
-    name: 'Computer Science Hub',
-    description: 'A community for CS students and professionals',
-    members: 150,
-    topics: ['Programming', 'Algorithms', 'Web Development'],
-    avatar: 'CS',
-  },
-  {
-    id: '2',
-    name: 'Math Enthusiasts',
-    description: 'Explore the fascinating world of mathematics',
-    members: 120,
-    topics: ['Calculus', 'Linear Algebra', 'Statistics'],
-    avatar: 'ME',
-  },
-];
-
 const CommunityCard: React.FC<{ community: Community }> = ({ community }) => {
   const navigate = useNavigate();
 
   return (
     <Box 
-      onClick={() => navigate(`/community-chat/${community.id}`, { state: { type: 'community' } })}
+      onClick={() => navigate(`/community-chat/${community._id}`, { state: { type: 'community' } })}
       sx={{
         display: 'flex',
         alignItems: 'center',
@@ -69,7 +54,7 @@ const CommunityCard: React.FC<{ community: Community }> = ({ community }) => {
           mr: 2
         }}
       >
-        {community.avatar}
+        {community.avatar || community.name.charAt(0)}
       </Avatar>
       <Box flex={1} overflow="hidden">
         <Typography variant="subtitle1" noWrap>
@@ -90,8 +75,29 @@ const CommunityCard: React.FC<{ community: Community }> = ({ community }) => {
 };
 
 const Communities: React.FC = () => {
+  const [communities, setCommunities] = useState<Community[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const filteredCommunities = mockCommunities.filter(community =>
+
+  useEffect(() => {
+    const fetchCommunities = async () => {
+      try {
+        setLoading(true);
+        const data = await DatabaseService.find<Community>({ type: 'community' });
+        setCommunities(data);
+      } catch (err) {
+        console.error('Error fetching communities:', err);
+        setError('Failed to load communities');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCommunities();
+  }, []);
+
+  const filteredCommunities = communities.filter(community =>
     community.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     community.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
     community.topics.some(topic => topic.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -144,9 +150,25 @@ const Communities: React.FC = () => {
         overflow: 'auto',
         bgcolor: 'background.paper'
       }}>
-        {filteredCommunities.map((community) => (
-          <CommunityCard key={community.id} community={community} />
-        ))}
+        {error && (
+          <Alert severity="error" sx={{ m: 2 }}>
+            {error}
+          </Alert>
+        )}
+        
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : filteredCommunities.length > 0 ? (
+          filteredCommunities.map((community) => (
+            <CommunityCard key={community._id} community={community} />
+          ))
+        ) : (
+          <Typography variant="body1" sx={{ textAlign: 'center', p: 4, color: 'text.secondary' }}>
+            {searchQuery ? 'No communities found matching your search' : 'No communities available'}
+          </Typography>
+        )}
       </Box>
     </Box>
   );

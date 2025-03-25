@@ -43,3 +43,9 @@
 {"level":"info","message":"Database initialized successfully","timestamp":"2025-03-24T21:35:45.771Z"}
 {"level":"info","message":"🚀 Server ready at http://localhost:8000","timestamp":"2025-03-24T21:35:45.815Z"}
 {"level":"info","message":"🚀 GraphQL ready at http://localhost:8000/graphql","timestamp":"2025-03-24T21:35:45.815Z"}
+{"level":"info","message":"Mock in-memory database initialized","timestamp":"2025-03-24T23:26:45.275Z"}
+{"level":"info","message":"Database initialized successfully","timestamp":"2025-03-24T23:26:45.277Z"}
+{"level":"info","message":"🚀 Server ready at http://localhost:8000","timestamp":"2025-03-24T23:26:45.306Z"}
+{"level":"info","message":"🚀 GraphQL ready at http://localhost:8000/graphql","timestamp":"2025-03-24T23:26:45.306Z"}
+{"level":"error","message":"Error initializing database: error happened in your connection. Reason: getaddrinfo ENOTFOUND couchdb.blackbox.ai","stack":"Error: error happened in your connection. Reason: getaddrinfo ENOTFOUND couchdb.blackbox.ai\n    at responseHandler (/project/sandbox/user-workspace/UniAppOne/backend/node_modules/nano/lib/nano.js:157:16)\n    at /project/sandbox/user-workspace/UniAppOne/backend/node_modules/nano/lib/nano.js:456:13\n    at processTicksAndRejections (node:internal/process/task_queues:95:5)","timestamp":"2025-03-25T00:01:19.207Z"}
+{"level":"error","message":"Error initializing database: error happened in your connection. Reason: getaddrinfo ENOTFOUND couchdb.blackbox.ai","stack":"Error: error happened in your connection. Reason: getaddrinfo ENOTFOUND couchdb.blackbox.ai\n    at responseHandler (/project/sandbox/user-workspace/UniAppOne/backend/node_modules/nano/lib/nano.js:157:16)\n    at /project/sandbox/user-workspace/UniAppOne/backend/node_modules/nano/lib/nano.js:456:13\n    at processTicksAndRejections (node:internal/process/task_queues:95:5)","timestamp":"2025-03-25T00:03:25.866Z"}

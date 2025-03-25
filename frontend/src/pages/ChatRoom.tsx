@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -6,569 +6,261 @@ import {
   Typography,
   TextField,
   IconButton,
-  Stack,
   Avatar,
-  Divider,
-  Badge,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Menu,
-  MenuItem,
-  InputAdornment,
+  Stack,
+  CircularProgress,
+  Alert,
 } from '@mui/material';
-import { chatService, connectionService, videoCallService } from '../services/apiService';
-import VideoCall from '../components/video/VideoCall';
 import {
   Send as SendIcon,
-  AttachFile as AttachFileIcon,
-  Image as ImageIcon,
-  EmojiEmotions as EmojiIcon,
-  Group as GroupIcon,
-  School as SchoolIcon,
   ArrowBack as ArrowBackIcon,
-  InsertEmoticon as InsertEmoticonIcon,
-  Videocam as VideocamIcon,
 } from '@mui/icons-material';
-// Temporarily removed emoji-mart imports
+import { DatabaseService } from '../services/databaseService';
+import { chatService } from '../services/apiService';
 
-interface ChatRoomProps {
-  type?: 'direct' | 'classroom' | 'community';
-}
-
-interface RoomData {
-  name: string;
-  members: number;
-}
-
-interface RoomDetails {
-  name: string;
-  members: number;
-  icon: React.ReactNode;
-}
-
-const mockClassrooms: Record<string, RoomData> = {
-  '1': { name: 'Data Structures', members: 25 },
-  '2': { name: 'Web Development', members: 30 },
-};
-
-const mockCommunities: Record<string, RoomData> = {
-  '1': { name: 'Computer Science Hub', members: 150 },
-  '2': { name: 'Math Enthusiasts', members: 120 },
-};
-
-const ChatRoom: React.FC<ChatRoomProps> = ({ type = 'direct' }) => {
-  const { roomId } = useParams<{ roomId: string }>();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [message, setMessage] = useState('');
-  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
-  const [fileUploadOpen, setFileUploadOpen] = useState(false);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-
-  // Get room type from location state or props
-  const roomType = location.state?.type || type;
-
-  const getRoomDetails = (): RoomDetails | null => {
-    if (!roomId) return null;
-
-    if (roomType === 'classroom' && mockClassrooms[roomId]) {
-      return {
-        name: mockClassrooms[roomId].name,
-        members: mockClassrooms[roomId].members,
-        icon: <SchoolIcon />,
-      };
-    } else if (roomType === 'community' && mockCommunities[roomId]) {
-      return {
-        name: mockCommunities[roomId].name,
-        members: mockCommunities[roomId].members,
-        icon: <GroupIcon />,
-      };
-    }
-    return null;
-  };
-
-  const handleBack = () => {
-    if (roomType === 'classroom') {
-      navigate('/classrooms');
-    } else if (roomType === 'community') {
-      navigate('/communities');
-    } else {
-      navigate('/');
-    }
-  };
-
-  const handleEmojiSelect = (emoji: any) => {
-    setMessage(prev => prev + emoji.native);
-    setEmojiPickerOpen(false);
-  };
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    setSelectedFiles(prev => [...prev, ...files]);
-    setFileUploadOpen(false);
-  };
-
-  const [messages, setMessages] = useState<Array<{content: string, timestamp: Date}>>([]);
-  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [isVideoCallActive, setIsVideoCallActive] = useState(false);
-  const [participants, setParticipants] = useState<Array<{
+interface Message {
+  _id: string;
+  type: string;
+  content: string;
+  sender: {
     id: string;
     name: string;
     avatar: string;
-    isSpeaking: boolean;
-    isVideoOn: boolean;
-    isAudioOn: boolean;
-  }>>([
-    {
-      id: '1',
-      name: 'You',
-      avatar: 'https://ui-avatars.com/api/?name=You&background=random',
-      isSpeaking: false,
-      isVideoOn: true,
-      isAudioOn: true,
-    }
-  ]);
+  };
+  timestamp: string;
+  roomId: string;
+}
 
-  const handleStartVideoCall = () => {
-    setIsVideoCallActive(true);
-    // Initialize video call connection
-    if (roomType === 'classroom' || roomType === 'community') {
+interface ChatRoom {
+  _id: string;
+  type: string;
+  name: string;
+  description: string;
+  participants: Array<{
+    id: string;
+    name: string;
+    avatar: string;
+  }>;
+}
+
+const ChatRoom: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const [room, setRoom] = useState<ChatRoom | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
       try {
-        videoCallService.sendOffer({ type: 'offer', sdp: '' }, roomId || '');
-        // Add self to participants if not already present
-        setParticipants(prev => {
-          const selfExists = prev.some(p => p.id === '1');
-          if (!selfExists) {
-            return [{
-              id: '1',
-              name: 'You',
-              avatar: 'https://ui-avatars.com/api/?name=You&background=random',
-              isSpeaking: false,
-              isVideoOn: true,
-              isAudioOn: true,
-            }, ...prev];
-          }
-          return prev;
-        });
-      } catch (error) {
-        console.error('Failed to start video call:', error);
-        setIsVideoCallActive(false);
-      }
-    }
-  };
+        setLoading(true);
+        const [roomData, messagesData, userData] = await Promise.all([
+          DatabaseService.read<ChatRoom>(id!),
+          DatabaseService.find<Message>({ type: 'message', roomId: id }),
+          DatabaseService.read('currentUser')
+        ]);
 
-  const handleEndVideoCall = () => {
-    setIsVideoCallActive(false);
-    if (roomId) {
-      videoCallService.sendHangup(roomId);
-    }
-  };
-
-  useEffect(() => {
-    // Set up video call event listeners
-    videoCallService.onVideoOffer((data) => {
-      console.log('Received video offer:', data);
-      // Handle incoming video call
-      setIsVideoCallActive(true);
-      setParticipants(prev => {
-        const participantExists = prev.some(p => p.id === data.targetId);
-        if (!participantExists) {
-          return [...prev, {
-            id: data.targetId,
-            name: `Participant ${prev.length}`,
-            avatar: `https://ui-avatars.com/api/?name=Participant${prev.length}&background=random`,
-            isSpeaking: false,
-            isVideoOn: true,
-            isAudioOn: true,
-          }];
+        if (!roomData) {
+          throw new Error('Chat room not found');
         }
-        return prev;
-      });
-    });
 
-    videoCallService.onHangup(() => {
-      setIsVideoCallActive(false);
-      setParticipants(prev => prev.slice(0, 1)); // Keep only the current user
+        setRoom(roomData);
+        setMessages(messagesData.sort((a, b) => 
+          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        ));
+        setCurrentUser(userData);
+      } catch (err) {
+        console.error('Error fetching chat data:', err);
+        setError('Failed to load chat');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Subscribe to new messages
+    chatService.onMessage((message: any) => {
+      if (message.roomId === id) {
+        setMessages(prev => [...prev, message]);
+      }
     });
 
     return () => {
-      // Clean up video call if active
-      if (isVideoCallActive && roomId) {
-        videoCallService.sendHangup(roomId);
-      }
+      // Cleanup subscription
+      chatService.offMessage((message: any) => {
+        console.log('Unsubscribed from messages');
+      });
     };
-  }, [roomId, isVideoCallActive]);
+  }, [id]);
 
   useEffect(() => {
-    // Connect to socket when component mounts
-    connectionService.connect();
+    scrollToBottom();
+  }, [messages]);
 
-    // Set up message listener
-    const handleNewMessage = (message: {content: string, timestamp: Date}) => {
-      setMessages(prev => [...prev, message]);
-    };
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
-    chatService.onMessage(handleNewMessage);
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !currentUser) return;
 
-    // Cleanup on unmount
-    return () => {
-      chatService.offMessage(handleNewMessage);
-      connectionService.disconnect();
-    };
-  }, []);
+    try {
+      const message = {
+        type: 'message',
+        content: newMessage.trim(),
+        sender: {
+          id: currentUser._id,
+          name: currentUser.name,
+          avatar: currentUser.avatar
+        },
+        roomId: id,
+        timestamp: new Date().toISOString()
+      };
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (message.trim() || selectedFiles.length > 0) {
-      // Send message based on room type
-      if (roomType === 'classroom' && roomId) {
-        chatService.sendMessage(message, undefined, roomId);
-      } else if (roomType === 'community' && roomId) {
-        chatService.sendMessage(message, roomId);
-      } else {
-        chatService.sendMessage(message);
-      }
-
-      // TODO: Implement file sending when backend supports it
-      if (selectedFiles.length > 0) {
-        console.log('Files to be implemented:', selectedFiles);
-      }
-
-      setMessage('');
-      setSelectedFiles([]);
+      await DatabaseService.create(message);
+      chatService.sendMessage(newMessage, id);
+      setNewMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
     }
   };
 
-  const roomDetails = getRoomDetails();
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
-  if (!roomDetails) {
+  if (error || !room) {
     return (
       <Box sx={{ p: 2 }}>
-        <Typography>Room not found</Typography>
+        <Alert severity="error">{error || 'Chat room not found'}</Alert>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ 
-      height: '100vh', 
-      display: 'flex', 
-      flexDirection: 'column',
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0
-    }}>
-      {/* Chat Header */}
-      <Paper sx={{ 
-        p: 2, 
-        borderRadius: '0',
-        bgcolor: 'primary.main',
-        color: 'white'
-      }}>
-        <Stack direction="row" spacing={2} alignItems="center">
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <Paper 
+        elevation={1} 
+        sx={{ 
+          px: 2, 
+          py: 1,
+          bgcolor: 'primary.main',
+          color: 'white',
+          borderRadius: 0
+        }}
+      >
+        <Stack direction="row" alignItems="center" spacing={2}>
           <IconButton 
             color="inherit" 
-            onClick={handleBack}
-            sx={{ mr: 1 }}
+            edge="start"
+            onClick={() => navigate(-1)}
           >
             <ArrowBackIcon />
           </IconButton>
-          <Badge
-            overlap="circular"
-            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-            badgeContent={
-              roomDetails.icon
-            }
-          >
-            <Avatar 
-              sx={{ 
-                bgcolor: 'primary.dark',
-                width: 40,
-                height: 40
-              }}
-            >
-              {roomDetails.name.substring(0, 2)}
-            </Avatar>
-          </Badge>
-          <Box 
-            sx={{ cursor: 'pointer', flex: 1 }} 
-            onClick={() => setDetailsDialogOpen(true)}
-          >
-            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-              {roomDetails.name}
-            </Typography>
-            <Typography variant="body2" sx={{ opacity: 0.8 }}>
-              {roomDetails.members} members
-            </Typography>
-          </Box>
-          {(roomType === 'classroom' || roomType === 'community') && (
-            <IconButton
-              color="inherit"
-              onClick={handleStartVideoCall}
-              sx={{
-                bgcolor: 'rgba(255, 255, 255, 0.1)',
-                '&:hover': {
-                  bgcolor: 'rgba(255, 255, 255, 0.2)',
-                },
-                transition: 'background-color 0.2s'
-              }}
-            >
-              <VideocamIcon />
-            </IconButton>
-          )}
+          <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+            {room.name}
+          </Typography>
         </Stack>
       </Paper>
 
-      {/* Video Call */}
-      {isVideoCallActive && (
-        <Box
-          sx={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            bgcolor: 'background.default',
-            zIndex: 1300,
-          }}
-        >
-          <Paper 
-            sx={{ 
-              position: 'absolute',
-              top: 16,
-              right: 16,
-              p: 1,
-              borderRadius: 2,
-              bgcolor: 'primary.main',
-              color: 'white',
-              zIndex: 1301,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1
-            }}
-          >
-            <Typography variant="body2">
-              {roomType === 'classroom' ? 'Class Video Call' : 'Community Video Call'}
-            </Typography>
-            <Typography variant="caption" sx={{ opacity: 0.8 }}>
-              {participants.length} participant{participants.length !== 1 ? 's' : ''}
-            </Typography>
-          </Paper>
-          <VideoCall
-            participants={participants}
-            onEndCall={handleEndVideoCall}
-            onToggleChat={() => setIsVideoCallActive(false)}
-          />
-        </Box>
-      )}
-
-      {/* Chat Messages */}
+      {/* Messages */}
       <Box sx={{ 
-        flexGrow: 1, 
-        p: 2, 
-        overflowY: 'auto',
+        flex: 1, 
+        overflow: 'auto',
         bgcolor: 'background.default',
-        height: 'calc(100vh - 140px)' // Adjust for header and input heights
+        p: 2
       }}>
-        <Typography variant="body2" align="center" color="text.secondary" sx={{ mt: 2 }}>
-          Welcome to the {roomDetails.name} chat room!
-        </Typography>
-        
-        {/* Display Messages */}
-        {messages.map((msg, index) => (
-          <Paper
-            key={index}
-            sx={{
-              p: 2,
-              my: 1,
-              maxWidth: '80%',
-              bgcolor: 'primary.light',
-              color: 'white',
-              borderRadius: 2
-            }}
-          >
-            <Typography variant="body1">{msg.content}</Typography>
-            <Typography variant="caption" sx={{ opacity: 0.8 }}>
-              {new Date(msg.timestamp).toLocaleTimeString()}
-            </Typography>
-          </Paper>
-        ))}
-
-        {selectedFiles.length > 0 && (
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="subtitle2" gutterBottom>
-              Selected Files:
-            </Typography>
-            {selectedFiles.map((file, index) => (
-              <Typography key={index} variant="body2">
-                {file.name}
-              </Typography>
-            ))}
-          </Box>
-        )}
+        <Stack spacing={2}>
+          {messages.map((message) => (
+            <Box
+              key={message._id}
+              sx={{
+                display: 'flex',
+                flexDirection: currentUser?._id === message.sender.id ? 'row-reverse' : 'row',
+                gap: 1,
+              }}
+            >
+              <Avatar 
+                sx={{ 
+                  width: 32, 
+                  height: 32,
+                  bgcolor: currentUser?._id === message.sender.id ? 'primary.main' : 'secondary.main'
+                }}
+              >
+                {message.sender.avatar || message.sender.name.charAt(0)}
+              </Avatar>
+              <Box
+                sx={{
+                  maxWidth: '70%',
+                  bgcolor: currentUser?._id === message.sender.id ? 'primary.main' : 'background.paper',
+                  color: currentUser?._id === message.sender.id ? 'white' : 'text.primary',
+                  p: 1.5,
+                  borderRadius: 2,
+                }}
+              >
+                <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>
+                  {message.content}
+                </Typography>
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    display: 'block',
+                    mt: 0.5,
+                    opacity: 0.8
+                  }}
+                >
+                  {new Date(message.timestamp).toLocaleTimeString()}
+                </Typography>
+              </Box>
+            </Box>
+          ))}
+          <div ref={messagesEndRef} />
+        </Stack>
       </Box>
 
       {/* Message Input */}
       <Paper 
-        component="form" 
-        onSubmit={handleSendMessage}
+        elevation={2}
         sx={{ 
           p: 2,
-          borderRadius: '0',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          bgcolor: 'background.paper',
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          width: '100%'
+          borderRadius: 0
         }}
-        elevation={3}
       >
-        <IconButton 
-          size="small"
-          onClick={() => setEmojiPickerOpen(!emojiPickerOpen)}
-        >
-          <EmojiIcon />
-        </IconButton>
-        <IconButton 
-          size="small"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <AttachFileIcon />
-        </IconButton>
-        <IconButton 
-          size="small"
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <ImageIcon />
-        </IconButton>
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileSelect}
-          style={{ display: 'none' }}
-          multiple
-        />
-        <TextField
-          fullWidth
-          placeholder="Type a message..."
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          size="small"
-          sx={{ mx: 1 }}
-          InputProps={{
-            endAdornment: selectedFiles.length > 0 && (
-              <InputAdornment position="end">
-                <Typography variant="caption" color="primary">
-                  {selectedFiles.length} file(s)
-                </Typography>
-              </InputAdornment>
-            ),
-          }}
-        />
-        <IconButton 
-          color="primary"
-          type="submit"
-          disabled={!message.trim() && selectedFiles.length === 0}
-        >
-          <SendIcon />
-        </IconButton>
+        <Stack direction="row" spacing={1}>
+          <TextField
+            fullWidth
+            size="small"
+            placeholder="Type a message..."
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+              }
+            }}
+          />
+          <IconButton 
+            color="primary"
+            onClick={handleSendMessage}
+            disabled={!newMessage.trim()}
+          >
+            <SendIcon />
+          </IconButton>
+        </Stack>
       </Paper>
-
-      {/* Emoji Picker Dialog - temporarily disabled */}
-      <Dialog
-        open={emojiPickerOpen}
-        onClose={() => setEmojiPickerOpen(false)}
-        PaperProps={{
-          sx: { maxWidth: 'none' }
-        }}
-      >
-        <DialogContent>
-          <Typography>Emoji picker temporarily disabled</Typography>
-        </DialogContent>
-      </Dialog>
-
-      {/* Community Details Dialog */}
-      <Dialog
-        open={detailsDialogOpen}
-        onClose={() => setDetailsDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>
-          <Stack direction="row" spacing={2} alignItems="center">
-            <Badge
-              overlap="circular"
-              anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-              badgeContent={roomDetails.icon}
-            >
-              <Avatar 
-                sx={{ 
-                  bgcolor: 'primary.dark',
-                  width: 56,
-                  height: 56
-                }}
-              >
-                {roomDetails.name.substring(0, 2)}
-              </Avatar>
-            </Badge>
-            <Box>
-              <Typography variant="h6">{roomDetails.name}</Typography>
-              <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                {roomType.charAt(0).toUpperCase() + roomType.slice(1)}
-              </Typography>
-            </Box>
-          </Stack>
-        </DialogTitle>
-        <DialogContent sx={{ mt: 2 }}>
-          <Typography variant="h6" gutterBottom>About</Typography>
-          <Typography variant="body1" paragraph>
-            {roomType === 'classroom' 
-              ? 'A virtual classroom for collaborative learning and discussion.'
-              : 'A community space for sharing knowledge and connecting with peers.'}
-          </Typography>
-
-          <Typography variant="h6" gutterBottom>Members</Typography>
-          <Typography variant="body1" paragraph>
-            {roomDetails.members} active members
-          </Typography>
-
-          {roomType === 'classroom' && (
-            <>
-              <Typography variant="h6" gutterBottom>Course Information</Typography>
-              <Typography variant="body1">
-                Course Code: {roomId}<br />
-                Semester: Current<br />
-                Schedule: Mon, Wed, Fri
-              </Typography>
-            </>
-          )}
-
-          {roomType === 'community' && (
-            <>
-              <Typography variant="h6" gutterBottom>Community Guidelines</Typography>
-              <Typography variant="body1">
-                • Be respectful and supportive<br />
-                • Share knowledge and experiences<br />
-                • Keep discussions relevant to the topic<br />
-                • No spam or self-promotion
-              </Typography>
-            </>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDetailsDialogOpen(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };

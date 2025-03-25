@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -12,21 +12,15 @@ import {
   TextField,
   InputAdornment,
   IconButton,
-  Grid,
-  Fab,
   CircularProgress,
-  Theme,
   Alert,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
   List,
   ListItem,
   ListItemText,
-  ListItemAvatar,
-  Menu,
-  MenuItem,
+  Fab,
 } from '@mui/material';
 import {
   ThumbUp as ThumbUpIcon,
@@ -34,28 +28,11 @@ import {
   ChatBubbleOutline as CommentIcon,
   Share as ShareIcon,
   Search as SearchIcon,
-  FilterList as FilterListIcon,
-  MoreVert as MoreVertIcon,
   Add as AddIcon,
   Send as SendIcon,
 } from '@mui/icons-material';
-import { Post, Comment, CreatePostData } from '../types/feed';
-
-const mockUser = {
-  id: 'user1',
-  name: 'Demo User',
-  avatar: 'DU'
-};
-
-const mockClassrooms = [
-  { id: 'class1', name: 'Data Structures' },
-  { id: 'class2', name: 'Web Development' },
-];
-
-const mockCommunities = [
-  { id: 'comm1', name: 'Computer Science Hub' },
-  { id: 'comm2', name: 'Math Enthusiasts' },
-];
+import { Post, Comment } from '../types/feed';
+import { DatabaseService } from '../services/apiService';
 
 const PostCard: React.FC<{
   post: Post;
@@ -66,8 +43,27 @@ const PostCard: React.FC<{
 }> = ({ post, currentUser, onLike, onComment, onShare }) => {
   const [commentText, setCommentText] = useState('');
   const [showComments, setShowComments] = useState(false);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [classrooms, setClassrooms] = useState([]);
+  const [communities, setCommunities] = useState([]);
+
+  useEffect(() => {
+    const fetchShareTargets = async () => {
+      try {
+        const [classroomsData, communitiesData] = await Promise.all([
+          DatabaseService.find({ type: 'classroom' }),
+          DatabaseService.find({ type: 'community' })
+        ]);
+        setClassrooms(classroomsData);
+        setCommunities(communitiesData);
+      } catch (error) {
+        console.error('Error fetching share targets:', error);
+      }
+    };
+    if (shareDialogOpen) {
+      fetchShareTargets();
+    }
+  }, [shareDialogOpen]);
 
   const handleShare = (type: 'classroom' | 'community', id: string, name: string) => {
     onShare(post._id!, { type, id, name });
@@ -163,7 +159,9 @@ const PostCard: React.FC<{
                   </Stack>
                 ))}
                 <Stack direction="row" spacing={1}>
-                  <Avatar sx={{ width: 32, height: 32 }}>{mockUser.avatar}</Avatar>
+                  <Avatar sx={{ width: 32, height: 32 }}>
+                    {currentUser.charAt(0)}
+                  </Avatar>
                   <TextField
                     fullWidth
                     size="small"
@@ -201,7 +199,7 @@ const PostCard: React.FC<{
         <DialogContent>
           <Typography variant="subtitle1" gutterBottom>Classrooms</Typography>
           <List>
-            {mockClassrooms.map((classroom) => (
+            {classrooms.map((classroom: any) => (
               <ListItem
                 key={classroom.id}
                 onClick={() => handleShare('classroom', classroom.id, classroom.name)}
@@ -217,7 +215,7 @@ const PostCard: React.FC<{
           <Divider sx={{ my: 2 }} />
           <Typography variant="subtitle1" gutterBottom>Communities</Typography>
           <List>
-            {mockCommunities.map((community) => (
+            {communities.map((community: any) => (
               <ListItem
                 key={community.id}
                 onClick={() => handleShare('community', community.id, community.name)}
@@ -246,26 +244,8 @@ const Feed: React.FC = () => {
   const loadPosts = useCallback(async () => {
     setLoading(true);
     try {
-      // Mock posts with new structure
-      const mockPosts: Post[] = Array(5).fill(null).map((_, index) => ({
-        _id: `post_${Date.now()}_${index}`,
-        type: 'post',
-        title: '',
-        content: `This is a sample post ${index + 1}. #sample`,
-        author: 'Demo User',
-        avatar: 'DU',
-        timestamp: new Date().toISOString(),
-        likes: Math.floor(Math.random() * 100),
-        likedBy: [],
-        comments: [],
-        tags: ['sample'],
-        sharedTo: index % 2 === 0 ? {
-          type: 'classroom',
-          id: 'class1',
-          name: 'Data Structures'
-        } : undefined
-      }));
-      setPosts(mockPosts);
+      const fetchedPosts = await DatabaseService.find<Post>({ type: 'post' });
+      setPosts(fetchedPosts);
     } catch (error) {
       console.error('Error loading posts:', error);
       setError('Failed to load posts');
@@ -278,58 +258,71 @@ const Feed: React.FC = () => {
     loadPosts();
   }, [loadPosts]);
 
-  const handleLike = (postId: string) => {
-    setPosts(prevPosts => 
-      prevPosts.map(post => {
-        if (post._id === postId) {
-          const isLiked = post.likedBy.includes(mockUser.id);
-          return {
-            ...post,
-            likes: isLiked ? post.likes - 1 : post.likes + 1,
-            likedBy: isLiked 
-              ? post.likedBy.filter(id => id !== mockUser.id)
-              : [...post.likedBy, mockUser.id]
-          };
-        }
-        return post;
-      })
-    );
+  const handleLike = async (postId: string) => {
+    try {
+      const post = await DatabaseService.read<Post>(postId);
+      if (!post) return;
+
+      const currentUser = await DatabaseService.read('currentUser');
+      if (!currentUser) return;
+
+      const isLiked = post.likedBy.includes(currentUser.id);
+      const updatedPost = await DatabaseService.update<Post>(postId, {
+        likes: isLiked ? post.likes - 1 : post.likes + 1,
+        likedBy: isLiked 
+          ? post.likedBy.filter(id => id !== currentUser.id)
+          : [...post.likedBy, currentUser.id]
+      });
+
+      setPosts(prevPosts => 
+        prevPosts.map(p => p._id === postId ? updatedPost : p)
+      );
+    } catch (error) {
+      console.error('Error updating like:', error);
+    }
   };
 
-  const handleComment = (postId: string, commentText: string) => {
-    setPosts(prevPosts =>
-      prevPosts.map(post => {
-        if (post._id === postId) {
-          const newComment: Comment = {
-            id: `comment_${Date.now()}`,
-            author: mockUser.name,
-            avatar: mockUser.avatar,
-            content: commentText,
-            timestamp: new Date().toISOString(),
-            likes: 0
-          };
-          return {
-            ...post,
-            comments: [...post.comments, newComment]
-          };
-        }
-        return post;
-      })
-    );
+  const handleComment = async (postId: string, commentText: string) => {
+    try {
+      const post = await DatabaseService.read<Post>(postId);
+      if (!post) return;
+
+      const currentUser = await DatabaseService.read('currentUser');
+      if (!currentUser) return;
+
+      const newComment: Comment = {
+        id: `comment_${Date.now()}`,
+        author: currentUser.name,
+        avatar: currentUser.avatar,
+        content: commentText,
+        timestamp: new Date().toISOString(),
+        likes: 0
+      };
+
+      const updatedPost = await DatabaseService.update<Post>(postId, {
+        comments: [...post.comments, newComment]
+      });
+
+      setPosts(prevPosts =>
+        prevPosts.map(p => p._id === postId ? updatedPost : p)
+      );
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    }
   };
 
-  const handleShare = (postId: string, destination: { type: 'classroom' | 'community', id: string, name: string }) => {
-    setPosts(prevPosts =>
-      prevPosts.map(post => {
-        if (post._id === postId) {
-          return {
-            ...post,
-            sharedTo: destination
-          };
-        }
-        return post;
-      })
-    );
+  const handleShare = async (postId: string, destination: { type: 'classroom' | 'community', id: string, name: string }) => {
+    try {
+      const updatedPost = await DatabaseService.update<Post>(postId, {
+        sharedTo: destination
+      });
+
+      setPosts(prevPosts =>
+        prevPosts.map(p => p._id === postId ? updatedPost : p)
+      );
+    } catch (error) {
+      console.error('Error sharing post:', error);
+    }
   };
 
   return (
@@ -365,7 +358,7 @@ const Feed: React.FC = () => {
           <PostCard
             key={post._id}
             post={post}
-            currentUser={mockUser.id}
+            currentUser={post.author}
             onLike={handleLike}
             onComment={handleComment}
             onShare={handleShare}

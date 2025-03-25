@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -7,65 +7,44 @@ import {
   InputAdornment,
   IconButton,
   Stack,
+  CircularProgress,
+  Alert,
+  LinearProgress,
 } from '@mui/material';
 import {
   Search as SearchIcon,
   Add as AddIcon,
-  School as SchoolIcon,
-  Schedule as ScheduleIcon,
+  People as PeopleIcon,
   Assignment as AssignmentIcon,
+  Schedule as ScheduleIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { DatabaseService } from '../services/databaseService';
 
 interface Classroom {
-  id: string;
+  _id: string;
+  type: string;
   name: string;
-  instructor: string;
   description: string;
+  instructor: {
+    id: string;
+    name: string;
+    avatar: string;
+  };
   students: number;
   progress: number;
-  nextClass: string;
+  nextClass?: string;
   assignments: number;
   topics: string[];
-  avatar: string;
 }
-
-const mockClassrooms: Classroom[] = [
-  {
-    id: '1',
-    name: 'Data Structures',
-    instructor: 'Dr. Sarah Johnson',
-    description: 'Learn fundamental data structures and algorithmic techniques.',
-    students: 25,
-    progress: 65,
-    nextClass: 'Tomorrow, 10:00 AM',
-    assignments: 2,
-    topics: ['Arrays', 'Linked Lists', 'Trees'],
-    avatar: 'DS',
-  },
-  {
-    id: '2',
-    name: 'Web Development',
-    instructor: 'Prof. Michael Chen',
-    description: 'Master modern web development technologies and practices.',
-    students: 30,
-    progress: 45,
-    nextClass: 'Today, 2:00 PM',
-    assignments: 1,
-    topics: ['HTML/CSS', 'JavaScript', 'React'],
-    avatar: 'WD',
-  },
-];
 
 const ClassroomCard: React.FC<{ classroom: Classroom }> = ({ classroom }) => {
   const navigate = useNavigate();
 
   return (
     <Box 
-      onClick={() => navigate(`/classroom-chat/${classroom.id}`, { state: { type: 'classroom' } })}
+      onClick={() => navigate(`/classroom/${classroom._id}`)}
       sx={{
-        display: 'flex',
-        alignItems: 'flex-start',
         p: 2,
         cursor: 'pointer',
         '&:hover': {
@@ -75,68 +54,96 @@ const ClassroomCard: React.FC<{ classroom: Classroom }> = ({ classroom }) => {
         borderColor: 'divider'
       }}
     >
-      <Avatar
-        sx={{
-          width: 48,
-          height: 48,
-          bgcolor: 'primary.main',
-          fontSize: '1.25rem',
-          mr: 2
-        }}
-      >
-        {classroom.avatar}
-      </Avatar>
-      <Box flex={1} overflow="hidden">
-        <Typography variant="subtitle1" noWrap>
-          {classroom.name}
-        </Typography>
-        <Typography 
-          variant="body2" 
-          color="text.secondary" 
-          noWrap
-        >
-          {classroom.instructor}
-        </Typography>
-        <Stack 
-          direction="row" 
-          spacing={2} 
-          sx={{ mt: 0.5 }}
-        >
-          <Typography 
-            variant="caption" 
-            color="text.secondary" 
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center',
-              fontSize: '0.75rem'
+      <Stack spacing={2}>
+        <Stack direction="row" spacing={2} alignItems="flex-start">
+          <Avatar
+            sx={{
+              width: 48,
+              height: 48,
+              bgcolor: 'primary.main',
+              fontSize: '1.25rem'
             }}
           >
-            <ScheduleIcon sx={{ fontSize: 14, mr: 0.5 }} />
-            {classroom.nextClass}
-          </Typography>
-          <Typography 
-            variant="caption" 
-            color="text.secondary" 
-            sx={{ 
-              display: 'flex', 
-              alignItems: 'center',
-              fontSize: '0.75rem'
-            }}
-          >
-            <AssignmentIcon sx={{ fontSize: 14, mr: 0.5 }} />
-            {classroom.assignments} assignments
-          </Typography>
+            {classroom.name.charAt(0)}
+          </Avatar>
+          <Box flex={1}>
+            <Typography variant="subtitle1" fontWeight={500}>
+              {classroom.name}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" noWrap>
+              {classroom.description}
+            </Typography>
+          </Box>
         </Stack>
-      </Box>
+
+        <Stack spacing={1}>
+          <LinearProgress 
+            variant="determinate" 
+            value={classroom.progress} 
+            sx={{ height: 6, borderRadius: 1 }}
+          />
+          
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Typography 
+              variant="body2" 
+              color="text.secondary"
+              sx={{ display: 'flex', alignItems: 'center' }}
+            >
+              <PeopleIcon sx={{ fontSize: 16, mr: 0.5 }} />
+              {classroom.students} students
+            </Typography>
+
+            <Typography 
+              variant="body2" 
+              color="text.secondary"
+              sx={{ display: 'flex', alignItems: 'center' }}
+            >
+              <AssignmentIcon sx={{ fontSize: 16, mr: 0.5 }} />
+              {classroom.assignments} assignments
+            </Typography>
+
+            {classroom.nextClass && (
+              <Typography 
+                variant="body2" 
+                color="text.secondary"
+                sx={{ display: 'flex', alignItems: 'center' }}
+              >
+                <ScheduleIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                Next: {new Date(classroom.nextClass).toLocaleDateString()}
+              </Typography>
+            )}
+          </Stack>
+        </Stack>
+      </Stack>
     </Box>
   );
 };
 
 const Classrooms: React.FC = () => {
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const filteredClassrooms = mockClassrooms.filter(classroom =>
+
+  useEffect(() => {
+    const fetchClassrooms = async () => {
+      try {
+        setLoading(true);
+        const data = await DatabaseService.find<Classroom>({ type: 'classroom' });
+        setClassrooms(data);
+      } catch (err) {
+        console.error('Error fetching classrooms:', err);
+        setError('Failed to load classrooms');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClassrooms();
+  }, []);
+
+  const filteredClassrooms = classrooms.filter(classroom =>
     classroom.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    classroom.instructor.toLowerCase().includes(searchQuery.toLowerCase()) ||
     classroom.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
     classroom.topics.some(topic => topic.toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -188,9 +195,25 @@ const Classrooms: React.FC = () => {
         overflow: 'auto',
         bgcolor: 'background.paper'
       }}>
-        {filteredClassrooms.map((classroom) => (
-          <ClassroomCard key={classroom.id} classroom={classroom} />
-        ))}
+        {error && (
+          <Alert severity="error" sx={{ m: 2 }}>
+            {error}
+          </Alert>
+        )}
+        
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : filteredClassrooms.length > 0 ? (
+          filteredClassrooms.map((classroom) => (
+            <ClassroomCard key={classroom._id} classroom={classroom} />
+          ))
+        ) : (
+          <Typography variant="body1" sx={{ textAlign: 'center', p: 4, color: 'text.secondary' }}>
+            {searchQuery ? 'No classrooms found matching your search' : 'No classrooms available'}
+          </Typography>
+        )}
       </Box>
     </Box>
   );

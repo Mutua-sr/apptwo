@@ -3,7 +3,7 @@ import config from '../config/config';
 import logger from '../config/logger';
 import { CouchDBDocument } from '../types';
 
-const couchdbConfig = {
+const couchdbConfig: nano.Configuration = {
   url: process.env.COUCHDB_URL || 'https://localhost:5984',
   requestDefaults: {
     auth: {
@@ -13,8 +13,8 @@ const couchdbConfig = {
   }
 };
 
-const server = require('nano')(couchdbConfig);
-const db = server.use(process.env.DB_NAME || 'eduapp');
+const couchdb = nano(couchdbConfig);
+const db = couchdb.use(process.env.DB_NAME || 'eduapp');
 
 export const DatabaseService = {
   // Create a document
@@ -23,7 +23,7 @@ export const DatabaseService = {
       const docToInsert = {
         ...doc,
         createdAt: new Date().toISOString()
-      };
+      } as nano.MaybeDocument;
 
       const response = await db.insert(docToInsert);
       return {
@@ -45,9 +45,9 @@ export const DatabaseService = {
       return {
         ...doc,
         id: doc._id
-      } as T;
+      } as unknown as T;
     } catch (error) {
-      if ((error as any).statusCode === 404) {
+      if ((error as nano.DocumentNotFoundError).statusCode === 404) {
         return null;
       }
       logger.error(`Error reading document ${id}:`, error);
@@ -63,13 +63,13 @@ export const DatabaseService = {
         ...existing,
         ...doc,
         updatedAt: new Date().toISOString()
-      };
+      } as nano.MaybeDocument;
 
       const response = await db.insert(updated);
       return {
         ...updated,
         id: response.id
-      } as T;
+      } as unknown as T;
     } catch (error) {
       logger.error(`Error updating document ${id}:`, error);
       throw new Error('Failed to update document');
@@ -83,7 +83,7 @@ export const DatabaseService = {
       await db.destroy(id, doc._rev);
       return true;
     } catch (error) {
-      if ((error as any).statusCode === 404) {
+      if ((error as nano.DocumentNotFoundError).statusCode === 404) {
         return false;
       }
       logger.error(`Error deleting document ${id}:`, error);
@@ -92,16 +92,16 @@ export const DatabaseService = {
   },
 
   // Find documents using Mango query
-  async find<T>(query: any): Promise<T[]> {
+  async find<T>(query: nano.MangoQuery): Promise<T[]> {
     try {
       const { docs } = await db.find({
         selector: query,
         limit: 100
       });
-      return docs.map((doc: any) => ({
+      return docs.map(doc => ({
         ...doc,
         id: doc._id
-      })) as T[];
+      })) as unknown as T[];
     } catch (error) {
       logger.error('Error finding documents:', error);
       throw new Error('Failed to find documents');
@@ -109,18 +109,18 @@ export const DatabaseService = {
   },
 
   // List documents with pagination
-  async list<T>(options: { limit?: number; skip?: number; startkey?: string; endkey?: string } = {}): Promise<T[]> {
+  async list<T>(options: nano.DocumentListParams = {}): Promise<T[]> {
     try {
       const { rows } = await db.list({
         include_docs: true,
         ...options
       });
       return rows
-        .filter((row: any) => row.doc)
-        .map((row: any) => ({
+        .filter(row => row.doc)
+        .map(row => ({
           ...row.doc,
           id: row.id
-        })) as T[];
+        })) as unknown as T[];
     } catch (error) {
       logger.error('Error listing documents:', error);
       throw new Error('Failed to list documents');
@@ -131,11 +131,11 @@ export const DatabaseService = {
 // Initialize database connection
 export const initializeDatabase = async (): Promise<void> => {
   try {
-    await server.db.get(process.env.DB_NAME || 'eduapp');
+    await couchdb.db.get(process.env.DB_NAME || 'eduapp');
     logger.info('Connected to CouchDB database');
   } catch (error) {
-    if ((error as any).statusCode === 404) {
-      await server.db.create(process.env.DB_NAME || 'eduapp');
+    if ((error as nano.DocumentNotFoundError).statusCode === 404) {
+      await couchdb.db.create(process.env.DB_NAME || 'eduapp');
       logger.info('Created new CouchDB database');
     } else {
       logger.error('Error initializing database:', error);
