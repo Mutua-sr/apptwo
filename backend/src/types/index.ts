@@ -1,130 +1,131 @@
 import { Request } from 'express';
+import { JwtPayload } from 'jsonwebtoken';
+import { Multer } from 'multer';
 
-// Base document types
 export interface CouchDBDocument {
   _id: string;
   _rev: string;
   type: string;
   createdAt: string;
-  updatedAt?: string;
-  createdBy?: string;
+  updatedAt: string;
 }
 
-export type CreateDocument<T extends CouchDBDocument> = Omit<T, '_id' | '_rev' | 'createdAt' | 'updatedAt'>;
-
-// User types
-export interface User extends CouchDBDocument {
-  type: 'user';
-  email: string;
+export interface AuthUser {
+  id: string;
   name: string;
-  password: string;
+  email: string;
+  role: 'student' | 'teacher' | 'admin';
   avatar?: string;
-  role: UserRole;
-}
-
-export type CreateUser = CreateDocument<User>;
-
-export enum UserRole {
-  STUDENT = 'student',
-  INSTRUCTOR = 'instructor',
-  ADMIN = 'admin'
 }
 
 export interface AuthRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-    name: string;
-    avatar?: string;
-    role?: UserRole;
+  user?: AuthUser;
+}
+
+// Extend Express Request to include Multer's file
+declare global {
+  namespace Express {
+    interface Request {
+      file?: Multer.File;
+    }
+  }
+}
+
+export interface JWTPayload extends JwtPayload {
+  userId: string;
+  role: 'student' | 'teacher' | 'admin';
+}
+
+export interface MangoQuery {
+  selector: {
+    [key: string]: any;
+  };
+  limit?: number;
+  skip?: number;
+  sort?: { [key: string]: 'asc' | 'desc' }[];
+}
+
+export interface SortOrder {
+  [key: string]: 'asc' | 'desc';
+}
+
+export interface PaginationQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  error?: string;
+  meta?: {
+    page?: number;
+    limit?: number;
+    total?: number;
+    hasMore?: boolean;
   };
 }
 
-// Classroom types
-export interface Classroom extends CouchDBDocument {
-  type: 'classroom';
-  name: string;
-  description?: string;
-  instructor: string;
-  students: string[];
-  topics: string[];
-  progress?: number;
-  assignments?: number;
-  nextClass?: string;
+// Database service types
+export interface DatabaseConfig {
+  url: string;
+  dbName: string;
+  username?: string;
+  password?: string;
 }
 
-export type CreateClassroom = CreateDocument<Classroom>;
-
-// Community types
-export interface Community extends CouchDBDocument {
-  type: 'community';
-  name: string;
-  description?: string;
-  topics: string[];
-  members: string[];
-  moderators: string[];
+export interface QueryOptions {
+  skip?: number;
+  limit?: number;
+  sort?: SortOrder[];
 }
 
-export type CreateCommunity = CreateDocument<Community>;
-
-// Post types
-export interface Post extends CouchDBDocument {
-  type: 'post';
-  title: string;
-  content: string;
-  author: {
-    id: string;
-    name: string;
-    avatar?: string;
-  };
-  tags: string[];
-  likes: number;
-  comments: Comment[];
-  likedBy: string[];
-  sharedTo?: {
-    type: 'classroom' | 'community';
-    id: string;
-  };
-}
-
-export type CreatePost = CreateDocument<Post>;
-
-export interface Comment {
-  id: string;
-  content: string;
-  author: {
-    id: string;
-    name: string;
-    avatar?: string;
-  };
-  createdAt: string;
-  likes: number;
-}
-
-// Chat types
-export interface ChatMessage extends CouchDBDocument {
-  type: 'message';
-  content: string;
-  sender: {
-    id: string;
-    name: string;
-    avatar?: string;
-  };
-  roomId: string;
+// WebSocket types
+export interface WebSocketEvent<T = any> {
+  type: string;
+  payload: T;
   timestamp: string;
-}
-
-export type CreateChatMessage = CreateDocument<ChatMessage>;
-
-export interface ChatRoom extends CouchDBDocument {
-  type: 'direct' | 'classroom' | 'community';
-  name: string;
-  description?: string;
-  participants: Array<{
+  sender?: {
     id: string;
     name: string;
-    avatar?: string;
-  }>;
+  };
 }
 
-export type CreateChatRoom = CreateDocument<ChatRoom>;
+export interface WebSocketRoom {
+  id: string;
+  name: string;
+  type: 'chat' | 'classroom' | 'community';
+  participants: string[];
+}
+
+// File handling types
+export interface FileMetadata {
+  filename: string;
+  mimetype: string;
+  size: number;
+  path: string;
+  destination: string;
+  originalname: string;
+  encoding: string;
+}
+
+export interface UploadedFile extends FileMetadata {
+  url: string;
+  thumbnailUrl?: string;
+  uploadedBy: string;
+  uploadedAt: string;
+}
+
+// Error handling types
+export interface ApiError extends Error {
+  statusCode: number;
+  code?: string;
+  details?: any;
+}
+
+export interface ValidationError {
+  field: string;
+  message: string;
+  code: string;
+}

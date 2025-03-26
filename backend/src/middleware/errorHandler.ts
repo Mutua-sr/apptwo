@@ -1,110 +1,55 @@
 import { Request, Response, NextFunction } from 'express';
 import logger from '../config/logger';
 
-export interface ApiError extends Error {
-  statusCode?: number;
+export class ApiError extends Error {
+  statusCode: number;
   code?: string;
   details?: any;
+
+  constructor(message: string, statusCode: number = 500, code?: string, details?: any) {
+    super(message);
+    this.name = 'ApiError';
+    this.statusCode = statusCode;
+    this.code = code;
+    this.details = details;
+  }
 }
 
-export class DatabaseError extends Error implements ApiError {
-  constructor(
-    message: string,
-    public statusCode: number = 500,
-    public code: string = 'DATABASE_ERROR',
-    public details?: any
-  ) {
-    super(message);
+export class DatabaseError extends ApiError {
+  constructor(message: string, statusCode: number = 500, code?: string, details?: any) {
+    super(message, statusCode, code || 'DATABASE_ERROR', details);
     this.name = 'DatabaseError';
   }
 }
 
-export const errorHandler = (
-  err: ApiError,
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  // Default error values
+export const notFound = (req: Request, res: Response, next: NextFunction) => {
+  const error = new ApiError(`Not Found - ${req.originalUrl}`, 404, 'NOT_FOUND');
+  next(error);
+};
+
+export const errorHandler = (err: ApiError, req: Request, res: Response, next: NextFunction) => {
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
-  const code = (err as DatabaseError).code || 'INTERNAL_ERROR';
-  const details = (err as DatabaseError).details;
+  const code = err.code || 'INTERNAL_SERVER_ERROR';
+  const details = err.details;
 
-  // Log the error
-  logger.error(`Error [${code}]: ${message}`);
-  if (err.stack) {
-    logger.error(err.stack);
-  }
-  if (details) {
-    logger.error('Error details:', details);
-  }
+  // Log error
+  logger.error('Error:', {
+    path: req.path,
+    statusCode,
+    message,
+    code,
+    details,
+    stack: err.stack
+  });
 
-  // Send error response
   res.status(statusCode).json({
     success: false,
     error: {
-      code,
       message,
+      code,
       ...(details && { details }),
       ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
     }
   });
-};
-
-export const notFound = (req: Request, res: Response, next: NextFunction) => {
-  const error = new Error(`Not Found - ${req.originalUrl}`) as ApiError;
-  error.statusCode = 404;
-  next(error);
-};
-
-// Validation error handler
-export const validationError = (message: string, details?: any) => {
-  const error = new Error(message) as ApiError;
-  error.statusCode = 400;
-  (error as DatabaseError).code = 'VALIDATION_ERROR';
-  (error as DatabaseError).details = details;
-  return error;
-};
-
-// Authentication error handler
-export const authenticationError = (message: string = 'Authentication required') => {
-  const error = new Error(message) as ApiError;
-  error.statusCode = 401;
-  (error as DatabaseError).code = 'AUTHENTICATION_ERROR';
-  return error;
-};
-
-// Authorization error handler
-export const authorizationError = (message: string = 'Not authorized') => {
-  const error = new Error(message) as ApiError;
-  error.statusCode = 403;
-  (error as DatabaseError).code = 'AUTHORIZATION_ERROR';
-  return error;
-};
-
-// Database error handler
-export const databaseError = (
-  message: string,
-  statusCode: number = 500,
-  details?: any
-) => {
-  return new DatabaseError(message, statusCode, 'DATABASE_ERROR', details);
-};
-
-// Not found error handler
-export const notFoundError = (resource: string) => {
-  const error = new Error(`${resource} not found`) as ApiError;
-  error.statusCode = 404;
-  (error as DatabaseError).code = 'NOT_FOUND_ERROR';
-  return error;
-};
-
-// Conflict error handler
-export const conflictError = (message: string, details?: any) => {
-  const error = new Error(message) as ApiError;
-  error.statusCode = 409;
-  (error as DatabaseError).code = 'CONFLICT_ERROR';
-  (error as DatabaseError).details = details;
-  return error;
 };

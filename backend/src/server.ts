@@ -6,7 +6,7 @@ import logger from './config/logger';
 import { initializeDatabase } from './services/database';
 import { errorHandler, notFound } from './middleware/errorHandler';
 import apiRoutes from './routes/api';
-import SocketService from './services/socket.service';
+import RealtimeService from './services/realtime.service';
 
 // Initialize express app
 const app = express();
@@ -26,8 +26,8 @@ app.use('/api', apiRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-// Initialize Socket.IO
-SocketService.initialize(httpServer);
+// Initialize Socket.IO with Realtime Service
+RealtimeService.initialize(httpServer);
 
 // Start the server
 const startServer = async () => {
@@ -61,9 +61,16 @@ const startServer = async () => {
       logger.info('GET    /api/communities/:id - Get community by ID');
       logger.info('PUT    /api/communities/:id - Update community');
       logger.info('DELETE /api/communities/:id - Delete community');
-      logger.info('GET    /api/chat/:roomId/messages - Get chat history');
-      logger.info('POST   /api/chat/:roomId/messages - Send message');
-      logger.info('DELETE /api/chat/messages/:messageId - Delete message');
+      logger.info('GET    /api/chat/rooms    - Get all chat rooms');
+      logger.info('POST   /api/chat/rooms    - Create new chat room');
+      logger.info('GET    /api/chat/rooms/:id - Get chat room by ID');
+      logger.info('GET    /api/chat/rooms/:id/messages - Get chat history');
+      logger.info('POST   /api/chat/rooms/:id/messages - Send message');
+      logger.info('DELETE /api/chat/messages/:id - Delete message');
+      logger.info('POST   /api/video/call    - Create video call session');
+      logger.info('GET    /api/video/call/:id - Get video call session');
+      logger.info('PUT    /api/video/call/:id/status - Update call status');
+      logger.info('PUT    /api/video/call/:id/end - End video call');
       logger.info('GET    /api/health        - Health check');
     });
   } catch (error) {
