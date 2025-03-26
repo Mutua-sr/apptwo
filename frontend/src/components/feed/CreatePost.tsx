@@ -1,79 +1,39 @@
 import React, { useState } from 'react';
-import { 
+import {
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   TextField,
   Button,
-  IconButton,
   Stack,
-  Avatar,
-  Box,
   Chip,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Typography,
-  Divider
+  Box,
+  IconButton,
 } from '@mui/material';
-import {
-  Image as ImageIcon,
-  VideoLibrary as VideoIcon,
-  Link as LinkIcon,
-  Close as CloseIcon,
-  Share as ShareIcon
-} from '@mui/icons-material';
-import { CreatePostProps, CreatePostData } from '../../types/feed';
+import { Add as AddIcon, Close as CloseIcon } from '@mui/icons-material';
+import { PostInput } from '../../types/feed';
+import { DatabaseService } from '../../services/databaseService';
 
-const mockClassrooms = [
-  { id: 'class1', name: 'Data Structures' },
-  { id: 'class2', name: 'Web Development' },
-];
+interface CreatePostProps {
+  open: boolean;
+  onClose: () => void;
+  onPostCreated: () => void;
+}
 
-const mockCommunities = [
-  { id: 'comm1', name: 'Computer Science Hub' },
-  { id: 'comm2', name: 'Math Enthusiasts' },
-];
-
-const CreatePost: React.FC<CreatePostProps> = ({ open, onClose, onSubmit }) => {
+const CreatePost: React.FC<CreatePostProps> = ({ open, onClose, onPostCreated }) => {
+  const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
-  const [currentTag, setCurrentTag] = useState('');
-  const [shareType, setShareType] = useState<'none' | 'classroom' | 'community'>('none');
-  const [selectedDestination, setSelectedDestination] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const post: CreatePostData = {
-      type: 'post',
-      author: 'Demo User', // TODO: Get from auth context
-      avatar: 'DU',
-      title: '',
-      content,
-      tags,
-      ...(shareType !== 'none' && selectedDestination && {
-        sharedTo: {
-          type: shareType,
-          id: selectedDestination,
-          name: shareType === 'classroom' 
-            ? mockClassrooms.find(c => c.id === selectedDestination)?.name || ''
-            : mockCommunities.find(c => c.id === selectedDestination)?.name || ''
-        }
-      })
-    };
-    await onSubmit(post);
-    resetForm();
-  };
-
-  const handleAddTag = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && currentTag.trim()) {
-      e.preventDefault();
-      if (!tags.includes(currentTag.trim())) {
-        setTags([...tags, currentTag.trim()]);
-      }
-      setCurrentTag('');
+  const handleAddTag = () => {
+    const trimmedTag = tagInput.trim().toLowerCase();
+    if (trimmedTag && !tags.includes(trimmedTag)) {
+      setTags([...tags, trimmedTag]);
+      setTagInput('');
     }
   };
 
@@ -81,154 +41,114 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, onClose, onSubmit }) => {
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
-  const resetForm = () => {
+  const handleSubmit = async () => {
+    if (!title.trim() || !content.trim()) {
+      setError('Title and content are required');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const postInput: PostInput = {
+        title: title.trim(),
+        content: content.trim(),
+        tags
+      };
+
+      await DatabaseService.createPost(postInput);
+      onPostCreated();
+      handleClose();
+    } catch (error) {
+      console.error('Error creating post:', error);
+      setError('Failed to create post. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    setTitle('');
     setContent('');
+    setTagInput('');
     setTags([]);
-    setCurrentTag('');
-    setShareType('none');
-    setSelectedDestination('');
+    setError(null);
     onClose();
   };
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose}
-      maxWidth="sm"
-      fullWidth
-    >
-      <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        Create Post
-        <IconButton
-          aria-label="close"
-          onClick={onClose}
-          sx={{
-            position: 'absolute',
-            right: 8,
-            top: 8,
-            color: (theme) => theme.palette.grey[500],
-          }}
-        >
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
+    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+      <DialogTitle>Create New Post</DialogTitle>
+      <DialogContent>
+        <Stack spacing={2} sx={{ mt: 1 }}>
+          <TextField
+            label="Title"
+            fullWidth
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            error={!!error && !title.trim()}
+            helperText={error && !title.trim() ? 'Title is required' : ''}
+          />
+          
+          <TextField
+            label="Content"
+            fullWidth
+            multiline
+            rows={4}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            error={!!error && !content.trim()}
+            helperText={error && !content.trim() ? 'Content is required' : ''}
+          />
 
-      <form onSubmit={handleSubmit}>
-        <DialogContent dividers>
-          <Stack spacing={2}>
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-              <Avatar sx={{ bgcolor: 'primary.main' }}>DU</Avatar>
-              <Box sx={{ flexGrow: 1 }}>
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={4}
-                  placeholder="What's on your mind?"
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  required
-                  variant="outlined"
-                  sx={{ mb: 2 }}
-                />
-
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <IconButton size="small">
-                    <ImageIcon />
-                  </IconButton>
-                  <IconButton size="small">
-                    <VideoIcon />
-                  </IconButton>
-                  <IconButton size="small">
-                    <LinkIcon />
-                  </IconButton>
-                </Stack>
-              </Box>
-            </Box>
-
-            <Divider />
-
-            <Box>
-              <Typography variant="subtitle2" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <ShareIcon fontSize="small" />
-                Share to
-              </Typography>
-              <FormControl fullWidth size="small">
-                <Select
-                  value={shareType}
-                  onChange={(e) => {
-                    setShareType(e.target.value as 'none' | 'classroom' | 'community');
-                    setSelectedDestination('');
-                  }}
-                >
-                  <MenuItem value="none">Don't share</MenuItem>
-                  <MenuItem value="classroom">Share to Classroom</MenuItem>
-                  <MenuItem value="community">Share to Community</MenuItem>
-                </Select>
-              </FormControl>
-
-              {shareType !== 'none' && (
-                <FormControl fullWidth size="small" sx={{ mt: 1 }}>
-                  <Select
-                    value={selectedDestination}
-                    onChange={(e) => setSelectedDestination(e.target.value)}
-                    displayEmpty
-                  >
-                    <MenuItem value="" disabled>
-                      {shareType === 'classroom' ? 'Select Classroom' : 'Select Community'}
-                    </MenuItem>
-                    {shareType === 'classroom' 
-                      ? mockClassrooms.map(classroom => (
-                          <MenuItem key={classroom.id} value={classroom.id}>
-                            {classroom.name}
-                          </MenuItem>
-                        ))
-                      : mockCommunities.map(community => (
-                          <MenuItem key={community.id} value={community.id}>
-                            {community.name}
-                          </MenuItem>
-                        ))
-                    }
-                  </Select>
-                </FormControl>
-              )}
-            </Box>
-
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="Add tags (press Enter)"
-              value={currentTag}
-              onChange={(e) => setCurrentTag(e.target.value)}
-              onKeyPress={handleAddTag}
-            />
-
+          <Box>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <TextField
+                label="Add Tags"
+                size="small"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddTag();
+                  }
+                }}
+              />
+              <IconButton onClick={handleAddTag} size="small">
+                <AddIcon />
+              </IconButton>
+            </Stack>
+            
             {tags.length > 0 && (
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                 {tags.map(tag => (
                   <Chip
                     key={tag}
-                    label={`#${tag}`}
+                    label={tag}
                     onDelete={() => handleRemoveTag(tag)}
-                    color="primary"
                     size="small"
                   />
                 ))}
               </Box>
             )}
-          </Stack>
-        </DialogContent>
+          </Box>
 
-        <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
-          <Button 
-            type="submit" 
-            variant="contained"
-            disabled={!content.trim()}
-          >
-            Post
-          </Button>
-        </DialogActions>
-      </form>
+          {error && <Box color="error.main">{error}</Box>}
+        </Stack>
+      </DialogContent>
+      
+      <DialogActions>
+        <Button onClick={handleClose}>Cancel</Button>
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          disabled={loading}
+        >
+          {loading ? 'Creating...' : 'Create Post'}
+        </Button>
+      </DialogActions>
     </Dialog>
   );
 };

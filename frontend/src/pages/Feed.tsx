@@ -1,238 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
-  Typography,
-  Card,
-  CardContent,
-  Stack,
-  Avatar,
-  Chip,
-  Button,
-  Divider,
   TextField,
   InputAdornment,
-  IconButton,
   CircularProgress,
   Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  List,
-  ListItem,
-  ListItemText,
+  Button,
   Fab,
 } from '@mui/material';
 import {
-  ThumbUp as ThumbUpIcon,
-  ThumbUpOutlined as ThumbUpOutlinedIcon,
-  ChatBubbleOutline as CommentIcon,
-  Share as ShareIcon,
   Search as SearchIcon,
   Add as AddIcon,
-  Send as SendIcon,
 } from '@mui/icons-material';
-import { Post, Comment } from '../types/feed';
-import { DatabaseService } from '../services/apiService';
-
-const PostCard: React.FC<{
-  post: Post;
-  currentUser: string;
-  onLike: (postId: string) => void;
-  onComment: (postId: string, comment: string) => void;
-  onShare: (postId: string, destination: { type: 'classroom' | 'community', id: string, name: string }) => void;
-}> = ({ post, currentUser, onLike, onComment, onShare }) => {
-  const [commentText, setCommentText] = useState('');
-  const [showComments, setShowComments] = useState(false);
-  const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [classrooms, setClassrooms] = useState([]);
-  const [communities, setCommunities] = useState([]);
-
-  useEffect(() => {
-    const fetchShareTargets = async () => {
-      try {
-        const [classroomsData, communitiesData] = await Promise.all([
-          DatabaseService.find({ type: 'classroom' }),
-          DatabaseService.find({ type: 'community' })
-        ]);
-        setClassrooms(classroomsData);
-        setCommunities(communitiesData);
-      } catch (error) {
-        console.error('Error fetching share targets:', error);
-      }
-    };
-    if (shareDialogOpen) {
-      fetchShareTargets();
-    }
-  }, [shareDialogOpen]);
-
-  const handleShare = (type: 'classroom' | 'community', id: string, name: string) => {
-    onShare(post._id!, { type, id, name });
-    setShareDialogOpen(false);
-  };
-
-  const isLiked = post.likedBy.includes(currentUser);
-
-  return (
-    <Card sx={{ mb: 2 }}>
-      <CardContent>
-        <Stack spacing={2}>
-          {/* Author Info */}
-          <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Stack direction="row" spacing={1} alignItems="center">
-              <Avatar sx={{ bgcolor: 'primary.main' }}>{post.avatar}</Avatar>
-              <Box>
-                <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                  {post.author}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {new Date(post.timestamp).toLocaleString()}
-                </Typography>
-              </Box>
-            </Stack>
-            {post.sharedTo && (
-              <Chip
-                size="small"
-                label={`Shared to ${post.sharedTo.name}`}
-                color="primary"
-                variant="outlined"
-              />
-            )}
-          </Stack>
-
-          {/* Post Content */}
-          <Typography variant="body1">{post.content}</Typography>
-
-          {/* Tags */}
-          {post.tags.length > 0 && (
-            <Stack direction="row" spacing={1}>
-              {post.tags.map(tag => (
-                <Typography
-                  key={tag}
-                  variant="body2"
-                  color="primary"
-                  sx={{ cursor: 'pointer' }}
-                >
-                  #{tag}
-                </Typography>
-              ))}
-            </Stack>
-          )}
-
-          {/* Actions */}
-          <Stack direction="row" spacing={2} alignItems="center">
-            <Button
-              startIcon={isLiked ? <ThumbUpIcon /> : <ThumbUpOutlinedIcon />}
-              onClick={() => onLike(post._id!)}
-              color={isLiked ? 'primary' : 'inherit'}
-            >
-              {post.likes}
-            </Button>
-            <Button
-              startIcon={<CommentIcon />}
-              onClick={() => setShowComments(!showComments)}
-            >
-              {post.comments.length}
-            </Button>
-            <Button
-              startIcon={<ShareIcon />}
-              onClick={() => setShareDialogOpen(true)}
-            >
-              Share
-            </Button>
-          </Stack>
-
-          {/* Comments Section */}
-          {showComments && (
-            <Box>
-              <Divider sx={{ my: 2 }} />
-              <Stack spacing={2}>
-                {post.comments.map((comment) => (
-                  <Stack key={comment.id} direction="row" spacing={1}>
-                    <Avatar sx={{ width: 32, height: 32 }}>{comment.avatar}</Avatar>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="subtitle2">{comment.author}</Typography>
-                      <Typography variant="body2">{comment.content}</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {new Date(comment.timestamp).toLocaleString()}
-                      </Typography>
-                    </Box>
-                  </Stack>
-                ))}
-                <Stack direction="row" spacing={1}>
-                  <Avatar sx={{ width: 32, height: 32 }}>
-                    {currentUser.charAt(0)}
-                  </Avatar>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    placeholder="Write a comment..."
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    InputProps={{
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton
-                            size="small"
-                            onClick={() => {
-                              if (commentText.trim()) {
-                                onComment(post._id!, commentText);
-                                setCommentText('');
-                              }
-                            }}
-                          >
-                            <SendIcon />
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Stack>
-              </Stack>
-            </Box>
-          )}
-        </Stack>
-      </CardContent>
-
-      {/* Share Dialog */}
-      <Dialog open={shareDialogOpen} onClose={() => setShareDialogOpen(false)}>
-        <DialogTitle>Share Post</DialogTitle>
-        <DialogContent>
-          <Typography variant="subtitle1" gutterBottom>Classrooms</Typography>
-          <List>
-            {classrooms.map((classroom: any) => (
-              <ListItem
-                key={classroom.id}
-                onClick={() => handleShare('classroom', classroom.id, classroom.name)}
-                sx={{ 
-                  cursor: 'pointer',
-                  '&:hover': { bgcolor: 'action.hover' }
-                }}
-              >
-                <ListItemText primary={classroom.name} />
-              </ListItem>
-            ))}
-          </List>
-          <Divider sx={{ my: 2 }} />
-          <Typography variant="subtitle1" gutterBottom>Communities</Typography>
-          <List>
-            {communities.map((community: any) => (
-              <ListItem
-                key={community.id}
-                onClick={() => handleShare('community', community.id, community.name)}
-                sx={{ 
-                  cursor: 'pointer',
-                  '&:hover': { bgcolor: 'action.hover' }
-                }}
-              >
-                <ListItemText primary={community.name} />
-              </ListItem>
-            ))}
-          </List>
-        </DialogContent>
-      </Dialog>
-    </Card>
-  );
-};
+import { Post } from '../types/feed';
+import { DatabaseService } from '../services/databaseService';
+import PostCard from '../components/feed/PostCard';
+import CreatePost from '../components/feed/CreatePost';
 
 const Feed: React.FC = () => {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -240,19 +23,20 @@ const Feed: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [createPostOpen, setCreatePostOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const loadPosts = useCallback(async () => {
     setLoading(true);
     try {
-      const fetchedPosts = await DatabaseService.find<Post>({ type: 'post' });
-      setPosts(fetchedPosts);
+      const fetchedPosts = await DatabaseService.getPosts(currentPage, 10);
+      setPosts(prevPosts => currentPage === 1 ? fetchedPosts : [...prevPosts, ...fetchedPosts]);
     } catch (error) {
       console.error('Error loading posts:', error);
       setError('Failed to load posts');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentPage]);
 
   useEffect(() => {
     loadPosts();
@@ -260,22 +44,16 @@ const Feed: React.FC = () => {
 
   const handleLike = async (postId: string) => {
     try {
-      const post = await DatabaseService.read<Post>(postId);
+      const post = posts.find(p => p.id === postId);
       if (!post) return;
 
-      const currentUser = await DatabaseService.read('currentUser');
-      if (!currentUser) return;
-
-      const isLiked = post.likedBy.includes(currentUser.id);
-      const updatedPost = await DatabaseService.update<Post>(postId, {
-        likes: isLiked ? post.likes - 1 : post.likes + 1,
-        likedBy: isLiked 
-          ? post.likedBy.filter(id => id !== currentUser.id)
-          : [...post.likedBy, currentUser.id]
-      });
+      const isLiked = post.likedBy.includes('CurrentUser'); // Replace with actual user ID
+      const updatedPost = isLiked
+        ? await DatabaseService.unlikePost(postId)
+        : await DatabaseService.likePost(postId);
 
       setPosts(prevPosts => 
-        prevPosts.map(p => p._id === postId ? updatedPost : p)
+        prevPosts.map(p => p.id === postId ? updatedPost : p)
       );
     } catch (error) {
       console.error('Error updating like:', error);
@@ -284,27 +62,14 @@ const Feed: React.FC = () => {
 
   const handleComment = async (postId: string, commentText: string) => {
     try {
-      const post = await DatabaseService.read<Post>(postId);
-      if (!post) return;
-
-      const currentUser = await DatabaseService.read('currentUser');
-      if (!currentUser) return;
-
-      const newComment: Comment = {
-        id: `comment_${Date.now()}`,
-        author: currentUser.name,
-        avatar: currentUser.avatar,
+      const updatedPost = await DatabaseService.addComment(postId, {
+        author: 'Current User', // Replace with actual user name
         content: commentText,
-        timestamp: new Date().toISOString(),
-        likes: 0
-      };
-
-      const updatedPost = await DatabaseService.update<Post>(postId, {
-        comments: [...post.comments, newComment]
+        timestamp: new Date().toISOString()
       });
 
       setPosts(prevPosts =>
-        prevPosts.map(p => p._id === postId ? updatedPost : p)
+        prevPosts.map(p => p.id === postId ? updatedPost : p)
       );
     } catch (error) {
       console.error('Error adding comment:', error);
@@ -313,17 +78,25 @@ const Feed: React.FC = () => {
 
   const handleShare = async (postId: string, destination: { type: 'classroom' | 'community', id: string, name: string }) => {
     try {
-      const updatedPost = await DatabaseService.update<Post>(postId, {
-        sharedTo: destination
-      });
-
+      const updatedPost = await DatabaseService.sharePost(postId, destination);
       setPosts(prevPosts =>
-        prevPosts.map(p => p._id === postId ? updatedPost : p)
+        prevPosts.map(p => p.id === postId ? updatedPost : p)
       );
     } catch (error) {
       console.error('Error sharing post:', error);
     }
   };
+
+  const handlePostCreated = useCallback(() => {
+    setCurrentPage(1);
+    loadPosts();
+  }, [loadPosts]);
+
+  const filteredPosts = posts.filter(post => 
+    post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    post.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   return (
     <Box sx={{ maxWidth: 600, mx: 'auto', p: 2 }}>
@@ -349,21 +122,34 @@ const Feed: React.FC = () => {
         <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
       )}
 
-      {loading ? (
+      {loading && posts.length === 0 ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
           <CircularProgress />
         </Box>
       ) : (
-        posts.map(post => (
+        filteredPosts.map(post => (
           <PostCard
-            key={post._id}
+            key={post.id}
             post={post}
-            currentUser={post.author}
+            currentUser="CurrentUser" // Replace with actual user ID
             onLike={handleLike}
             onComment={handleComment}
             onShare={handleShare}
           />
         ))
+      )}
+
+      {/* Load More */}
+      {!searchQuery && posts.length > 0 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={() => setCurrentPage(prev => prev + 1)}
+            disabled={loading}
+          >
+            {loading ? <CircularProgress size={24} /> : 'Load More'}
+          </Button>
+        </Box>
       )}
 
       {/* Create Post FAB */}
@@ -378,6 +164,13 @@ const Feed: React.FC = () => {
       >
         <AddIcon />
       </Fab>
+
+      {/* Create Post Dialog */}
+      <CreatePost
+        open={createPostOpen}
+        onClose={() => setCreatePostOpen(false)}
+        onPostCreated={handlePostCreated}
+      />
     </Box>
   );
 };

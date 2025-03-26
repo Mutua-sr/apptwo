@@ -1,28 +1,49 @@
-import { Theme } from '@mui/material';
+export interface User {
+  id: string;
+  username: string;
+  avatar?: string;
+}
+
+export interface Post {
+  id: string;
+  title: string;
+  content: string;
+  author: User;
+  tags: string[];
+  likes: number;
+  comments: Comment[];
+  createdAt: string;
+  updatedAt: string;
+  likedBy: string[];  // Frontend-only field
+  sharedTo?: {        // Frontend-only field
+    type: 'classroom' | 'community';
+    id: string;
+    name: string;
+  };
+}
 
 export interface Comment {
   id: string;
   author: string;
-  avatar: string;
+  avatar?: string;
   content: string;
   timestamp: string;
   likes: number;
 }
 
-export interface Post {
-  _id?: string;
-  _rev?: string;
-  type: 'post';
-  author: string;
-  avatar: string;
+export interface PostInput {
   title: string;
   content: string;
-  timestamp: string;
-  likes: number;
-  likedBy: string[];
-  comments: Comment[];
   tags: string[];
-  files?: File[];
+}
+
+export interface PostUpdate {
+  title?: string;
+  content?: string;
+  tags?: string[];
+  likes?: number;
+  likedBy?: string[];
+  comments?: Comment[];
   sharedTo?: {
     type: 'classroom' | 'community';
     id: string;
@@ -30,40 +51,13 @@ export interface Post {
   };
 }
 
-export interface CreatePostData {
-  type: 'post';
-  author: string;
-  avatar: string;
-  title: string;
-  content: string;
-  tags: string[];
-  files?: File[];
-  sharedTo?: {
-    type: 'classroom' | 'community';
-    id: string;
-    name: string;
-  };
+export interface QueryOptions {
+  page?: number;
+  limit?: number;
 }
 
-export interface CreatePostProps {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (post: CreatePostData) => Promise<void>;
-}
-
-export interface SearchBarProps {
-  searchQuery: string;
-  onSearchChange: (query: string) => void;
-}
-
-export interface PostCardProps {
-  post: Post;
-  currentUser: string;
-  onLike: (postId: string) => void;
-  onComment: (postId: string, comment: string) => void;
-  onShare: (postId: string, destination: { type: 'classroom' | 'community', id: string, name: string }) => void;
-}
-
-export interface StyleProps {
-  theme: Theme;
+export interface ShareTarget {
+  id: string;
+  name: string;
+  type: 'classroom' | 'community';
 }

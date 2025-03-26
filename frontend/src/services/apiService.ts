@@ -1,317 +1,226 @@
-import { 
-  ApolloClient, 
-  InMemoryCache, 
-  createHttpLink,
-  ApolloLink,
-  from,
-  NormalizedCacheObject,
-  GraphQLRequest,
-  FetchResult
-} from '@apollo/client';
-import { onError, ErrorResponse } from '@apollo/client/link/error';
-import { RetryLink } from '@apollo/client/link/retry';
-import { setContext } from '@apollo/client/link/context';
-import { Socket, io } from 'socket.io-client';
+import { ApolloClient, InMemoryCache, gql } from '@apollo/client';
+import { Post, PostInput, PostUpdate } from '../types/feed';
 
-// Types for API responses and requests
-interface ChatMessage {
-  content: string;
-  communityId?: string;
-  classroomId?: string;
-  timestamp: Date;
-  senderId: string;
-}
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
-interface VideoCallSignal {
-  offer?: RTCSessionDescriptionInit;
-  answer?: RTCSessionDescriptionInit;
-  candidate?: RTCIceCandidate;
-  targetId: string;
-}
+// Create Apollo Client instance
+const client = new ApolloClient({
+  uri: `${API_URL}/graphql`,
+  cache: new InMemoryCache(),
+  credentials: 'include'
+});
 
-// Configuration
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3000';
-const RETRY_ATTEMPTS = 3;
-const RECONNECTION_ATTEMPTS = 3;
-const RECONNECTION_DELAY = 1000;
+// GraphQL Queries and Mutations
+const QUERIES = {
+  GET_POSTS: gql`
+    query GetPosts($page: Int, $limit: Int) {
+      posts(page: $page, limit: $limit) {
+        id
+        title
+        content
+        author {
+          id
+          username
+          avatar
+        }
+        tags
+        likes
+        comments
+        createdAt
+        updatedAt
+      }
+    }
+  `,
 
-// Token management
-const TokenService = {
-  getToken: (): string | null => localStorage.getItem('token'),
-  setToken: (token: string): void => localStorage.setItem('token', token),
-  removeToken: (): void => localStorage.removeItem('token'),
-  isAuthenticated: (): boolean => !!localStorage.getItem('token')
+  CREATE_POST: gql`
+    mutation CreatePost($input: CreatePostInput!) {
+      createPost(input: $input) {
+        id
+        title
+        content
+        author {
+          id
+          username
+          avatar
+        }
+        tags
+        likes
+        comments
+        createdAt
+        updatedAt
+      }
+    }
+  `,
+
+  UPDATE_POST: gql`
+    mutation UpdatePost($id: ID!, $input: UpdatePostInput!) {
+      updatePost(id: $id, input: $input) {
+        id
+        title
+        content
+        author {
+          id
+          username
+          avatar
+        }
+        tags
+        likes
+        comments
+        createdAt
+        updatedAt
+      }
+    }
+  `,
+
+  DELETE_POST: gql`
+    mutation DeletePost($id: ID!) {
+      deletePost(id: $id)
+    }
+  `,
+
+  LIKE_POST: gql`
+    mutation LikePost($id: ID!) {
+      likePost(id: $id) {
+        id
+        likes
+      }
+    }
+  `,
+
+  UNLIKE_POST: gql`
+    mutation UnlikePost($id: ID!) {
+      unlikePost(id: $id) {
+        id
+        likes
+      }
+    }
+  `
 };
 
-// Create HTTP link for GraphQL
-const httpLink = process.env.NODE_ENV === 'test' 
-  ? ApolloLink.from([]) // Mock link for testing
-  : createHttpLink({
-      uri: `${BACKEND_URL}/graphql`,
-      fetch: (...args) => fetch(...args),
-    });
-
-// Error handling link
-const errorLink = onError((error: ErrorResponse) => {
-  if (error.graphQLErrors) {
-    error.graphQLErrors.forEach(({ message, locations, path }) => {
-      console.error(
-        `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
-      );
-    });
-  }
-  if (error.networkError) {
-    console.error(`[Network error]: ${error.networkError}`);
-  }
-  return error.forward(error.operation);
-});
-
-// Retry link for failed requests
-const retryLink = new RetryLink({
-  attempts: {
-    max: RETRY_ATTEMPTS,
-    retryIf: (error: any) => !!error
-  }
-});
-
-// Authentication link
-const authLink = setContext((_, { headers }) => {
-  const token = TokenService.getToken();
-  return {
-    headers: {
-      ...headers,
-      authorization: token ? `Bearer ${token}` : "",
+// Feed service implementation
+export const feedService = {
+  // Get posts with pagination
+  async getPosts(page: number = 1, limit: number = 10): Promise<Post[]> {
+    try {
+      const { data } = await client.query({
+        query: QUERIES.GET_POSTS,
+        variables: { page, limit },
+        fetchPolicy: 'network-only'
+      });
+      return data.posts.map((post: any) => ({
+        ...post,
+        timestamp: post.createdAt,
+        likedBy: [], // Backend doesn't support this yet
+        comments: [], // Backend returns comment count, not actual comments
+      }));
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      throw new Error('Failed to fetch posts');
     }
-  };
-});
+  },
 
-// Cache configuration
-const cache = new InMemoryCache({
-  typePolicies: {
-    Query: {
-      fields: {
-        messages: {
-          merge(existing: any[] = [], incoming: any[]): any[] {
-            return [...existing, ...incoming];
-          }
-        },
-        communities: {
-          merge(existing: any[] = [], incoming: any[]): any[] {
-            return [...existing, ...incoming];
+  // Create a new post
+  async createPost(post: PostInput): Promise<Post> {
+    try {
+      const { data } = await client.mutate({
+        mutation: QUERIES.CREATE_POST,
+        variables: {
+          input: {
+            title: post.title,
+            content: post.content,
+            tags: post.tags
           }
         }
-      }
+      });
+      return {
+        ...data.createPost,
+        timestamp: data.createPost.createdAt,
+        likedBy: [],
+        comments: []
+      };
+    } catch (error) {
+      console.error('Error creating post:', error);
+      throw new Error('Failed to create post');
     }
-  }
-});
-
-// Create Apollo Client
-export const apolloClient: ApolloClient<NormalizedCacheObject> = new ApolloClient({
-  link: from([errorLink, retryLink, authLink, httpLink]),
-  cache,
-  defaultOptions: {
-    watchQuery: {
-      fetchPolicy: 'cache-and-network',
-      errorPolicy: 'all',
-    },
-    query: {
-      fetchPolicy: 'network-only',
-      errorPolicy: 'all',
-    },
-    mutate: {
-      errorPolicy: 'all',
-    },
   },
-});
 
-// Socket.IO management
-export class SocketManager {
-  private static instance: SocketManager | null = null;
-  private socket: Socket | null = null;
-  private eventListeners: Map<string, Set<(data: any) => void>> = new Map();
-
-  private constructor() {}
-
-  static resetInstance(): void {
-    if (SocketManager.instance) {
-      SocketManager.instance.disconnect();
-      SocketManager.instance = null;
+  // Update a post
+  async updatePost(id: string, update: PostUpdate): Promise<Post> {
+    try {
+      const { data } = await client.mutate({
+        mutation: QUERIES.UPDATE_POST,
+        variables: {
+          id,
+          input: {
+            title: update.title,
+            content: update.content,
+            tags: update.tags
+          }
+        }
+      });
+      return {
+        ...data.updatePost,
+        timestamp: data.updatePost.createdAt,
+        likedBy: [],
+        comments: []
+      };
+    } catch (error) {
+      console.error('Error updating post:', error);
+      throw new Error('Failed to update post');
     }
-  }
+  },
 
-  static getInstance(): SocketManager {
-    if (!SocketManager.instance) {
-      SocketManager.instance = new SocketManager();
+  // Delete a post
+  async deletePost(id: string): Promise<boolean> {
+    try {
+      const { data } = await client.mutate({
+        mutation: QUERIES.DELETE_POST,
+        variables: { id }
+      });
+      return data.deletePost;
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      throw new Error('Failed to delete post');
     }
-    return SocketManager.instance;
-  }
+  },
 
-  private reconnect(): void {
-    let attempts = 0;
-    const tryReconnect = () => {
-      if (attempts >= RECONNECTION_ATTEMPTS) {
-        console.error('Max reconnection attempts reached');
-        return;
-      }
-      attempts++;
-      setTimeout(() => {
-        console.log(`Reconnection attempt ${attempts}`);
-        this.connect();
-      }, RECONNECTION_DELAY * attempts);
-    };
-    tryReconnect();
-  }
-
-  connect(): Socket {
-    if (!this.socket) {
-      if (process.env.NODE_ENV === 'test') {
-        // In test environment, use the mock socket directly
-        this.socket = require('socket.io-client').Socket.prototype;
-      } else {
-        // In non-test environment, create real socket connection
-        this.socket = io(BACKEND_URL, {
-          transports: ['websocket'],
-          auth: {
-            token: TokenService.getToken(),
-          },
-          reconnection: true,
-          reconnectionAttempts: RECONNECTION_ATTEMPTS,
-          reconnectionDelay: RECONNECTION_DELAY,
-        });
-        // Only set up real event handlers in non-test environment
-        this.socket.on('connect', () => {
-          console.log('Connected to signaling server');
-        });
-
-        this.socket.on('connect_error', (error: Error) => {
-          console.error('Connection error:', error);
-          this.reconnect();
-        });
-
-        this.socket.on('disconnect', () => {
-          console.log('Disconnected from signaling server');
-          this.reconnect();
-        });
-      }
+  // Like a post
+  async likePost(id: string): Promise<Post> {
+    try {
+      const { data } = await client.mutate({
+        mutation: QUERIES.LIKE_POST,
+        variables: { id }
+      });
+      return {
+        ...data.likePost,
+        timestamp: data.likePost.createdAt,
+        likedBy: [],
+        comments: []
+      };
+    } catch (error) {
+      console.error('Error liking post:', error);
+      throw new Error('Failed to like post');
     }
-    return this.socket as Socket;
-  }
+  },
 
-  disconnect(): void {
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
-      this.eventListeners.clear();
+  // Unlike a post
+  async unlikePost(id: string): Promise<Post> {
+    try {
+      const { data } = await client.mutate({
+        mutation: QUERIES.UNLIKE_POST,
+        variables: { id }
+      });
+      return {
+        ...data.unlikePost,
+        timestamp: data.unlikePost.createdAt,
+        likedBy: [],
+        comments: []
+      };
+    } catch (error) {
+      console.error('Error unliking post:', error);
+      throw new Error('Failed to unlike post');
     }
-  }
-
-  private ensureConnection(): boolean {
-    if (!this.socket?.connected) {
-      console.warn('Socket not connected. Attempting to reconnect...');
-      this.connect();
-      return false;
-    }
-    return true;
-  }
-
-  emit(event: string, data: unknown): void {
-    if (this.socket) {
-      try {
-        this.socket.emit(event, data);
-      } catch (error) {
-        console.error(`Error emitting ${event}:`, error);
-      }
-    }
-  }
-
-  on(event: string, callback: (data: unknown) => void): void {
-    if (!this.eventListeners.has(event)) {
-      this.eventListeners.set(event, new Set());
-    }
-    this.eventListeners.get(event)?.add(callback);
-    
-    if (this.socket) {
-      this.socket.on(event, callback);
-    }
-  }
-
-  off(event: string, callback: (data: unknown) => void): void {
-    this.eventListeners.get(event)?.delete(callback);
-    if (this.socket) {
-      this.socket.off(event, callback);
-    }
-  }
-}
-
-// Video call service
-export const videoCallService = {
-  sendOffer(offer: RTCSessionDescriptionInit, targetId: string): void {
-    SocketManager.getInstance().emit('video:offer', { offer, targetId });
-  },
-
-  sendAnswer(answer: RTCSessionDescriptionInit, targetId: string): void {
-    SocketManager.getInstance().emit('video:answer', { answer, targetId });
-  },
-
-  sendIceCandidate(candidate: RTCIceCandidate, targetId: string): void {
-    SocketManager.getInstance().emit('video:ice-candidate', { candidate, targetId });
-  },
-
-  sendHangup(targetId: string): void {
-    SocketManager.getInstance().emit('video:hangup', { targetId });
-  },
-
-  onVideoOffer(callback: (data: VideoCallSignal) => void): void {
-    SocketManager.getInstance().on('video:offer', callback as (data: unknown) => void);
-  },
-
-  onVideoAnswer(callback: (data: VideoCallSignal) => void): void {
-    SocketManager.getInstance().on('video:answer', callback as (data: unknown) => void);
-  },
-
-  onIceCandidate(callback: (data: VideoCallSignal) => void): void {
-    SocketManager.getInstance().on('video:ice-candidate', callback as (data: unknown) => void);
-  },
-
-  onHangup(callback: (data: VideoCallSignal) => void): void {
-    SocketManager.getInstance().on('video:hangup', callback as (data: unknown) => void);
-  },
-};
-
-// Chat service
-export const chatService = {
-  sendMessage(content: string, communityId?: string, classroomId?: string): void {
-    SocketManager.getInstance().emit('chat:message', { content, communityId, classroomId });
-  },
-
-  onMessage(callback: (message: ChatMessage) => void): void {
-    SocketManager.getInstance().on('chat:message', callback as (data: unknown) => void);
-  },
-
-  offMessage(callback: (message: ChatMessage) => void): void {
-    SocketManager.getInstance().off('chat:message', callback as (data: unknown) => void);
   }
 };
 
-// Connection management
-export const connectionService = {
-  connect(): void {
-    SocketManager.getInstance().connect();
-  },
-
-  disconnect(): void {
-    SocketManager.getInstance().disconnect();
-  },
-
-  isAuthenticated(): boolean {
-    return TokenService.isAuthenticated();
-  }
-};
-
-export default {
-  apolloClient,
-  videoCallService,
-  chatService,
-  connectionService,
-  TokenService
-};
+export default feedService;

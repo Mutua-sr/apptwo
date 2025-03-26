@@ -1,177 +1,113 @@
-import { gql } from '@apollo/client';
-import { apolloClient } from './apiService';
+import { Post, PostInput, PostUpdate, Comment } from '../types/feed';
+import { feedService } from './apiService';
 
-export interface DatabaseDocument {
-  _id?: string;
-  type: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-const GET_DOCUMENTS = gql`
-  query GetDocuments($type: String!, $query: JSON) {
-    documents(type: $type, query: $query) {
-      _id
-      type
-      createdAt
-      updatedAt
-      ... on Post {
-        title
-        content
-        author
-        avatar
-        likes
-        likedBy
-        comments
-        tags
-        sharedTo
-      }
-      ... on Community {
-        name
-        description
-        members
-        topics
-        avatar
-      }
-      ... on Classroom {
-        name
-        description
-        instructor
-        students
-        topics
-      }
-    }
-  }
-`;
-
-const GET_DOCUMENT = gql`
-  query GetDocument($id: ID!) {
-    document(id: $id) {
-      _id
-      type
-      createdAt
-      updatedAt
-      ... on Post {
-        title
-        content
-        author
-        avatar
-        likes
-        likedBy
-        comments
-        tags
-        sharedTo
-      }
-      ... on Community {
-        name
-        description
-        members
-        topics
-        avatar
-      }
-      ... on Classroom {
-        name
-        description
-        instructor
-        students
-        topics
-      }
-    }
-  }
-`;
-
-const UPDATE_DOCUMENT = gql`
-  mutation UpdateDocument($id: ID!, $data: JSON!) {
-    updateDocument(id: $id, data: $data) {
-      _id
-      type
-      updatedAt
-    }
-  }
-`;
-
-const CREATE_DOCUMENT = gql`
-  mutation CreateDocument($data: JSON!) {
-    createDocument(data: $data) {
-      _id
-      type
-      createdAt
-    }
-  }
-`;
-
-const DELETE_DOCUMENT = gql`
-  mutation DeleteDocument($id: ID!) {
-    deleteDocument(id: $id)
-  }
-`;
+const normalizePost = (post: Partial<Post>): Post => ({
+  id: post.id!,
+  title: post.title!,
+  content: post.content!,
+  author: post.author!,
+  tags: post.tags || [],
+  likes: post.likes || 0,
+  comments: post.comments || [],
+  createdAt: post.createdAt!,
+  updatedAt: post.updatedAt!,
+  likedBy: post.likedBy || [],
+  ...(post.sharedTo && { sharedTo: post.sharedTo })
+});
 
 export const DatabaseService = {
-  async find<T extends DatabaseDocument>(query: { type: string; [key: string]: any }): Promise<T[]> {
+  // Get posts with pagination
+  async getPosts(page: number = 1, limit: number = 10): Promise<Post[]> {
     try {
-      const { data } = await apolloClient.query({
-        query: GET_DOCUMENTS,
-        variables: {
-          type: query.type,
-          query: { ...query, type: undefined }
-        }
-      });
-      return data.documents as T[];
+      const posts = await feedService.getPosts(page, limit);
+      return posts.map(normalizePost);
     } catch (error) {
-      console.error('Error finding documents:', error);
-      throw error;
+      console.error('Error fetching posts:', error);
+      throw new Error('Failed to fetch posts. Please try again later.');
     }
   },
 
-  async read<T extends DatabaseDocument>(id: string): Promise<T | null> {
+  // Create a new post
+  async createPost(postInput: PostInput): Promise<Post> {
     try {
-      const { data } = await apolloClient.query({
-        query: GET_DOCUMENT,
-        variables: { id }
-      });
-      return data.document as T;
+      const post = await feedService.createPost(postInput);
+      return normalizePost(post);
     } catch (error) {
-      console.error(`Error reading document ${id}:`, error);
-      throw error;
+      console.error('Error creating post:', error);
+      throw new Error('Failed to create post. Please try again later.');
     }
   },
 
-  async create<T extends DatabaseDocument>(doc: T): Promise<T> {
+  // Update a post
+  async updatePost(id: string, update: PostUpdate): Promise<Post> {
     try {
-      const { data } = await apolloClient.mutate({
-        mutation: CREATE_DOCUMENT,
-        variables: { data: doc }
-      });
-      return data.createDocument as T;
+      const post = await feedService.updatePost(id, update);
+      return normalizePost(post);
     } catch (error) {
-      console.error('Error creating document:', error);
-      throw error;
+      console.error('Error updating post:', error);
+      throw new Error('Failed to update post. Please try again later.');
     }
   },
 
-  async update<T extends DatabaseDocument>(id: string, doc: Partial<T>): Promise<T> {
+  // Delete a post
+  async deletePost(id: string): Promise<boolean> {
     try {
-      const { data } = await apolloClient.mutate({
-        mutation: UPDATE_DOCUMENT,
-        variables: { id, data: doc }
-      });
-      return data.updateDocument as T;
+      return await feedService.deletePost(id);
     } catch (error) {
-      console.error(`Error updating document ${id}:`, error);
-      throw error;
+      console.error('Error deleting post:', error);
+      throw new Error('Failed to delete post. Please try again later.');
     }
   },
 
-  async delete(id: string): Promise<boolean> {
+  // Like a post
+  async likePost(id: string): Promise<Post> {
     try {
-      const { data } = await apolloClient.mutate({
-        mutation: DELETE_DOCUMENT,
-        variables: { id }
-      });
-      return data.deleteDocument;
+      const post = await feedService.likePost(id);
+      return normalizePost(post);
     } catch (error) {
-      console.error(`Error deleting document ${id}:`, error);
-      throw error;
+      console.error('Error liking post:', error);
+      throw new Error('Failed to like post. Please try again later.');
+    }
+  },
+
+  // Unlike a post
+  async unlikePost(id: string): Promise<Post> {
+    try {
+      const post = await feedService.unlikePost(id);
+      return normalizePost(post);
+    } catch (error) {
+      console.error('Error unliking post:', error);
+      throw new Error('Failed to unlike post. Please try again later.');
+    }
+  },
+
+  // Add a comment to a post
+  async addComment(postId: string, comment: Omit<Comment, 'id' | 'likes'>): Promise<Post> {
+    try {
+      const newComment: Comment = {
+        ...comment,
+        id: `comment_${Date.now()}`,
+        likes: 0
+      };
+
+      return await this.updatePost(postId, {
+        comments: [newComment] // The backend will append this to existing comments
+      });
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      throw new Error('Failed to add comment. Please try again later.');
+    }
+  },
+
+  // Share a post
+  async sharePost(postId: string, destination: NonNullable<Post['sharedTo']>): Promise<Post> {
+    try {
+      return await this.updatePost(postId, {
+        sharedTo: destination
+      });
+    } catch (error) {
+      console.error('Error sharing post:', error);
+      throw new Error('Failed to share post. Please try again later.');
     }
   }
 };
