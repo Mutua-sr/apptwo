@@ -1,94 +1,35 @@
-import { Request, Response, NextFunction } from 'express';
-import { User, UserRole } from '../types';
-import logger from '../config/logger';
+import { Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import { ApiError } from './errorHandler';
+import { AuthRequest } from '../types';
 
-// TODO: Replace with proper JWT verification
-const verifyToken = async (token: string): Promise<User | null> => {
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+export const auth = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    // Mock user for development
-    if (process.env.NODE_ENV !== 'production') {
-      return {
-        id: '1',
-        type: 'user',
-        username: 'testuser',
-        email: 'test@example.com',
-        role: 'student' as UserRole,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-    }
-    
-    // TODO: Implement actual JWT verification
-    return null;
-  } catch (error) {
-    logger.error('Token verification failed:', error);
-    return null;
-  }
-};
+    const token = req.header('Authorization')?.replace('Bearer ', '');
 
-export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return next();
-    }
-
-    const token = authHeader.split(' ')[1];
     if (!token) {
-      return next();
+      const error = new Error('Authentication required') as ApiError;
+      error.statusCode = 401;
+      throw error;
     }
 
-    const user = await verifyToken(token);
-    if (user) {
-      (req as any).user = user;
-    }
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      id: string;
+      email: string;
+      name: string;
+    };
 
+    req.user = decoded;
     next();
   } catch (error) {
-    logger.error('Authentication error:', error);
-    next();
+    const apiError = new Error('Please authenticate') as ApiError;
+    apiError.statusCode = 401;
+    next(apiError);
   }
-};
-
-export const requireAuth = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (!(req as any).user) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
-    next();
-  } catch (error) {
-    logger.error('Authorization error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-};
-
-export const requireRole = (roles: UserRole[]) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const user = (req as any).user as User;
-      if (!user) {
-        return res.status(401).json({ error: 'Authentication required' });
-      }
-
-      if (!roles.includes(user.role)) {
-        return res.status(403).json({ error: 'Insufficient permissions' });
-      }
-
-      next();
-    } catch (error) {
-      logger.error('Role verification error:', error);
-      res.status(500).json({ error: 'Internal server error' });
-    }
-  };
-};
-
-export const getUser = (req: Request): User | null => {
-  return (req as any).user || null;
-};
-
-export default {
-  authenticate,
-  requireAuth,
-  requireRole,
-  getUser
 };

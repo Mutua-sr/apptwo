@@ -15,42 +15,22 @@ import {
   Send as SendIcon,
   ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
-import { DatabaseService } from '../services/databaseService';
-import { chatService } from '../services/apiService';
+import apiService from '../services/apiService';
+import chatService from '../services/chatService';
+import { ChatRoom as ChatRoomType, ChatMessage } from '../types/chat';
 
-interface Message {
-  _id: string;
-  type: string;
-  content: string;
-  sender: {
-    id: string;
-    name: string;
-    avatar: string;
-  };
-  timestamp: string;
-  roomId: string;
+export interface ChatRoomProps {
+  chatType: 'direct' | 'classroom' | 'community';
 }
 
-interface ChatRoom {
-  _id: string;
-  type: string;
-  name: string;
-  description: string;
-  participants: Array<{
-    id: string;
-    name: string;
-    avatar: string;
-  }>;
-}
-
-const ChatRoom: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+const ChatRoom: React.FC<ChatRoomProps> = ({ chatType }) => {
+  const { roomId } = useParams<{ roomId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const [room, setRoom] = useState<ChatRoom | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [room, setRoom] = useState<ChatRoomType | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,21 +40,55 @@ const ChatRoom: React.FC = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [roomData, messagesData, userData] = await Promise.all([
-          DatabaseService.read<ChatRoom>(id!),
-          DatabaseService.find<Message>({ type: 'message', roomId: id }),
-          DatabaseService.read('currentUser')
-        ]);
+        // Get current user from auth service
+        const user = apiService.auth.getCurrentUser();
+        setCurrentUser(user);
+
+        // Get room data based on chat type
+        let roomData;
+        switch (chatType) {
+          case 'classroom':
+            const classroomResponse = await apiService.classrooms.getById(roomId!);
+            roomData = {
+              ...classroomResponse.data,
+              type: 'classroom' as const,
+              participants: [] // You would populate this from your actual data
+            };
+            break;
+          case 'community':
+            const communityResponse = await apiService.communities.getById(roomId!);
+            roomData = {
+              ...communityResponse.data,
+              type: 'community' as const,
+              participants: [] // You would populate this from your actual data
+            };
+            break;
+          default:
+            throw new Error('Direct chat not implemented yet');
+        }
 
         if (!roomData) {
           throw new Error('Chat room not found');
         }
 
-        setRoom(roomData);
-        setMessages(messagesData.sort((a, b) => 
-          new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-        ));
-        setCurrentUser(userData);
+        setRoom(roomData as ChatRoomType);
+        
+        // Join the chat room
+        chatService.joinRoom(roomId!);
+
+        // Subscribe to new messages
+        const messageHandler = (message: ChatMessage) => {
+          if (message.roomId === roomId) {
+            setMessages(prev => [...prev, message]);
+          }
+        };
+
+        chatService.onMessage(messageHandler);
+
+        return () => {
+          chatService.offMessage(messageHandler);
+        };
+
       } catch (err) {
         console.error('Error fetching chat data:', err);
         setError('Failed to load chat');
@@ -85,20 +99,13 @@ const ChatRoom: React.FC = () => {
 
     fetchData();
 
-    // Subscribe to new messages
-    chatService.onMessage((message: any) => {
-      if (message.roomId === id) {
-        setMessages(prev => [...prev, message]);
-      }
-    });
-
+    // Cleanup on unmount
     return () => {
-      // Cleanup subscription
-      chatService.offMessage((message: any) => {
-        console.log('Unsubscribed from messages');
-      });
+      if (roomId) {
+        chatService.leaveRoom(roomId);
+      }
     };
-  }, [id]);
+  }, [roomId, chatType]);
 
   useEffect(() => {
     scrollToBottom();
@@ -109,23 +116,10 @@ const ChatRoom: React.FC = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !currentUser) return;
+    if (!newMessage.trim() || !currentUser || !roomId) return;
 
     try {
-      const message = {
-        type: 'message',
-        content: newMessage.trim(),
-        sender: {
-          id: currentUser._id,
-          name: currentUser.name,
-          avatar: currentUser.avatar
-        },
-        roomId: id,
-        timestamp: new Date().toISOString()
-      };
-
-      await DatabaseService.create(message);
-      chatService.sendMessage(newMessage, id);
+      chatService.sendMessage(newMessage.trim(), roomId);
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
@@ -170,7 +164,7 @@ const ChatRoom: React.FC = () => {
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-            {room.name}
+            {room.name} ({chatType})
           </Typography>
         </Stack>
       </Paper>
@@ -188,7 +182,7 @@ const ChatRoom: React.FC = () => {
               key={message._id}
               sx={{
                 display: 'flex',
-                flexDirection: currentUser?._id === message.sender.id ? 'row-reverse' : 'row',
+                flexDirection: currentUser?.id === message.sender.id ? 'row-reverse' : 'row',
                 gap: 1,
               }}
             >
@@ -196,7 +190,7 @@ const ChatRoom: React.FC = () => {
                 sx={{ 
                   width: 32, 
                   height: 32,
-                  bgcolor: currentUser?._id === message.sender.id ? 'primary.main' : 'secondary.main'
+                  bgcolor: currentUser?.id === message.sender.id ? 'primary.main' : 'secondary.main'
                 }}
               >
                 {message.sender.avatar || message.sender.name.charAt(0)}
@@ -204,8 +198,8 @@ const ChatRoom: React.FC = () => {
               <Box
                 sx={{
                   maxWidth: '70%',
-                  bgcolor: currentUser?._id === message.sender.id ? 'primary.main' : 'background.paper',
-                  color: currentUser?._id === message.sender.id ? 'white' : 'text.primary',
+                  bgcolor: currentUser?.id === message.sender.id ? 'primary.main' : 'background.paper',
+                  color: currentUser?.id === message.sender.id ? 'white' : 'text.primary',
                   p: 1.5,
                   borderRadius: 2,
                 }}

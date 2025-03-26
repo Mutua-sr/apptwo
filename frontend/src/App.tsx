@@ -10,6 +10,7 @@ import Communities from './pages/Communities';
 import Profile from './pages/Profile';
 import ChatRoom from './pages/ChatRoom';
 import MainLayout from './components/layout/MainLayout';
+import CommunityDetail from './components/community/CommunityDetail';
 
 // Create theme instance
 const theme = createTheme({
@@ -86,7 +87,7 @@ const AppRoutes = () => {
         path="/chat/:roomId"
         element={
           <ProtectedRoute noLayout>
-            <ChatRoom type="direct" />
+            <ChatRoom chatType="direct" />
           </ProtectedRoute>
         }
       />
@@ -94,7 +95,7 @@ const AppRoutes = () => {
         path="/classroom-chat/:roomId"
         element={
           <ProtectedRoute noLayout>
-            <ChatRoom type="classroom" />
+            <ChatRoom chatType="classroom" />
           </ProtectedRoute>
         }
       />
@@ -102,7 +103,7 @@ const AppRoutes = () => {
         path="/community-chat/:roomId"
         element={
           <ProtectedRoute noLayout>
-            <ChatRoom type="community" />
+            <ChatRoom chatType="community" />
           </ProtectedRoute>
         }
       />
@@ -111,6 +112,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Communities />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/communities/:id"
+        element={
+          <ProtectedRoute>
+            <CommunityDetail />
           </ProtectedRoute>
         }
       />

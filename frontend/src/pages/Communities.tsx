@@ -1,176 +1,157 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Typography,
-  Avatar,
-  TextField,
-  InputAdornment,
-  IconButton,
-  CircularProgress,
-  Alert,
+import React, { useEffect, useState } from 'react';
+import { 
+  Container, 
+  Typography, 
+  Grid, 
+  Card, 
+  CardContent, 
+  CardActions,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField
 } from '@mui/material';
-import {
-  Search as SearchIcon,
-  Add as AddIcon,
-  People as PeopleIcon,
-} from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
-import { DatabaseService } from '../services/databaseService';
+import { Community, CreateCommunityData } from '../types/api';
+import apiService from '../services/apiService';
 
-interface Community {
-  _id: string;
-  type: string;
-  name: string;
-  description: string;
-  members: number;
-  topics: string[];
-  avatar: string;
-}
-
-const CommunityCard: React.FC<{ community: Community }> = ({ community }) => {
-  const navigate = useNavigate();
-
-  return (
-    <Box 
-      onClick={() => navigate(`/community-chat/${community._id}`, { state: { type: 'community' } })}
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        p: 2,
-        cursor: 'pointer',
-        '&:hover': {
-          bgcolor: 'rgba(0, 0, 0, 0.04)',
-        },
-        borderBottom: '1px solid',
-        borderColor: 'divider'
-      }}
-    >
-      <Avatar
-        sx={{
-          width: 48,
-          height: 48,
-          bgcolor: 'primary.main',
-          fontSize: '1.25rem',
-          mr: 2
-        }}
-      >
-        {community.avatar || community.name.charAt(0)}
-      </Avatar>
-      <Box flex={1} overflow="hidden">
-        <Typography variant="subtitle1" noWrap>
-          {community.name}
-        </Typography>
-        <Typography 
-          variant="body2" 
-          color="text.secondary" 
-          noWrap 
-          sx={{ display: 'flex', alignItems: 'center' }}
-        >
-          <PeopleIcon sx={{ fontSize: 16, mr: 0.5 }} />
-          {community.members} members
-        </Typography>
-      </Box>
-    </Box>
-  );
-};
-
-const Communities: React.FC = () => {
+export const Communities: React.FC = () => {
   const [communities, setCommunities] = useState<Community[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const [newCommunity, setNewCommunity] = useState<CreateCommunityData>({
+    name: '',
+    description: ''
+  });
+  const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    const fetchCommunities = async () => {
-      try {
-        setLoading(true);
-        const data = await DatabaseService.find<Community>({ type: 'community' });
-        setCommunities(data);
-      } catch (err) {
-        console.error('Error fetching communities:', err);
-        setError('Failed to load communities');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchCommunities();
   }, []);
 
-  const filteredCommunities = communities.filter(community =>
-    community.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    community.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    community.topics.some(topic => topic.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const fetchCommunities = async () => {
+    try {
+      const response = await apiService.communities.getAll();
+      setCommunities(response.data);
+    } catch (err) {
+      setError('Failed to fetch communities');
+      console.error(err);
+    }
+  };
+
+  const handleCreateCommunity = async () => {
+    try {
+      await apiService.communities.create(newCommunity);
+      setOpen(false);
+      setNewCommunity({ name: '', description: '' });
+      fetchCommunities();
+    } catch (err) {
+      setError('Failed to create community');
+      console.error(err);
+    }
+  };
+
+  const handleDeleteCommunity = async (id: string) => {
+    try {
+      await apiService.communities.delete(id);
+      fetchCommunities();
+    } catch (err) {
+      setError('Failed to delete community');
+      console.error(err);
+    }
+  };
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ 
-        bgcolor: 'primary.main', 
-        color: 'white',
-        px: 2,
-        py: 1.5,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <Typography variant="h6">
-          Communities
-        </Typography>
-        <IconButton color="inherit" size="small">
-          <AddIcon />
-        </IconButton>
-      </Box>
-
-      <Box sx={{ px: 2, py: 1, bgcolor: 'background.paper' }}>
-        <TextField
-          size="small"
-          fullWidth
-          placeholder="Search communities..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon fontSize="small" />
-              </InputAdornment>
-            ),
-          }}
-          sx={{
-            '& .MuiOutlinedInput-root': {
-              borderRadius: 2,
-              bgcolor: 'action.hover',
-            }
-          }}
-        />
-      </Box>
-
-      <Box sx={{ 
-        flex: 1, 
-        overflow: 'auto',
-        bgcolor: 'background.paper'
-      }}>
-        {error && (
-          <Alert severity="error" sx={{ m: 2 }}>
-            {error}
-          </Alert>
-        )}
-        
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-            <CircularProgress />
-          </Box>
-        ) : filteredCommunities.length > 0 ? (
-          filteredCommunities.map((community) => (
-            <CommunityCard key={community._id} community={community} />
-          ))
-        ) : (
-          <Typography variant="body1" sx={{ textAlign: 'center', p: 4, color: 'text.secondary' }}>
-            {searchQuery ? 'No communities found matching your search' : 'No communities available'}
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Grid container spacing={3} alignItems="center" sx={{ mb: 3 }}>
+        <Grid item xs>
+          <Typography variant="h4" component="h1" gutterBottom>
+            Communities
           </Typography>
-        )}
-      </Box>
-    </Box>
+        </Grid>
+        <Grid item>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            onClick={() => setOpen(true)}
+          >
+            Create Community
+          </Button>
+        </Grid>
+      </Grid>
+
+      {error && (
+        <Typography color="error" sx={{ mb: 2 }}>
+          {error}
+        </Typography>
+      )}
+
+      <Grid container spacing={3}>
+        {communities.map((community) => (
+          <Grid item xs={12} sm={6} md={4} key={community._id}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" component="h2">
+                  {community.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {community.description}
+                </Typography>
+              </CardContent>
+              <CardActions>
+                <Button 
+                  size="small" 
+                  color="primary" 
+                  href={`/communities/${community._id}`}
+                >
+                  View
+                </Button>
+                <Button 
+                  size="small" 
+                  color="error"
+                  onClick={() => handleDeleteCommunity(community._id)}
+                >
+                  Delete
+                </Button>
+              </CardActions>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+
+      <Dialog open={open} onClose={() => setOpen(false)}>
+        <DialogTitle>Create New Community</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Name"
+            type="text"
+            fullWidth
+            variant="outlined"
+            value={newCommunity.name}
+            onChange={(e) => setNewCommunity({ ...newCommunity, name: e.target.value })}
+          />
+          <TextField
+            margin="dense"
+            label="Description"
+            type="text"
+            fullWidth
+            variant="outlined"
+            multiline
+            rows={4}
+            value={newCommunity.description}
+            onChange={(e) => setNewCommunity({ ...newCommunity, description: e.target.value })}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={handleCreateCommunity} variant="contained" color="primary">
+            Create
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
   );
 };
 

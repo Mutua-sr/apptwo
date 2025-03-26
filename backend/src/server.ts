@@ -1,31 +1,16 @@
 import express from 'express';
-import http from 'http';
+import { createServer } from 'http';
 import cors from 'cors';
-import { Server } from 'socket.io';
-import { ApolloServer } from '@apollo/server';
-import { expressMiddleware } from '@apollo/server/express4';
-import { ApolloServerPluginDrainHttpServer } from '@apollo/server/plugin/drainHttpServer';
 import config from './config/config';
 import logger from './config/logger';
-import typeDefs from './graphql/schema';
-import resolvers from './graphql/resolvers';
 import { initializeDatabase } from './services/database';
-import { Context } from './types';
-import { authenticate, getUser } from './middleware/auth';
+import { errorHandler, notFound } from './middleware/errorHandler';
+import apiRoutes from './routes/api';
+import SocketService from './services/socket.service';
 
 // Initialize express app
 const app = express();
-
-// Create HTTP server
-const httpServer = http.createServer(app);
-
-// Initialize Socket.IO
-const io = new Server(httpServer, {
-  cors: {
-    origin: config.cors.origin,
-    credentials: config.cors.credentials
-  }
-});
+const httpServer = createServer(app);
 
 // Basic middleware
 app.use(express.json());
@@ -33,38 +18,16 @@ app.use(cors({
   origin: config.cors.origin,
   credentials: config.cors.credentials
 }));
-app.use(authenticate);
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
+// Mount API routes
+app.use('/api', apiRoutes);
 
-// Socket.IO connection handling
-io.on('connection', (socket) => {
-  logger.info(`Client connected: ${socket.id}`);
+// Error handling middleware
+app.use(notFound);
+app.use(errorHandler);
 
-  socket.on('disconnect', () => {
-    logger.info(`Client disconnected: ${socket.id}`);
-  });
-
-  // Handle chat messages
-  socket.on('chat:message', (message) => {
-    logger.info(`Chat message received: ${JSON.stringify(message)}`);
-    io.emit('chat:message', message); // Broadcast to all clients
-  });
-
-  // Handle classroom events
-  socket.on('classroom:join', (classroomId: string) => {
-    socket.join(`classroom:${classroomId}`);
-    logger.info(`User ${socket.id} joined classroom ${classroomId}`);
-  });
-
-  socket.on('classroom:leave', (classroomId: string) => {
-    socket.leave(`classroom:${classroomId}`);
-    logger.info(`User ${socket.id} left classroom ${classroomId}`);
-  });
-});
+// Initialize Socket.IO
+SocketService.initialize(httpServer);
 
 // Start the server
 const startServer = async () => {
@@ -73,47 +36,36 @@ const startServer = async () => {
     await initializeDatabase();
     logger.info('Database initialized successfully');
 
-    // Create Apollo Server
-    const apolloServer = new ApolloServer({
-      typeDefs,
-      resolvers,
-      plugins: [ApolloServerPluginDrainHttpServer({ httpServer })],
-      formatError: (error) => {
-        logger.error('GraphQL Error:', error);
-        // Return a sanitized error message in production
-        return process.env.NODE_ENV === 'production' 
-          ? { message: 'Internal server error' }
-          : error;
-      },
-    });
-
-    // Start Apollo Server
-    await apolloServer.start();
-
-    // Apply Apollo middleware
-    app.use(
-      '/graphql',
-      cors<cors.CorsRequest>(),
-      express.json(),
-      expressMiddleware(apolloServer, {
-        context: async ({ req }) => {
-          // Get authenticated user from request
-          const user = getUser(req);
-          
-          return {
-            req,
-            res: req.res!,
-            user: user || undefined
-          };
-        }
-      })
-    );
-
     // Start HTTP server
-    await new Promise<void>((resolve) => httpServer.listen(config.port, resolve));
-    
-    logger.info(`🚀 Server ready at http://localhost:${config.port}`);
-    logger.info(`🚀 GraphQL ready at http://localhost:${config.port}/graphql`);
+    httpServer.listen(config.port, () => {
+      logger.info(`🚀 Server ready at http://localhost:${config.port}`);
+      logger.info(`📝 REST API endpoints available at http://localhost:${config.port}/api`);
+      logger.info(`🔌 WebSocket server is running`);
+      
+      // Log available endpoints
+      logger.info('Available endpoints:');
+      logger.info('POST   /api/auth/login     - Login user');
+      logger.info('POST   /api/auth/register  - Register new user');
+      logger.info('GET    /api/classrooms     - Get all classrooms');
+      logger.info('POST   /api/classrooms     - Create new classroom');
+      logger.info('GET    /api/classrooms/:id - Get classroom by ID');
+      logger.info('PUT    /api/classrooms/:id - Update classroom');
+      logger.info('DELETE /api/classrooms/:id - Delete classroom');
+      logger.info('GET    /api/posts         - Get all posts');
+      logger.info('POST   /api/posts         - Create new post');
+      logger.info('GET    /api/posts/:id     - Get post by ID');
+      logger.info('PUT    /api/posts/:id     - Update post');
+      logger.info('DELETE /api/posts/:id     - Delete post');
+      logger.info('GET    /api/communities   - Get all communities');
+      logger.info('POST   /api/communities   - Create new community');
+      logger.info('GET    /api/communities/:id - Get community by ID');
+      logger.info('PUT    /api/communities/:id - Update community');
+      logger.info('DELETE /api/communities/:id - Delete community');
+      logger.info('GET    /api/chat/:roomId/messages - Get chat history');
+      logger.info('POST   /api/chat/:roomId/messages - Send message');
+      logger.info('DELETE /api/chat/messages/:messageId - Delete message');
+      logger.info('GET    /api/health        - Health check');
+    });
   } catch (error) {
     logger.error('Failed to start server:', error);
     process.exit(1);
