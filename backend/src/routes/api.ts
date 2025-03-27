@@ -70,6 +70,6 @@ router.put('/video/call/:sessionId/status', auth, videoController.updateSessionS
 router.put('/video/call/:sessionId/end', auth, videoController.endSession);
 
 // Health check
-router.get('/health', (req, res) => res.json({ status: 'ok' }));
+router.get('/health', (_, res) => res.json({ status: 'ok' }));
 
 export default router;

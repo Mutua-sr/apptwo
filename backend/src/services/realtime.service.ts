@@ -2,7 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';
 import { UserStatus, UserPresence, TypingStatus } from '../types/realtime';
 import { ChatMessage } from '../types/chat';
-import { WebRTCIceCandidate, WebRTCSessionDescription, SignalingData } from '../types/webrtc';
+import { SignalingData } from '../types/webrtc';
 import { DatabaseService } from './database';
 import logger from '../config/logger';
 
@@ -63,8 +63,6 @@ export class RealtimeService {
   }
 
   private getUserIdFromSocket(socket: Socket): string | null {
-    // Get user ID from JWT token in socket handshake
-    const token = socket.handshake.auth.token;
     try {
       // Verify token and get user ID
       // This is a placeholder - implement actual JWT verification
@@ -93,7 +91,7 @@ export class RealtimeService {
     this.userStatuses.set(userId, status);
 
     // Broadcast user's online status
-    this.broadcastUserStatus(userId, status);
+    this.io.emit('user_status', status);
   }
 
   private async handleMessage(socket: Socket, message: ChatMessage): Promise<void> {
@@ -125,7 +123,7 @@ export class RealtimeService {
   }
 
   private handleSignaling(socket: Socket, data: SignalingData): void {
-    const { targetUserId, type, payload } = data;
+    const { targetUserId } = data;
     this.emitToUser(targetUserId, 'signaling', {
       ...data,
       userId: this.getUserIdFromSocket(socket)
@@ -156,12 +154,8 @@ export class RealtimeService {
         inCall: false
       };
       this.userStatuses.set(userId, status);
-      this.broadcastUserStatus(userId, status);
+      this.io.emit('user_status', status);
     }
-  }
-
-  private broadcastUserStatus(userId: string, status: UserStatus): void {
-    this.io.emit('user_status', status);
   }
 
   public emitToUser(userId: string, event: string, data: any): void {

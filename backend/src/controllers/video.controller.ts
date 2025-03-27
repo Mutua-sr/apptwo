@@ -3,7 +3,6 @@ import { VideoService } from '../services/video.service';
 import { CreateVideoCallDto } from '../types/video';
 import { ApiError } from '../middleware/errorHandler';
 import { AuthRequest } from '../types';
-import logger from '../config/logger';
 
 const videoService = new VideoService();
 

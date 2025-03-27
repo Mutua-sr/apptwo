@@ -1,5 +1,4 @@
 import { Response, NextFunction } from 'express';
-import { v4 as uuidv4 } from 'uuid';
 import { DatabaseService } from '../services/database';
 import { RealtimeService } from '../services/realtime.service';
 import { ApiError } from '../middleware/errorHandler';
@@ -9,14 +8,213 @@ import {
   Assignment, 
   Material, 
   ScheduleEvent,
-  ClassroomStudent,
-  CreateAssignment,
-  CreateMaterial,
-  CreateScheduleEvent
+  ClassroomStudent
 } from '../types/classroom';
-import logger from '../config/logger';
 
-// ... [previous getClassrooms, createClassroom, getClassroom, updateClassroom, deleteClassroom, joinClassroom methods] ...
+export const getClassrooms = async (
+  _req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const classrooms = await DatabaseService.find<Classroom>({
+      selector: {
+        type: 'classroom'
+      }
+    });
+
+    res.json({
+      success: true,
+      data: classrooms
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createClassroom = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.user) {
+      throw new ApiError('Authentication required', 401);
+    }
+
+    const classroom = await DatabaseService.create<Classroom>({
+      type: 'classroom',
+      name: req.body.name,
+      description: req.body.description,
+      code: Math.random().toString(36).substring(7).toUpperCase(),
+      teacher: {
+        id: req.user.id,
+        name: req.user.name,
+        avatar: req.user.avatar
+      },
+      students: [],
+      assignments: [],
+      materials: [],
+      schedule: [],
+      settings: {
+        allowStudentPosts: true,
+        allowStudentComments: true,
+        isArchived: false,
+        notifications: {
+          assignments: true,
+          materials: true,
+          announcements: true
+        }
+      }
+    });
+
+    res.status(201).json({
+      success: true,
+      data: classroom
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getClassroom = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const classroom = await DatabaseService.read<Classroom>(id);
+
+    if (!classroom) {
+      throw new ApiError('Classroom not found', 404);
+    }
+
+    res.json({
+      success: true,
+      data: classroom
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateClassroom = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const classroom = await DatabaseService.read<Classroom>(id);
+
+    if (!classroom) {
+      throw new ApiError('Classroom not found', 404);
+    }
+
+    if (classroom.teacher.id !== req.user?.id) {
+      throw new ApiError('Not authorized to update this classroom', 403);
+    }
+
+    const updatedClassroom = await DatabaseService.update<Classroom>(id, {
+      ...req.body,
+      updatedAt: new Date().toISOString()
+    });
+
+    res.json({
+      success: true,
+      data: updatedClassroom
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteClassroom = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const classroom = await DatabaseService.read<Classroom>(id);
+
+    if (!classroom) {
+      throw new ApiError('Classroom not found', 404);
+    }
+
+    if (classroom.teacher.id !== req.user?.id) {
+      throw new ApiError('Not authorized to delete this classroom', 403);
+    }
+
+    await DatabaseService.delete(id);
+
+    res.json({
+      success: true,
+      message: 'Classroom deleted successfully'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const joinClassroom = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { code } = req.body;
+    if (!code) {
+      throw new ApiError('Classroom code is required', 400);
+    }
+
+    const classrooms = await DatabaseService.find<Classroom>({
+      selector: {
+        type: 'classroom',
+        code
+      }
+    });
+
+    const classroom = classrooms[0];
+    if (!classroom) {
+      throw new ApiError('Classroom not found', 404);
+    }
+
+    if (classroom.students.some(student => student.id === req.user?.id)) {
+      throw new ApiError('Already a member of this classroom', 400);
+    }
+
+    const newStudent: ClassroomStudent = {
+      id: req.user!.id,
+      name: req.user!.name,
+      avatar: req.user!.avatar,
+      joinedAt: new Date().toISOString(),
+      status: 'active'
+    };
+
+    const updatedClassroom = await DatabaseService.update<Classroom>(classroom._id, {
+      students: [...classroom.students, newStudent]
+    });
+
+    // Notify about new student
+    RealtimeService.getInstance().emitToUser(
+      classroom.teacher.id,
+      'student_joined',
+      {
+        classroomId: classroom._id,
+        student: newStudent
+      }
+    );
+
+    res.json({
+      success: true,
+      data: updatedClassroom
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const addAssignment = async (
   req: AuthRequest,
@@ -36,18 +234,14 @@ export const addAssignment = async (
       throw new ApiError('Not authorized to add assignments', 403);
     }
 
-    const assignmentData: CreateAssignment = {
+    const assignment: Assignment = {
+      id: Math.random().toString(36).substring(7),
       title: req.body.title,
       description: req.body.description,
       dueDate: req.body.dueDate,
       points: req.body.points,
-      attachments: req.body.attachments
-    };
-
-    const assignment: Assignment = {
-      id: uuidv4(),
-      ...assignmentData,
-      submissions: [] // Initialize empty submissions array
+      attachments: req.body.attachments,
+      submissions: []
     };
 
     const updatedClassroom = await DatabaseService.update<Classroom>(id, {
@@ -87,18 +281,14 @@ export const addMaterial = async (
       throw new ApiError('Not authorized to add materials', 403);
     }
 
-    const materialData: CreateMaterial = {
+    const material: Material = {
+      id: Math.random().toString(36).substring(7),
       title: req.body.title,
       description: req.body.description,
       type: req.body.type,
       url: req.body.url,
+      uploadedAt: new Date().toISOString(),
       tags: req.body.tags || []
-    };
-
-    const material: Material = {
-      id: uuidv4(),
-      ...materialData,
-      uploadedAt: new Date().toISOString()
     };
 
     const updatedClassroom = await DatabaseService.update<Classroom>(id, {
@@ -138,16 +328,12 @@ export const addScheduleEvent = async (
       throw new ApiError('Not authorized to add schedule events', 403);
     }
 
-    const eventData: CreateScheduleEvent = {
+    const event: ScheduleEvent = {
+      id: Math.random().toString(36).substring(7),
       title: req.body.title,
       startTime: req.body.startTime,
       endTime: req.body.endTime,
       recurring: req.body.recurring
-    };
-
-    const event: ScheduleEvent = {
-      id: uuidv4(),
-      ...eventData
     };
 
     const updatedClassroom = await DatabaseService.update<Classroom>(id, {
@@ -198,7 +384,7 @@ export const submitAssignment = async (
     }
 
     const submission = {
-      studentId: req.user.id,
+      studentId: req.user!.id,
       submittedAt: new Date().toISOString(),
       files: req.body.files
     };

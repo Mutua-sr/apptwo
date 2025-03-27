@@ -1,5 +1,4 @@
 import { ServerScope, DocumentScope, MangoQuery, DocumentListParams, DocumentListResponse, DocumentBulkResponse } from 'nano';
-import config from '../config/config';
 import logger from '../config/logger';
 import { CouchDBDocument } from '../types';
 import { DatabaseError } from '../middleware/errorHandler';
@@ -12,12 +11,6 @@ interface CouchDBConfig {
       password: string;
     };
   };
-}
-
-interface CouchDBResponse {
-  id: string;
-  rev: string;
-  ok: boolean;
 }
 
 const couchdbConfig: CouchDBConfig = {

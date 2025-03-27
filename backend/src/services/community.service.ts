@@ -1,17 +1,31 @@
-import { Community, CreateCommunityInput, UpdateCommunityInput } from '../types';
+import { Community, CreateCommunity, UpdateCommunity } from '../types';
 import { DatabaseService } from './database';
 import logger from '../config/logger';
 
 export class CommunityService {
   private static readonly TYPE = 'community';
 
-  static async create(input: CreateCommunityInput): Promise<Community> {
+  static async create(input: CreateCommunity): Promise<Community> {
     try {
       const now = new Date().toISOString();
-      const community = {
+      const community: Omit<Community, '_id' | '_rev'> = {
         ...input,
-        type: this.TYPE,
-        members: 1, // Start with creator as first member
+        type: 'community',
+        members: [],
+        stats: {
+          memberCount: 0,
+          postCount: 0,
+          activeMembers: 0
+        },
+        settings: {
+          isPrivate: false,
+          requiresApproval: false,
+          allowPosts: true,
+          allowEvents: true,
+          allowPolls: true,
+          ...input.settings
+        },
+        tags: input.tags || [],
         createdAt: now,
         updatedAt: now
       };
@@ -19,7 +33,8 @@ export class CommunityService {
       const result = await DatabaseService.create(community);
       return {
         ...community,
-        id: result._id
+        _id: result._id,
+        _rev: result._rev
       } as Community;
     } catch (error) {
       logger.error('Error creating community:', error);
@@ -44,7 +59,7 @@ export class CommunityService {
         selector: {
           type: this.TYPE
         },
-        sort: [{ createdAt: 'desc' }],
+        sort: [{ createdAt: "desc" as "desc" }],
         skip,
         limit
       };
@@ -56,12 +71,26 @@ export class CommunityService {
     }
   }
 
-  static async update(id: string, data: UpdateCommunityInput): Promise<Community> {
+  static async update(id: string, data: UpdateCommunity): Promise<Community> {
     try {
-      const updated = await DatabaseService.update<Community>(id, {
+      const community = await this.getById(id);
+      if (!community) {
+        throw new Error('Community not found');
+      }
+
+      // Ensure settings are properly merged
+      const settings = data.settings ? {
+        ...community.settings,
+        ...data.settings
+      } : undefined;
+
+      const updateData = {
         ...data,
+        settings,
         updatedAt: new Date().toISOString()
-      });
+      };
+
+      const updated = await DatabaseService.update<Community>(id, updateData);
       return updated;
     } catch (error) {
       logger.error(`Error updating community ${id}:`, error);
@@ -83,9 +112,9 @@ export class CommunityService {
       const query = {
         selector: {
           type: this.TYPE,
-          topics: { $elemMatch: { $eq: topic } }
+          tags: { $elemMatch: { $eq: topic } }
         },
-        sort: [{ createdAt: 'desc' }]
+        sort: [{ createdAt: "desc" as "desc" }]
       };
 
       return await DatabaseService.find<Community>(query);
@@ -95,12 +124,22 @@ export class CommunityService {
     }
   }
 
-  static async updateMembers(id: string, members: number): Promise<Community> {
+  static async updateMemberCount(id: string, count: number): Promise<Community> {
     try {
-      return await this.update(id, { members });
+      const community = await this.getById(id);
+      if (!community) {
+        throw new Error('Community not found');
+      }
+
+      return await this.update(id, {
+        stats: {
+          ...community.stats,
+          memberCount: count
+        }
+      } as UpdateCommunity);
     } catch (error) {
-      logger.error(`Error updating members count for community ${id}:`, error);
-      throw new Error('Failed to update community members');
+      logger.error(`Error updating member count for community ${id}:`, error);
+      throw new Error('Failed to update community member count');
     }
   }
 
@@ -114,7 +153,7 @@ export class CommunityService {
             $regex: `(?i)${query}`
           }
         },
-        sort: [{ createdAt: 'desc' }],
+        sort: [{ createdAt: "desc" as "desc" }],
         skip,
         limit
       };
@@ -133,8 +172,8 @@ export class CommunityService {
         throw new Error('Community not found');
       }
 
-      const updatedTopics = [...new Set([...community.topics, topic])];
-      return await this.update(id, { topics: updatedTopics });
+      const updatedTags = [...new Set([...community.tags, topic])];
+      return await this.update(id, { tags: updatedTags });
     } catch (error) {
       logger.error(`Error adding topic to community ${id}:`, error);
       throw new Error('Failed to add topic to community');
@@ -148,8 +187,8 @@ export class CommunityService {
         throw new Error('Community not found');
       }
 
-      const updatedTopics = community.topics.filter(t => t !== topic);
-      return await this.update(id, { topics: updatedTopics });
+      const updatedTags = community.tags.filter(t => t !== topic);
+      return await this.update(id, { tags: updatedTags });
     } catch (error) {
       logger.error(`Error removing topic from community ${id}:`, error);
       throw new Error('Failed to remove topic from community');

@@ -3,8 +3,7 @@ import { DatabaseService } from '../services/database';
 import { RealtimeService } from '../services/realtime.service';
 import { ApiError } from '../middleware/errorHandler';
 import { AuthRequest } from '../types';
-import { ChatMessage, ChatRoom, CreateChatMessage, CreateChatRoom } from '../types/chat';
-import logger from '../config/logger';
+import { ChatMessage, ChatRoom } from '../types/chat';
 
 export const getChatRooms = async (
   req: AuthRequest,

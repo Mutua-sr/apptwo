@@ -3,8 +3,7 @@ import { DatabaseService } from '../services/database';
 import { RealtimeService } from '../services/realtime.service';
 import { ApiError } from '../middleware/errorHandler';
 import { AuthRequest } from '../types';
-import { Community, CreateCommunity, UpdateCommunity, CommunityMember } from '../types/community';
-import logger from '../config/logger';
+import { Community, CommunityMember } from '../types/community';
 
 export const getCommunities = async (
   req: AuthRequest,

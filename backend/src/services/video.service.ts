@@ -145,18 +145,6 @@ export class VideoService {
       throw new ApiError('Failed to cleanup video call sessions');
     }
   }
-
-  // Helper method to validate session participants
-  private async validateSessionParticipant(sessionId: string, userId: string): Promise<VideoCallSession> {
-    const session = await DatabaseService.read<VideoCallSession>(sessionId);
-    if (!session) {
-      throw new ApiError('Session not found', 404);
-    }
-    if (session.caller !== userId && session.receiver !== userId) {
-      throw new ApiError('Not authorized to access this session', 403);
-    }
-    return session;
-  }
 }
 
 export default VideoService;

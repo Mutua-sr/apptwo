@@ -1,18 +1,19 @@
-import { Post, CreatePostInput, UpdatePostInput, QueryOptions } from '../types';
+import { Post, CreatePost, UpdatePost, QueryOptions } from '../types';
 import { DatabaseService } from './database';
 import logger from '../config/logger';
 
 export class PostService {
   private static readonly TYPE = 'post';
 
-  static async create(input: CreatePostInput): Promise<Post> {
+  static async create(input: CreatePost): Promise<Post> {
     try {
       const now = new Date().toISOString();
-      const post = {
+      const post: Omit<Post, '_id' | '_rev'> = {
         ...input,
-        type: this.TYPE,
+        type: 'post',
         likes: 0,
-        comments: 0,
+        comments: [],
+        likedBy: [],
         createdAt: now,
         updatedAt: now
       };
@@ -20,7 +21,8 @@ export class PostService {
       const result = await DatabaseService.create(post);
       return {
         ...post,
-        id: result._id
+        _id: result._id,
+        _rev: result._rev
       } as Post;
     } catch (error) {
       logger.error('Error creating post:', error);
@@ -46,7 +48,7 @@ export class PostService {
         selector: {
           type: this.TYPE
         },
-        sort: [{ createdAt: 'desc' }],
+        sort: [{ createdAt: "desc" as "desc" }],
         skip,
         limit
       };
@@ -58,7 +60,7 @@ export class PostService {
     }
   }
 
-  static async update(id: string, data: UpdatePostInput): Promise<Post> {
+  static async update(id: string, data: UpdatePost): Promise<Post> {
     try {
       const updated = await DatabaseService.update<Post>(id, {
         ...data,
@@ -89,7 +91,7 @@ export class PostService {
           type: this.TYPE,
           tags: { $elemMatch: { $eq: tag } }
         },
-        sort: [{ createdAt: 'desc' }],
+        sort: [{ createdAt: "desc" as "desc" }],
         skip,
         limit
       };
@@ -110,7 +112,7 @@ export class PostService {
           type: this.TYPE,
           'author.id': authorId
         },
-        sort: [{ createdAt: 'desc' }],
+        sort: [{ createdAt: "desc" as "desc" }],
         skip,
         limit
       };
@@ -167,7 +169,7 @@ export class PostService {
             { tags: { $elemMatch: { $regex: `(?i)${query}` } } }
           ]
         },
-        sort: [{ createdAt: 'desc' }],
+        sort: [{ createdAt: "desc" as "desc" }],
         skip,
         limit
       };

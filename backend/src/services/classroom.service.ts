@@ -1,28 +1,35 @@
-import { Classroom, CreateClassroomInput, UpdateClassroomInput } from '../types';
-import DatabaseService from './database';
+import { Classroom, CreateClassroom, UpdateClassroomInput, ClassroomSettings } from '../types/classroom';
+import { DatabaseService } from './database';
 import logger from '../config/logger';
 
 export class ClassroomService {
-  private static readonly TYPE = 'classroom';
+  private static readonly TYPE = 'classroom' as const;
 
-  static async create(input: CreateClassroomInput): Promise<Classroom> {
+  static async create(input: CreateClassroom): Promise<Classroom> {
     try {
-      const now = new Date().toISOString();
+      const defaultSettings: ClassroomSettings = {
+        allowStudentPosts: true,
+        allowStudentComments: true,
+        isArchived: false,
+        notifications: {
+          assignments: true,
+          materials: true,
+          announcements: true
+        }
+      };
+
       const classroom = {
         ...input,
         type: this.TYPE,
-        students: 0,
-        progress: 0,
-        assignments: 0,
-        createdAt: now,
-        updatedAt: now
+        code: Math.random().toString(36).substring(7).toUpperCase(),
+        students: [],
+        assignments: [],
+        materials: [],
+        schedule: [],
+        settings: defaultSettings
       };
 
-      const result = await DatabaseService.create(classroom);
-      return {
-        ...classroom,
-        id: result._id
-      } as Classroom;
+      return await DatabaseService.create<Classroom>(classroom);
     } catch (error) {
       logger.error('Error creating classroom:', error);
       throw new Error('Failed to create classroom');
@@ -31,8 +38,7 @@ export class ClassroomService {
 
   static async getById(id: string): Promise<Classroom | null> {
     try {
-      const classroom = await DatabaseService.read<Classroom>(id);
-      return classroom;
+      return await DatabaseService.read<Classroom>(id);
     } catch (error) {
       logger.error(`Error getting classroom ${id}:`, error);
       throw new Error('Failed to get classroom');
@@ -46,7 +52,7 @@ export class ClassroomService {
         selector: {
           type: this.TYPE
         },
-        sort: [{ createdAt: 'desc' }],
+        sort: [{ createdAt: 'desc' as const }],
         skip,
         limit
       };
@@ -58,13 +64,30 @@ export class ClassroomService {
     }
   }
 
-  static async update(id: string, data: UpdateClassroomInput): Promise<Classroom> {
+  static async update(id: string, input: UpdateClassroomInput): Promise<Classroom> {
     try {
-      const updated = await DatabaseService.update<Classroom>(id, {
-        ...data,
-        updatedAt: new Date().toISOString()
-      });
-      return updated;
+      const classroom = await this.getById(id);
+      if (!classroom) {
+        throw new Error('Classroom not found');
+      }
+
+      const updatedSettings = input.settings
+        ? {
+            ...classroom.settings,
+            ...input.settings,
+            notifications: {
+              ...classroom.settings.notifications,
+              ...input.settings.notifications
+            }
+          }
+        : undefined;
+
+      const updateData = {
+        ...input,
+        settings: updatedSettings
+      };
+
+      return await DatabaseService.update<Classroom>(id, updateData);
     } catch (error) {
       logger.error(`Error updating classroom ${id}:`, error);
       throw new Error('Failed to update classroom');
@@ -80,64 +103,89 @@ export class ClassroomService {
     }
   }
 
-  static async getByInstructor(instructorId: string): Promise<Classroom[]> {
+  static async getByTeacher(teacherId: string): Promise<Classroom[]> {
     try {
       const query = {
         selector: {
           type: this.TYPE,
-          'instructor.id': instructorId
+          'teacher.id': teacherId
         },
-        sort: [{ createdAt: 'desc' }]
+        sort: [{ createdAt: 'desc' as const }]
       };
 
       return await DatabaseService.find<Classroom>(query);
     } catch (error) {
-      logger.error(`Error getting classrooms for instructor ${instructorId}:`, error);
-      throw new Error('Failed to get classrooms by instructor');
+      logger.error(`Error getting classrooms for teacher ${teacherId}:`, error);
+      throw new Error('Failed to get classrooms by teacher');
     }
   }
 
-  static async getByTopic(topic: string): Promise<Classroom[]> {
+  static async getByStudent(studentId: string): Promise<Classroom[]> {
     try {
       const query = {
         selector: {
           type: this.TYPE,
-          topics: { $elemMatch: { $eq: topic } }
+          'students': {
+            $elemMatch: {
+              id: studentId
+            }
+          }
         },
-        sort: [{ createdAt: 'desc' }]
+        sort: [{ createdAt: 'desc' as const }]
       };
 
       return await DatabaseService.find<Classroom>(query);
     } catch (error) {
-      logger.error(`Error getting classrooms for topic ${topic}:`, error);
-      throw new Error('Failed to get classrooms by topic');
+      logger.error(`Error getting classrooms for student ${studentId}:`, error);
+      throw new Error('Failed to get classrooms by student');
     }
   }
 
-  static async updateProgress(id: string, progress: number): Promise<Classroom> {
+  static async addStudent(classroomId: string, student: { id: string; name: string; avatar?: string }): Promise<Classroom> {
     try {
-      return await this.update(id, { progress });
+      const classroom = await this.getById(classroomId);
+      if (!classroom) {
+        throw new Error('Classroom not found');
+      }
+
+      if (classroom.students.some(s => s.id === student.id)) {
+        throw new Error('Student already in classroom');
+      }
+
+      const newStudent = {
+        ...student,
+        joinedAt: new Date().toISOString(),
+        status: 'active' as const
+      };
+
+      const updatedClassroom = {
+        ...classroom,
+        students: [...classroom.students, newStudent]
+      };
+
+      return await DatabaseService.update<Classroom>(classroomId, updatedClassroom);
     } catch (error) {
-      logger.error(`Error updating progress for classroom ${id}:`, error);
-      throw new Error('Failed to update classroom progress');
+      logger.error(`Error adding student to classroom ${classroomId}:`, error);
+      throw new Error('Failed to add student to classroom');
     }
   }
 
-  static async updateAssignments(id: string, assignments: number): Promise<Classroom> {
+  static async removeStudent(classroomId: string, studentId: string): Promise<Classroom> {
     try {
-      return await this.update(id, { assignments });
-    } catch (error) {
-      logger.error(`Error updating assignments for classroom ${id}:`, error);
-      throw new Error('Failed to update classroom assignments');
-    }
-  }
+      const classroom = await this.getById(classroomId);
+      if (!classroom) {
+        throw new Error('Classroom not found');
+      }
 
-  static async updateNextClass(id: string, nextClass: string): Promise<Classroom> {
-    try {
-      return await this.update(id, { nextClass });
+      const updatedClassroom = {
+        ...classroom,
+        students: classroom.students.filter(s => s.id !== studentId)
+      };
+
+      return await DatabaseService.update<Classroom>(classroomId, updatedClassroom);
     } catch (error) {
-      logger.error(`Error updating next class for classroom ${id}:`, error);
-      throw new Error('Failed to update next class');
+      logger.error(`Error removing student from classroom ${classroomId}:`, error);
+      throw new Error('Failed to remove student from classroom');
     }
   }
 }

@@ -3,8 +3,7 @@ import { DatabaseService } from '../services/database';
 import { RealtimeService } from '../services/realtime.service';
 import { ApiError } from '../middleware/errorHandler';
 import { AuthRequest } from '../types';
-import { UserProfile, UpdateProfile, Activity, Notification, MediaUpload } from '../types/profile';
-import logger from '../config/logger';
+import { UserProfile, Activity, Notification, MediaUpload } from '../types/profile';
 import { v4 as uuidv4 } from 'uuid';
 import { Request } from 'express';
 
@@ -119,7 +118,7 @@ export const uploadMedia = async (
       throw new ApiError('No file uploaded', 400);
     }
 
-    const { mimetype, size, originalname, buffer } = req.file;
+    const { mimetype, size, originalname } = req.file;
     const userId = req.user?.id;
 
     if (!userId) {

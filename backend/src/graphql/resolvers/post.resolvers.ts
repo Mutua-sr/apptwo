@@ -1,4 +1,4 @@
-import { Context, CreatePostInput, UpdatePostInput, QueryOptions } from '../../types';
+import { Context, CreatePost, UpdatePost, QueryOptions } from '../../types';
 import PostService from '../../services/post.service';
 import logger from '../../config/logger';
 
@@ -66,14 +66,18 @@ export const postResolvers = {
   },
 
   Mutation: {
-    createPost: async (_: any, { input }: { input: CreatePostInput }, context: Context) => {
+    createPost: async (_: any, { input }: { input: CreatePost }, context: Context) => {
       try {
         if (!context.user) {
           throw new Error('Authentication required');
         }
         return await PostService.create({
           ...input,
-          author: context.user
+          author: {
+            id: context.user.id,
+            username: context.user.name,
+            avatar: context.user.avatar
+          }
         });
       } catch (error) {
         logger.error(`Error in createPost mutation: ${error}`);
@@ -81,7 +85,7 @@ export const postResolvers = {
       }
     },
 
-    updatePost: async (_: any, { id, input }: { id: string; input: UpdatePostInput }, context: Context) => {
+    updatePost: async (_: any, { id, input }: { id: string; input: UpdatePost }, context: Context) => {
       try {
         if (!context.user) {
           throw new Error('Authentication required');

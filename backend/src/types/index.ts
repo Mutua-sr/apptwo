@@ -1,7 +1,7 @@
 import { Request } from 'express';
 import { JwtPayload } from 'jsonwebtoken';
-import { Multer } from 'multer';
 
+// Base document type for CouchDB
 export interface CouchDBDocument {
   _id: string;
   _rev: string;
@@ -10,11 +10,30 @@ export interface CouchDBDocument {
   updatedAt: string;
 }
 
+// Auth types
 export interface AuthUser {
   id: string;
   name: string;
   email: string;
-  role: 'student' | 'teacher' | 'admin';
+  role: UserRole;
+  avatar?: string;
+}
+
+export interface User extends CouchDBDocument {
+  type: 'user';
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  avatar?: string;
+}
+
+export interface CreateUser {
+  type: 'user';
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
   avatar?: string;
 }
 
@@ -22,39 +41,48 @@ export interface AuthRequest extends Request {
   user?: AuthUser;
 }
 
-// Extend Express Request to include Multer's file
-declare global {
-  namespace Express {
-    interface Request {
-      file?: Multer.File;
-    }
-  }
-}
-
 export interface JWTPayload extends JwtPayload {
   userId: string;
-  role: 'student' | 'teacher' | 'admin';
+  role: UserRole;
 }
 
+// Database query types
 export interface MangoQuery {
   selector: {
     [key: string]: any;
   };
   limit?: number;
   skip?: number;
-  sort?: { [key: string]: 'asc' | 'desc' }[];
+  sort?: SortOrder[];
 }
 
 export interface SortOrder {
   [key: string]: 'asc' | 'desc';
 }
 
-export interface PaginationQuery {
+export interface QueryOptions {
   page?: number;
   limit?: number;
+  skip?: number;
+  sort?: SortOrder[];
   search?: string;
 }
 
+// GraphQL Context
+export interface Context {
+  user?: AuthUser;
+}
+
+// Re-export types from other files
+export * from './classroom';
+export * from './community';
+export * from './feed';
+export * from './chat';
+export * from './profile';
+export * from './video';
+export * from './webrtc';
+
+// API Response types
 export interface ApiResponse<T> {
   success: boolean;
   data: T;
@@ -67,57 +95,7 @@ export interface ApiResponse<T> {
   };
 }
 
-// Database service types
-export interface DatabaseConfig {
-  url: string;
-  dbName: string;
-  username?: string;
-  password?: string;
-}
-
-export interface QueryOptions {
-  skip?: number;
-  limit?: number;
-  sort?: SortOrder[];
-}
-
-// WebSocket types
-export interface WebSocketEvent<T = any> {
-  type: string;
-  payload: T;
-  timestamp: string;
-  sender?: {
-    id: string;
-    name: string;
-  };
-}
-
-export interface WebSocketRoom {
-  id: string;
-  name: string;
-  type: 'chat' | 'classroom' | 'community';
-  participants: string[];
-}
-
-// File handling types
-export interface FileMetadata {
-  filename: string;
-  mimetype: string;
-  size: number;
-  path: string;
-  destination: string;
-  originalname: string;
-  encoding: string;
-}
-
-export interface UploadedFile extends FileMetadata {
-  url: string;
-  thumbnailUrl?: string;
-  uploadedBy: string;
-  uploadedAt: string;
-}
-
-// Error handling types
+// Error types
 export interface ApiError extends Error {
   statusCode: number;
   code?: string;
@@ -129,3 +107,13 @@ export interface ValidationError {
   message: string;
   code: string;
 }
+
+// Role type
+export type UserRole = 'student' | 'teacher' | 'admin';
+
+// Role enum
+export const UserRole = {
+  STUDENT: 'student' as UserRole,
+  TEACHER: 'teacher' as UserRole,
+  ADMIN: 'admin' as UserRole
+};

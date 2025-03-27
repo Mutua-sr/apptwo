@@ -1,4 +1,4 @@
-import { Context, CreateCommunityInput, UpdateCommunityInput } from '../../types';
+import { Context, CreateCommunity, UpdateCommunity } from '../../types';
 import CommunityService from '../../services/community.service';
 import logger from '../../config/logger';
 
@@ -42,7 +42,7 @@ export const communityResolvers = {
   },
 
   Mutation: {
-    createCommunity: async (_: any, { input }: { input: CreateCommunityInput }, context: Context) => {
+    createCommunity: async (_: any, { input }: { input: CreateCommunity }, context: Context) => {
       try {
         if (!context.user) {
           throw new Error('Authentication required');
@@ -54,7 +54,7 @@ export const communityResolvers = {
       }
     },
 
-    updateCommunity: async (_: any, { id, input }: { id: string; input: UpdateCommunityInput }, context: Context) => {
+    updateCommunity: async (_: any, { id, input }: { id: string; input: UpdateCommunity }, context: Context) => {
       try {
         if (!context.user) {
           throw new Error('Authentication required');

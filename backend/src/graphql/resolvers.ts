@@ -1,12 +1,11 @@
-import { Context } from '../types';
 import logger from '../config/logger';
-import DatabaseService from '../services/database'; // Import DatabaseService
-import { Classroom, Community, Post } from '../types'; // Import necessary types
+import DatabaseService from '../services/database';
+import { Classroom, Community, Post } from '../types';
 
 const resolvers = {
   Query: {
     // Classroom queries
-    classrooms: async (_: any, { page = 1, limit = 10 }: { page: number; limit: number }, context: Context) => {
+    classrooms: async (_: any, { page = 1, limit = 10 }: { page: number; limit: number }) => {
       try {
         const classrooms = await DatabaseService.list<Classroom>({ limit, skip: (page - 1) * limit });
         return classrooms;
@@ -16,7 +15,7 @@ const resolvers = {
       }
     },
 
-    classroom: async (_: any, { id }: { id: string }, context: Context) => {
+    classroom: async (_: any, { id }: { id: string }) => {
       try {
         const classroom = await DatabaseService.read<Classroom>(id);
         return classroom;
@@ -27,7 +26,7 @@ const resolvers = {
     },
 
     // Community queries
-    communities: async (_: any, { page = 1, limit = 10 }: { page: number; limit: number }, context: Context) => {
+    communities: async (_: any, { page = 1, limit = 10 }: { page: number; limit: number }) => {
       try {
         const communities = await DatabaseService.list<Community>({ limit, skip: (page - 1) * limit });
         return communities;
@@ -37,7 +36,7 @@ const resolvers = {
       }
     },
 
-    community: async (_: any, { id }: { id: string }, context: Context) => {
+    community: async (_: any, { id }: { id: string }) => {
       try {
         const community = await DatabaseService.read<Community>(id);
         return community;
@@ -48,7 +47,7 @@ const resolvers = {
     },
 
     // Post queries
-    posts: async (_: any, { page = 1, limit = 10 }: { page: number; limit: number }, context: Context) => {
+    posts: async (_: any, { page = 1, limit = 10 }: { page: number; limit: number }) => {
       try {
         const posts = await DatabaseService.list<Post>({ limit, skip: (page - 1) * limit });
         return posts;
@@ -58,7 +57,7 @@ const resolvers = {
       }
     },
 
-    post: async (_: any, { id }: { id: string }, context: Context) => {
+    post: async (_: any, { id }: { id: string }) => {
       try {
         const post = await DatabaseService.read<Post>(id);
         return post;
@@ -68,10 +67,16 @@ const resolvers = {
       }
     },
 
-    postsByTag: async (_: any, { tag, page = 1, limit = 10 }: { tag: string; page: number; limit: number }, context: Context) => {
+    postsByTag: async (_: any, { tag }: { tag: string }) => {
       try {
-        // TODO: Implement actual database query
-        return [];
+        const posts = await DatabaseService.find<Post>({
+          selector: {
+            type: 'post',
+            tags: { $elemMatch: { $eq: tag } }
+          },
+          sort: [{ createdAt: "desc" as "desc" }]
+        });
+        return posts;
       } catch (error) {
         logger.error(`Error fetching posts by tag ${tag}:`, error);
         throw new Error('Failed to fetch posts by tag');
@@ -81,7 +86,7 @@ const resolvers = {
 
   Mutation: {
     // Classroom mutations
-    createClassroom: async (_: any, { input }: any, context: Context) => {
+    createClassroom: async (_: any, { input }: any) => {
       try {
         const newClassroom = await DatabaseService.create<Classroom>(input);
         return newClassroom;
@@ -91,7 +96,7 @@ const resolvers = {
       }
     },
 
-    updateClassroom: async (_: any, { id, input }: any, context: Context) => {
+    updateClassroom: async (_: any, { id, input }: any) => {
       try {
         const updatedClassroom = await DatabaseService.update<Classroom>(id, input);
         return updatedClassroom;
@@ -101,7 +106,7 @@ const resolvers = {
       }
     },
 
-    deleteClassroom: async (_: any, { id }: { id: string }, context: Context) => {
+    deleteClassroom: async (_: any, { id }: { id: string }) => {
       try {
         await DatabaseService.delete(id);
         return true;
@@ -112,7 +117,7 @@ const resolvers = {
     },
 
     // Community mutations
-    createCommunity: async (_: any, { input }: any, context: Context) => {
+    createCommunity: async (_: any, { input }: any) => {
       try {
         const newCommunity = await DatabaseService.create<Community>(input);
         return newCommunity;
@@ -122,7 +127,7 @@ const resolvers = {
       }
     },
 
-    updateCommunity: async (_: any, { id, input }: any, context: Context) => {
+    updateCommunity: async (_: any, { id, input }: any) => {
       try {
         const updatedCommunity = await DatabaseService.update<Community>(id, input);
         return updatedCommunity;
@@ -132,7 +137,7 @@ const resolvers = {
       }
     },
 
-    deleteCommunity: async (_: any, { id }: { id: string }, context: Context) => {
+    deleteCommunity: async (_: any, { id }: { id: string }) => {
       try {
         await DatabaseService.delete(id);
         return true;
@@ -143,7 +148,7 @@ const resolvers = {
     },
 
     // Post mutations
-    createPost: async (_: any, { input }: any, context: Context) => {
+    createPost: async (_: any, { input }: any) => {
       try {
         const newPost = await DatabaseService.create<Post>(input);
         return newPost;
@@ -153,7 +158,7 @@ const resolvers = {
       }
     },
 
-    updatePost: async (_: any, { id, input }: any, context: Context) => {
+    updatePost: async (_: any, { id, input }: any) => {
       try {
         const updatedPost = await DatabaseService.update<Post>(id, input);
         return updatedPost;
@@ -163,7 +168,7 @@ const resolvers = {
       }
     },
 
-    deletePost: async (_: any, { id }: { id: string }, context: Context) => {
+    deletePost: async (_: any, { id }: { id: string }) => {
       try {
         await DatabaseService.delete(id);
         return true;

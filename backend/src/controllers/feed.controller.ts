@@ -4,7 +4,8 @@ import { RealtimeService } from '../services/realtime.service';
 import { ApiError } from '../middleware/errorHandler';
 import { AuthRequest } from '../types';
 import { Post, CreatePost, UpdatePost, Comment } from '../types/feed';
-import logger from '../config/logger';
+import { Classroom } from '../types/classroom';
+import { Community } from '../types/community';
 
 export const getPosts = async (
   req: AuthRequest,
@@ -27,6 +28,28 @@ export const getPosts = async (
     res.json({
       success: true,
       data: posts
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getPost = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const post = await DatabaseService.read<Post>(id);
+
+    if (!post) {
+      throw new ApiError('Post not found', 404);
+    }
+
+    res.json({
+      success: true,
+      data: post
     });
   } catch (error) {
     next(error);
@@ -288,10 +311,15 @@ export const sharePost = async (
       throw new ApiError('Post not found', 404);
     }
 
-    // Verify target exists (classroom or community)
-    const target = await DatabaseService.read(targetId);
+    // Verify target exists and has correct type
+    const target = await DatabaseService.read<Classroom | Community>(targetId);
     if (!target) {
       throw new ApiError(`${type} not found`, 404);
+    }
+
+    // Verify the target type matches the requested type
+    if (target.type !== type) {
+      throw new ApiError(`Invalid ${type} ID`, 400);
     }
 
     const updatedPost = await DatabaseService.update<Post>(id, {

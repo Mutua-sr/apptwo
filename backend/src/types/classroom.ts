@@ -1,5 +1,16 @@
 import { CouchDBDocument } from './index';
 
+export interface ClassroomSettings {
+  allowStudentPosts: boolean;
+  allowStudentComments: boolean;
+  isArchived: boolean;
+  notifications: {
+    assignments: boolean;
+    materials: boolean;
+    announcements: boolean;
+  };
+}
+
 export interface Classroom extends CouchDBDocument {
   type: 'classroom';
   name: string;
@@ -10,26 +21,11 @@ export interface Classroom extends CouchDBDocument {
     name: string;
     avatar?: string;
   };
-  students: {
-    id: string;
-    name: string;
-    avatar?: string;
-    joinedAt: string;
-    status: 'active' | 'inactive';
-  }[];
+  students: ClassroomStudent[];
   assignments: Assignment[];
   materials: Material[];
   schedule: ScheduleEvent[];
-  settings: {
-    allowStudentPosts: boolean;
-    allowStudentComments: boolean;
-    isArchived: boolean;
-    notifications: {
-      assignments: boolean;
-      materials: boolean;
-      announcements: boolean;
-    };
-  };
+  settings: ClassroomSettings;
 }
 
 export interface Assignment {
@@ -90,30 +86,12 @@ export interface CreateClassroom {
     name: string;
     avatar?: string;
   };
-  settings?: {
-    allowStudentPosts?: boolean;
-    allowStudentComments?: boolean;
-    notifications?: {
-      assignments?: boolean;
-      materials?: boolean;
-      announcements?: boolean;
-    };
-  };
 }
 
-export interface UpdateClassroom {
+export interface UpdateClassroomInput {
   name?: string;
   description?: string;
-  settings?: {
-    allowStudentPosts?: boolean;
-    allowStudentComments?: boolean;
-    isArchived?: boolean;
-    notifications?: {
-      assignments?: boolean;
-      materials?: boolean;
-      announcements?: boolean;
-    };
-  };
+  settings?: Partial<ClassroomSettings>;
 }
 
 export interface CreateAssignment {

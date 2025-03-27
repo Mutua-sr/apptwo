@@ -22,12 +22,12 @@ export class DatabaseError extends ApiError {
   }
 }
 
-export const notFound = (req: Request, res: Response, next: NextFunction) => {
+export const notFound = (req: Request, _: Response, next: NextFunction) => {
   const error = new ApiError(`Not Found - ${req.originalUrl}`, 404, 'NOT_FOUND');
   next(error);
 };
 
-export const errorHandler = (err: ApiError, req: Request, res: Response, next: NextFunction) => {
+export const errorHandler = (err: ApiError, req: Request, res: Response, _: NextFunction) => {
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
   const code = err.code || 'INTERNAL_SERVER_ERROR';

@@ -23,23 +23,29 @@ export const createPost = async (
       throw error;
     }
 
-    const postData: CreatePost = {
+    // First create the basic post data
+    const createPostData: CreatePost = {
       type: 'post',
       title,
       content,
       author: {
         id: req.user.id,
-        name: req.user.name,
+        username: req.user.name, // Use name from AuthUser as username
         avatar: req.user.avatar
       },
-      tags: tags || [],
+      tags: tags || []
+    };
+
+    // Then add the required Post properties
+    const fullPostData: Omit<Post, '_id' | '_rev' | 'createdAt' | 'updatedAt'> = {
+      ...createPostData,
       likes: 0,
       comments: [],
       likedBy: [],
-      sharedTo
+      ...(sharedTo && { sharedTo })
     };
 
-    const post = await DatabaseService.create<Post>(postData);
+    const post = await DatabaseService.create<Post>(fullPostData);
 
     res.status(201).json({
       success: true,
@@ -51,7 +57,7 @@ export const createPost = async (
 };
 
 export const getPosts = async (
-  req: AuthRequest,
+  _req: AuthRequest,
   res: Response,
   next: NextFunction
 ) => {
