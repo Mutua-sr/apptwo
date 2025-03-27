@@ -64,7 +64,12 @@ export class RealtimeService {
 
   private getUserIdFromSocket(socket: Socket): string | null {
     try {
-      // Verify token and get user ID
+      // Get auth token from socket handshake
+      const token = socket.handshake.auth?.token;
+      if (!token) {
+        logger.warn(`No auth token provided for socket ${socket.id}`);
+        return null;
+      }
       // This is a placeholder - implement actual JWT verification
       return 'user-id';
     } catch (error) {
@@ -98,10 +103,10 @@ export class RealtimeService {
     try {
       // Save message to database
       const savedMessage = await DatabaseService.create(message);
-      
+
       // Broadcast message to room
       this.io.to(message.roomId).emit('message', savedMessage);
-      
+
       logger.info(`Message sent in room ${message.roomId}`);
     } catch (error) {
       logger.error('Error handling message:', error);
@@ -144,7 +149,7 @@ export class RealtimeService {
     // Remove socket from user's set of sockets
     this.userSockets.get(userId)?.delete(socket.id);
 
-    // If user has no more active sockets, update their status to offline
+    // If user has no more active sockets update their status to offline
     if (this.userSockets.get(userId)?.size === 0) {
       const status: UserStatus = {
         userId,
