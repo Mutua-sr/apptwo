@@ -1,17 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-}
+import apiService, { ApiError } from '../services/apiService';
+import type { User } from '../types/api';
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isAuthenticated: boolean;
+  error: string | null;
+  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -19,6 +16,8 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => {},
   logout: () => {},
   isAuthenticated: false,
+  error: null,
+  isLoading: false
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -26,53 +25,69 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Check for stored auth token
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      // TODO: Validate token with backend
-      // For now, we'll use mock data
-      setUser({
-        id: '1',
-        email: 'demo@example.com',
-        name: 'Demo User',
-        role: 'student'
-      });
-      setIsAuthenticated(true);
-    }
+    const initializeAuth = async () => {
+      try {
+        const storedUser = apiService.auth.getCurrentUser();
+        if (storedUser) {
+          setUser(storedUser);
+          setIsAuthenticated(true);
+        }
+      } catch (err) {
+        console.error('Error initializing auth:', err);
+        // Clear potentially corrupted auth state
+        apiService.auth.logout();
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+    };
+
+    initializeAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
-      // TODO: Implement actual login with backend
-      // For now, we'll use mock data
-      const mockUser = {
-        id: '1',
-        email,
-        name: 'Demo User',
-        role: 'student'
-      };
-      
-      // Store auth token
-      localStorage.setItem('auth_token', 'mock_token');
-      
-      setUser(mockUser);
+      setError(null);
+      setIsLoading(true);
+
+      const response = await apiService.auth.login({ email, password });
+      setUser(response.data.user);
       setIsAuthenticated(true);
-    } catch (error) {
-      console.error('Login failed:', error);
-      throw error;
+    } catch (err) {
+      const errorMessage = err instanceof ApiError 
+        ? apiService.handleError(err)
+        : 'An unexpected error occurred during login';
+      
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('auth_token');
-    setUser(null);
-    setIsAuthenticated(false);
+    try {
+      apiService.auth.logout();
+      setUser(null);
+      setIsAuthenticated(false);
+      setError(null);
+    } catch (err) {
+      console.error('Error during logout:', err);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAuthenticated }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      logout, 
+      isAuthenticated,
+      error,
+      isLoading
+    }}>
       {children}
     </AuthContext.Provider>
   );

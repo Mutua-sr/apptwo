@@ -150,23 +150,116 @@ export const communityService = {
   }
 };
 
+// Custom error class for API errors
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status?: number,
+    public code?: string
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 // Error handling interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Unauthorized - clear local storage and redirect to login
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+    // Get error details
+    const status = error.response?.status;
+    const message = error.response?.data?.message || error.message;
+    const code = error.response?.data?.code;
+
+    // Log error for debugging
+    console.error(`API Error: [${status}] ${message}`, {
+      url: error.config?.url,
+      method: error.config?.method,
+      code,
+      error
+    });
+
+    // Handle specific error cases
+    switch (status) {
+      case 401:
+        // Unauthorized - clear local storage and redirect to login
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        break;
+      case 403:
+        // Forbidden - user doesn't have necessary permissions
+        console.warn('Access forbidden:', message);
+        break;
+      case 404:
+        // Not found
+        console.warn('Resource not found:', message);
+        break;
+      case 500:
+        // Server error
+        console.error('Server error:', message);
+        break;
     }
-    return Promise.reject(error);
+
+    // Throw custom error
+    return Promise.reject(new ApiError(message, status, code));
   }
 );
 
+// Feed Service
+export const feedService = {
+  getPosts: async (page: number = 1, limit: number = 10): Promise<Post[]> => {
+    const response = await api.get<ApiResponse<Post[]>>(`/posts?page=${page}&limit=${limit}`);
+    return response.data.data;
+  },
+  createPost: async (data: CreatePostData): Promise<Post> => {
+    const response = await api.post<ApiResponse<Post>>('/posts', data);
+    return response.data.data;
+  },
+  updatePost: async (id: string, data: UpdatePostData): Promise<Post> => {
+    const response = await api.put<ApiResponse<Post>>(`/posts/${id}`, data);
+    return response.data.data;
+  },
+  deletePost: async (id: string): Promise<boolean> => {
+    await api.delete(`/posts/${id}`);
+    return true;
+  },
+  likePost: async (id: string): Promise<Post> => {
+    const response = await api.post<ApiResponse<Post>>(`/posts/${id}/like`);
+    return response.data.data;
+  },
+  unlikePost: async (id: string): Promise<Post> => {
+    const response = await api.post<ApiResponse<Post>>(`/posts/${id}/unlike`);
+    return response.data.data;
+  }
+};
+
+// Export services with proper error handling
 export default {
   auth: authService,
   classrooms: classroomService,
   posts: postService,
-  communities: communityService
+  communities: communityService,
+  feed: feedService,
+  // Helper method to handle API errors in components
+  handleError: (error: unknown) => {
+    if (error instanceof ApiError) {
+      // Return user-friendly error message based on status
+      switch (error.status) {
+        case 400:
+          return 'Invalid request. Please check your input.';
+        case 401:
+          return 'Please log in to continue.';
+        case 403:
+          return 'You do not have permission to perform this action.';
+        case 404:
+          return 'The requested resource was not found.';
+        case 500:
+          return 'An unexpected error occurred. Please try again later.';
+        default:
+          return 'Something went wrong. Please try again.';
+      }
+    }
+    return 'An unexpected error occurred. Please try again later.';
+  }
 };

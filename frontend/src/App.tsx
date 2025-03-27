@@ -1,4 +1,5 @@
 import React from 'react';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { createTheme } from '@mui/material/styles';
@@ -58,7 +59,8 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const AppRoutes = () => {
   return (
-    <Routes>
+    <ErrorBoundary>
+      <Routes>
       <Route
         path="/login"
         element={
@@ -132,7 +134,8 @@ const AppRoutes = () => {
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      </Routes>
+    </ErrorBoundary>
   );
 };
 
