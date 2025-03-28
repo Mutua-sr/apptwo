@@ -26,11 +26,11 @@ import {
   Share as ShareIcon,
   Send as SendIcon,
 } from '@mui/icons-material';
-import { Post } from '../../types/feed';
+import { Post, Comment } from '../../types/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface PostCardProps {
   post: Post;
-  currentUser: string;
   onLike: (postId: string) => void;
   onComment: (postId: string, comment: string) => void;
   onShare: (postId: string, destination: { type: 'classroom' | 'community', id: string, name: string }) => void;
@@ -41,7 +41,8 @@ interface ShareTarget {
   name: string;
 }
 
-export const PostCard: React.FC<PostCardProps> = ({ post, currentUser, onLike, onComment, onShare }) => {
+export const PostCard: React.FC<PostCardProps> = ({ post, onLike, onComment, onShare }) => {
+  const { currentUser } = useAuth();
   const [commentText, setCommentText] = useState('');
   const [showComments, setShowComments] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
@@ -49,11 +50,12 @@ export const PostCard: React.FC<PostCardProps> = ({ post, currentUser, onLike, o
   const [communities, setCommunities] = useState<ShareTarget[]>([]);
 
   const handleShare = (type: 'classroom' | 'community', id: string, name: string) => {
-    onShare(post.id, { type, id, name });
+    onShare(post._id, { type, id, name });
     setShareDialogOpen(false);
   };
 
-  const isLiked = post.likedBy?.includes(currentUser);
+  const isLiked = post.likedBy?.includes(currentUser?.id || '');
+  const comments = post.comments || [];
 
   return (
     <Card sx={{ mb: 2 }}>
@@ -63,11 +65,11 @@ export const PostCard: React.FC<PostCardProps> = ({ post, currentUser, onLike, o
           <Stack direction="row" alignItems="center" justifyContent="space-between">
             <Stack direction="row" spacing={1} alignItems="center">
               <Avatar sx={{ bgcolor: 'primary.main' }}>
-                {post.author.avatar || post.author.username[0]}
+                {currentUser?.name[0]}
               </Avatar>
               <Box>
                 <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                  {post.author.username}
+                  {currentUser?.name}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   {new Date(post.createdAt).toLocaleString()}
@@ -89,7 +91,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, currentUser, onLike, o
           <Typography variant="body1">{post.content}</Typography>
 
           {/* Tags */}
-          {post.tags.length > 0 && (
+          {post.tags && post.tags.length > 0 && (
             <Stack direction="row" spacing={1}>
               {post.tags.map(tag => (
                 <Typography
@@ -108,16 +110,16 @@ export const PostCard: React.FC<PostCardProps> = ({ post, currentUser, onLike, o
           <Stack direction="row" spacing={2} alignItems="center">
             <Button
               startIcon={isLiked ? <ThumbUpIcon /> : <ThumbUpOutlinedIcon />}
-              onClick={() => onLike(post.id)}
+              onClick={() => onLike(post._id)}
               color={isLiked ? 'primary' : 'inherit'}
             >
-              {post.likes}
+              {post.likes || 0}
             </Button>
             <Button
               startIcon={<CommentIcon />}
               onClick={() => setShowComments(!showComments)}
             >
-              {post.comments.length}
+              {comments.length}
             </Button>
             <Button
               startIcon={<ShareIcon />}
@@ -132,7 +134,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, currentUser, onLike, o
             <Box>
               <Divider sx={{ my: 2 }} />
               <Stack spacing={2}>
-                {post.comments.map((comment) => (
+                {comments.map((comment: Comment) => (
                   <Stack key={comment.id} direction="row" spacing={1}>
                     <Avatar sx={{ width: 32, height: 32 }}>
                       {comment.avatar || comment.author[0]}
@@ -148,7 +150,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, currentUser, onLike, o
                 ))}
                 <Stack direction="row" spacing={1}>
                   <Avatar sx={{ width: 32, height: 32 }}>
-                    {currentUser[0]}
+                    {currentUser?.name[0]}
                   </Avatar>
                   <TextField
                     fullWidth
@@ -163,7 +165,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, currentUser, onLike, o
                             size="small"
                             onClick={() => {
                               if (commentText.trim()) {
-                                onComment(post.id, commentText);
+                                onComment(post._id, commentText);
                                 setCommentText('');
                               }
                             }}

@@ -1,93 +1,90 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import apiService, { ApiError } from '../services/apiService';
-import type { User } from '../types/api';
+import apiService from '../services/apiService';
+import { User, LoginCredentials } from '../types/api';
 
 interface AuthContextType {
-  user: User | null;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  currentUser: User | null;
   isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  loading: boolean;
   error: string | null;
-  isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null,
-  login: async () => {},
-  logout: () => {},
+  currentUser: null,
   isAuthenticated: false,
-  error: null,
-  isLoading: false
+  login: async () => {},
+  logout: async () => {},
+  loading: true,
+  error: null
 });
 
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const initializeAuth = async () => {
+    const initAuth = async () => {
       try {
-        const storedUser = apiService.auth.getCurrentUser();
-        if (storedUser) {
-          setUser(storedUser);
-          setIsAuthenticated(true);
+        const user = apiService.auth.getCurrentUser();
+        if (user) {
+          setCurrentUser(user);
         }
       } catch (err) {
         console.error('Error initializing auth:', err);
-        // Clear potentially corrupted auth state
-        apiService.auth.logout();
-        setUser(null);
-        setIsAuthenticated(false);
+      } finally {
+        setLoading(false);
       }
     };
 
-    initializeAuth();
+    initAuth();
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
+      setLoading(true);
       setError(null);
-      setIsLoading(true);
-
-      const response = await apiService.auth.login({ email, password });
-      setUser(response.data.user);
-      setIsAuthenticated(true);
-    } catch (err) {
-      const errorMessage = err instanceof ApiError 
-        ? apiService.handleError(err)
-        : 'An unexpected error occurred during login';
       
+      const credentials: LoginCredentials = { email, password };
+      const response = await apiService.auth.login(credentials);
+      
+      setCurrentUser(response.data.user);
+    } catch (err: any) {
+      const errorMessage = apiService.handleError(err);
       setError(errorMessage);
       throw err;
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
     try {
+      setLoading(true);
       apiService.auth.logout();
-      setUser(null);
-      setIsAuthenticated(false);
-      setError(null);
-    } catch (err) {
+      setCurrentUser(null);
+    } catch (err: any) {
       console.error('Error during logout:', err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const value = {
+    currentUser,
+    isAuthenticated: !!currentUser,
+    login,
+    logout,
+    loading,
+    error
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      login, 
-      logout, 
-      isAuthenticated,
-      error,
-      isLoading
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

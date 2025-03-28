@@ -12,23 +12,31 @@ import {
   Search as SearchIcon,
   Add as AddIcon,
 } from '@mui/icons-material';
-import { Post } from '../types/feed';
-import { DatabaseService } from '../services/databaseService';
-import PostCard from '../components/feed/PostCard';
+import { Post } from '../types/api';
+import { postService } from '../services/postService';
+import { PostCard } from '../components/feed/PostCard';
 import CreatePost from '../components/feed/CreatePost';
+import { useAuth } from '../contexts/AuthContext';
 
 const Feed: React.FC = () => {
+  const { currentUser } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [createPostOpen, setCreatePostOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const POSTS_PER_PAGE = 10;
 
   const loadPosts = useCallback(async () => {
+    if (!currentUser) return;
+
     setLoading(true);
     try {
-      const fetchedPosts = await DatabaseService.getPosts(currentPage, 10);
+      const fetchedPosts = await postService.getPosts({
+        page: currentPage,
+        limit: POSTS_PER_PAGE
+      });
       setPosts(prevPosts => currentPage === 1 ? fetchedPosts : [...prevPosts, ...fetchedPosts]);
     } catch (error) {
       console.error('Error loading posts:', error);
@@ -36,24 +44,26 @@ const Feed: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage]);
+  }, [currentPage, currentUser]);
 
   useEffect(() => {
     loadPosts();
   }, [loadPosts]);
 
   const handleLike = async (postId: string) => {
+    if (!currentUser) return;
+
     try {
-      const post = posts.find(p => p.id === postId);
+      const post = posts.find(p => p._id === postId);
       if (!post) return;
 
-      const isLiked = post.likedBy.includes('CurrentUser'); // Replace with actual user ID
+      const isLiked = post.likedBy?.includes(currentUser.id);
       const updatedPost = isLiked
-        ? await DatabaseService.unlikePost(postId)
-        : await DatabaseService.likePost(postId);
+        ? await postService.unlikePost(postId)
+        : await postService.likePost(postId);
 
       setPosts(prevPosts => 
-        prevPosts.map(p => p.id === postId ? updatedPost : p)
+        prevPosts.map(p => p._id === postId ? updatedPost : p)
       );
     } catch (error) {
       console.error('Error updating like:', error);
@@ -61,15 +71,17 @@ const Feed: React.FC = () => {
   };
 
   const handleComment = async (postId: string, commentText: string) => {
+    if (!currentUser) return;
+
     try {
-      const updatedPost = await DatabaseService.addComment(postId, {
-        author: 'Current User', // Replace with actual user name
+      const updatedPost = await postService.addComment(postId, {
+        author: currentUser.name,
         content: commentText,
-        timestamp: new Date().toISOString()
+        avatar: currentUser.avatar
       });
 
       setPosts(prevPosts =>
-        prevPosts.map(p => p.id === postId ? updatedPost : p)
+        prevPosts.map(p => p._id === postId ? updatedPost : p)
       );
     } catch (error) {
       console.error('Error adding comment:', error);
@@ -77,10 +89,12 @@ const Feed: React.FC = () => {
   };
 
   const handleShare = async (postId: string, destination: { type: 'classroom' | 'community', id: string, name: string }) => {
+    if (!currentUser) return;
+
     try {
-      const updatedPost = await DatabaseService.sharePost(postId, destination);
+      const updatedPost = await postService.sharePost(postId, destination);
       setPosts(prevPosts =>
-        prevPosts.map(p => p.id === postId ? updatedPost : p)
+        prevPosts.map(p => p._id === postId ? updatedPost : p)
       );
     } catch (error) {
       console.error('Error sharing post:', error);
@@ -92,11 +106,36 @@ const Feed: React.FC = () => {
     loadPosts();
   }, [loadPosts]);
 
-  const filteredPosts = posts.filter(post => 
-    post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    post.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      setCurrentPage(1);
+      loadPosts();
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const searchResults = await postService.searchPosts({
+        q: searchQuery,
+        page: 1,
+        limit: POSTS_PER_PAGE
+      });
+      setPosts(searchResults);
+    } catch (error) {
+      console.error('Error searching posts:', error);
+      setError('Failed to search posts');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!currentUser) {
+    return (
+      <Box sx={{ p: 4, textAlign: 'center' }}>
+        <Alert severity="info">Please log in to view the feed.</Alert>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ maxWidth: 600, mx: 'auto', p: 2 }}>
@@ -107,6 +146,7 @@ const Feed: React.FC = () => {
         placeholder="Search posts..."
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
+        onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
         InputProps={{
           startAdornment: (
             <InputAdornment position="start">
@@ -127,11 +167,10 @@ const Feed: React.FC = () => {
           <CircularProgress />
         </Box>
       ) : (
-        filteredPosts.map(post => (
+        posts.map(post => (
           <PostCard
-            key={post.id}
+            key={post._id}
             post={post}
-            currentUser="CurrentUser" // Replace with actual user ID
             onLike={handleLike}
             onComment={handleComment}
             onShare={handleShare}

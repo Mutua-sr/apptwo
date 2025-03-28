@@ -13,6 +13,7 @@ export interface User {
   email: string;
   name: string;
   role: string;
+  avatar?: string;
 }
 
 export interface AuthResponse {
@@ -29,6 +30,54 @@ export interface RegisterCredentials extends LoginCredentials {
   name: string;
 }
 
+// Post Types
+export interface Post {
+  _id: string;
+  type: 'post';
+  title: string;
+  content: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt?: string;
+  likes?: number;
+  likedBy?: string[];
+  comments?: Comment[];
+  tags?: string[];
+  sharedTo?: {
+    type: 'classroom' | 'community';
+    id: string;
+    name: string;
+  };
+}
+
+export interface Comment {
+  id: string;
+  author: string;
+  content: string;
+  timestamp: string;
+  avatar?: string;
+  likes?: number;
+}
+
+export interface CreatePostData {
+  title: string;
+  content: string;
+  tags?: string[];
+}
+
+export interface UpdatePostData {
+  title?: string;
+  content?: string;
+  tags?: string[];
+  likes?: number;
+  comments?: Comment[];
+  sharedTo?: {
+    type: 'classroom' | 'community';
+    id: string;
+    name: string;
+  };
+}
+
 // Classroom Types
 export interface Classroom {
   _id: string;
@@ -38,6 +87,7 @@ export interface Classroom {
   createdBy: string;
   createdAt: string;
   updatedAt?: string;
+  members?: string[];
 }
 
 export interface CreateClassroomData {
@@ -50,28 +100,6 @@ export interface UpdateClassroomData {
   description?: string;
 }
 
-// Post Types
-export interface Post {
-  _id: string;
-  type: 'post';
-  title: string;
-  content: string;
-  createdBy: string;
-  createdAt: string;
-  updatedAt?: string;
-}
-
-export interface CreatePostData {
-  title: string;
-  content: string;
-}
-
-export interface UpdatePostData {
-  title?: string;
-  content?: string;
-  likes?: number;
-}
-
 // Community Types
 export interface Community {
   _id: string;
@@ -81,6 +109,7 @@ export interface Community {
   createdBy: string;
   createdAt: string;
   updatedAt?: string;
+  members?: string[];
 }
 
 export interface CreateCommunityData {
@@ -91,4 +120,14 @@ export interface CreateCommunityData {
 export interface UpdateCommunityData {
   name?: string;
   description?: string;
+}
+
+// Query Types
+export interface PaginationQuery {
+  page?: number;
+  limit?: number;
+}
+
+export interface SearchQuery extends PaginationQuery {
+  q: string;
 }
