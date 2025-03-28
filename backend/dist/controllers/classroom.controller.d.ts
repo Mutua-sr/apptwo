@@ -1,0 +1,13 @@
+import { Response, NextFunction } from 'express';
+import { AuthRequest } from '../types';
+export declare const getClassrooms: (_req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+export declare const createClassroom: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+export declare const getClassroom: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+export declare const updateClassroom: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+export declare const deleteClassroom: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+export declare const joinClassroom: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+export declare const addAssignment: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+export declare const addMaterial: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+export declare const addScheduleEvent: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+export declare const submitAssignment: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+export declare const gradeSubmission: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;

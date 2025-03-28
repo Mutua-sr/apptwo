@@ -66,6 +66,7 @@ export const createPost = async (
       throw new ApiError('Unauthorized', 401);
     }
 
+    console.log('Incoming request data:', req.body); // Log the incoming request data
     const postData: CreatePost = {
       type: 'post',
       title: req.body.title,

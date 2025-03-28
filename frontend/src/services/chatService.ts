@@ -10,7 +10,7 @@ class ChatService {
   }
 
   private connect() {
-    const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
     this.socket = io(API_URL, {
       autoConnect: false,
       withCredentials: true
@@ -20,7 +20,6 @@ class ChatService {
       this.messageHandlers.forEach(handler => handler(message));
     });
   }
-
   public joinRoom(roomId: string) {
     if (this.socket) {
       this.socket.emit('join_room', roomId);

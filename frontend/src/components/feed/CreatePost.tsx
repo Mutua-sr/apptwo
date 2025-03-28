@@ -11,7 +11,7 @@ import {
   Box,
   IconButton,
 } from '@mui/material';
-import { Add as AddIcon, Close as CloseIcon } from '@mui/icons-material';
+import { Add as AddIcon } from '@mui/icons-material';
 import { PostInput } from '../../types/feed';
 import { DatabaseService } from '../../services/databaseService';
 
@@ -57,7 +57,8 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, onClose, onPostCreated })
         tags
       };
 
-      await DatabaseService.createPost(postInput);
+      console.log('Post Input:', postInput); // Log the post input
+      const response = await DatabaseService.createPost(postInput);
       onPostCreated();
       handleClose();
     } catch (error) {

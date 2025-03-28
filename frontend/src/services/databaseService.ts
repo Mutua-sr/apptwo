@@ -41,7 +41,7 @@ export const DatabaseService = {
   // Get posts with pagination
   async getPosts(page: number = 1, limit: number = 10): Promise<Post[]> {
     try {
-      const response = await apiService.posts.getAll();
+      const response = await apiService.posts.getAll(); // Ensure this is using the correct endpoint
       return response.data.map(normalizePost);
     } catch (error) {
       console.error('Error fetching posts:', error);
@@ -52,7 +52,7 @@ export const DatabaseService = {
   // Create a new post
   async createPost(postInput: PostInput): Promise<Post> {
     try {
-      const response = await apiService.posts.create(postInput);
+      const response = await apiService.posts.create(postInput); // Ensure this is using the correct endpoint
       return normalizePost(response.data);
     } catch (error) {
       console.error('Error creating post:', error);

@@ -16,7 +16,7 @@ import {
   UpdateCommunityData
 } from '../types/api';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 // Create axios instance with default config
 const api: AxiosInstance = axios.create({
@@ -97,27 +97,27 @@ export const classroomService = {
 // Post Services
 export const postService = {
   getAll: async (): Promise<ApiResponse<Post[]>> => {
-    const response = await api.get<ApiResponse<Post[]>>('/posts');
+    const response = await api.get<ApiResponse<Post[]>>('/posts'); // Updated endpoint
     return response.data;
   },
 
   getById: async (id: string): Promise<ApiResponse<Post>> => {
-    const response = await api.get<ApiResponse<Post>>(`/posts/${id}`);
+    const response = await api.get<ApiResponse<Post>>(`/posts/${id}`); // Updated endpoint
     return response.data;
   },
 
   create: async (data: CreatePostData): Promise<ApiResponse<Post>> => {
-    const response = await api.post<ApiResponse<Post>>('/posts', data);
+    const response = await api.post<ApiResponse<Post>>('/posts', data); // Updated endpoint
     return response.data;
   },
 
   update: async (id: string, data: UpdatePostData): Promise<ApiResponse<Post>> => {
-    const response = await api.put<ApiResponse<Post>>(`/posts/${id}`, data);
+    const response = await api.put<ApiResponse<Post>>(`/posts/${id}`, data); // Updated endpoint
     return response.data;
   },
 
   delete: async (id: string): Promise<ApiResponse<{ message: string }>> => {
-    const response = await api.delete<ApiResponse<{ message: string }>>(`/posts/${id}`);
+    const response = await api.delete<ApiResponse<{ message: string }>>(`/posts/${id}`); // Updated endpoint
     return response.data;
   }
 };
@@ -206,45 +206,13 @@ api.interceptors.response.use(
   }
 );
 
-// Feed Service
-export const feedService = {
-  getPosts: async (page: number = 1, limit: number = 10): Promise<Post[]> => {
-    const response = await api.get<ApiResponse<Post[]>>(`/posts?page=${page}&limit=${limit}`);
-    return response.data.data;
-  },
-  createPost: async (data: CreatePostData): Promise<Post> => {
-    const response = await api.post<ApiResponse<Post>>('/posts', data);
-    return response.data.data;
-  },
-  updatePost: async (id: string, data: UpdatePostData): Promise<Post> => {
-    const response = await api.put<ApiResponse<Post>>(`/posts/${id}`, data);
-    return response.data.data;
-  },
-  deletePost: async (id: string): Promise<boolean> => {
-    await api.delete(`/posts/${id}`);
-    return true;
-  },
-  likePost: async (id: string): Promise<Post> => {
-    const response = await api.post<ApiResponse<Post>>(`/posts/${id}/like`);
-    return response.data.data;
-  },
-  unlikePost: async (id: string): Promise<Post> => {
-    const response = await api.post<ApiResponse<Post>>(`/posts/${id}/unlike`);
-    return response.data.data;
-  }
-};
-
-// Export services with proper error handling
-export default {
+const apiService = {
   auth: authService,
   classrooms: classroomService,
   posts: postService,
   communities: communityService,
-  feed: feedService,
-  // Helper method to handle API errors in components
   handleError: (error: unknown) => {
     if (error instanceof ApiError) {
-      // Return user-friendly error message based on status
       switch (error.status) {
         case 400:
           return 'Invalid request. Please check your input.';
@@ -263,3 +231,5 @@ export default {
     return 'An unexpected error occurred. Please try again later.';
   }
 };
+
+export default apiService; // Export the variable

@@ -1,0 +1,11 @@
+import { Response, NextFunction } from 'express';
+import { AuthRequest } from '../types';
+export declare const getPosts: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+export declare const getPost: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+export declare const createPost: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+export declare const updatePost: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+export declare const deletePost: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+export declare const likePost: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+export declare const unlikePost: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+export declare const addComment: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+export declare const sharePost: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;

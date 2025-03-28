@@ -12,6 +12,7 @@ export const auth = async (
 ) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
+    console.log('Received token:', token); // Log the received token
 
     if (!token) {
       const error = new Error('Authentication required') as ApiError;
