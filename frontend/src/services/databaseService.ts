@@ -1,19 +1,45 @@
 import { Post, PostInput, PostUpdate, Comment } from '../types/feed';
+import { Post as ApiPost } from '../types/api';
 import apiService from './apiService';
 
-const normalizePost = (post: Partial<Post>): Post => ({
-  id: post.id!,
-  title: post.title!,
-  content: post.content!,
-  author: post.author!,
-  tags: post.tags || [],
-  likes: post.likes || 0,
-  comments: post.comments || [],
-  createdAt: post.createdAt!,
-  updatedAt: post.updatedAt!,
-  likedBy: post.likedBy || [],
-  ...(post.sharedTo && { sharedTo: post.sharedTo })
+// Transform API Post to Feed Post
+const transformApiPost = (apiPost: ApiPost): Partial<Post> => ({
+  id: apiPost._id,
+  title: apiPost.title,
+  content: apiPost.content,
+  author: {
+    id: apiPost.createdBy,
+    username: apiPost.createdBy, // Note: You might want to fetch actual username
+    avatar: undefined // Note: Add avatar handling if needed
+  },
+  tags: apiPost.tags || [],
+  likes: apiPost.likes || 0,
+  comments: apiPost.comments?.map(comment => ({
+    ...comment,
+    likes: comment.likes || 0 // Ensure likes is always a number
+  })) || [],
+  createdAt: apiPost.createdAt,
+  updatedAt: apiPost.updatedAt || apiPost.createdAt,
+  likedBy: apiPost.likedBy || [],
+  sharedTo: apiPost.sharedTo
 });
+
+const normalizePost = (apiPost: ApiPost): Post => {
+  const transformedPost = transformApiPost(apiPost);
+  return {
+    id: transformedPost.id!,
+    title: transformedPost.title!,
+    content: transformedPost.content!,
+    author: transformedPost.author!,
+    tags: transformedPost.tags!,
+    likes: transformedPost.likes!,
+    comments: transformedPost.comments!,
+    createdAt: transformedPost.createdAt!,
+    updatedAt: transformedPost.updatedAt!,
+    likedBy: transformedPost.likedBy!,
+    ...(transformedPost.sharedTo && { sharedTo: transformedPost.sharedTo })
+  };
+};
 
 export const DatabaseService = {
   // Generic find method
@@ -41,8 +67,8 @@ export const DatabaseService = {
   // Get posts with pagination
   async getPosts(page: number = 1, limit: number = 10): Promise<Post[]> {
     try {
-      const response = await apiService.posts.getAll(); // Ensure this is using the correct endpoint
-      return response.data.map(normalizePost);
+      const response = await apiService.posts.getAll();
+      return response.data.map((post: ApiPost) => normalizePost(post));
     } catch (error) {
       console.error('Error fetching posts:', error);
       throw new Error('Failed to fetch posts. Please try again later.');
@@ -52,7 +78,7 @@ export const DatabaseService = {
   // Create a new post
   async createPost(postInput: PostInput): Promise<Post> {
     try {
-      const response = await apiService.posts.create(postInput); // Ensure this is using the correct endpoint
+      const response = await apiService.posts.create(postInput);
       return normalizePost(response.data);
     } catch (error) {
       console.error('Error creating post:', error);

@@ -1,49 +1,21 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { DatabaseService } from '../services/database';
 import { RealtimeService } from '../services/realtime.service';
 import { ApiError } from '../middleware/errorHandler';
-import { AuthRequest } from '../types';
-import { Community, CommunityMember } from '../types/community';
+import { AuthRequest, ApiResponse } from '../types';
+import { 
+  Community,
+  CommunityMember,
+  CommunityInvite,
+  JoinRequest
+} from '../types/community';
+import logger from '../config/logger';
 
-export const getCommunities = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    const { page = 1, limit = 10, search } = req.query;
-    const skip = (Number(page) - 1) * Number(limit);
-
-    const query = {
-      selector: {
-        type: 'community',
-        ...(search && {
-          $or: [
-            { name: { $regex: String(search) } },
-            { description: { $regex: String(search) } },
-            { tags: { $elemMatch: { $regex: String(search) } } }
-          ]
-        })
-      },
-      skip,
-      limit: Number(limit),
-      sort: [{ createdAt: 'desc' } as { [key: string]: 'desc' | 'asc' }]
-    };
-
-    const communities = await DatabaseService.find<Community>(query);
-
-    res.json({
-      success: true,
-      data: communities
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+type AuthenticatedRequest = Request & AuthRequest;
 
 export const createCommunity = async (
-  req: AuthRequest,
-  res: Response,
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<Community>>,
   next: NextFunction
 ) => {
   try {
@@ -51,24 +23,31 @@ export const createCommunity = async (
       throw new ApiError('Unauthorized', 401);
     }
 
-    const timestamp = new Date().toISOString();
+    // Validate required fields
+    if (!req.body.name?.trim()) {
+      throw new ApiError('Name is required', 400);
+    }
+    if (!req.body.description?.trim()) {
+      throw new ApiError('Description is required', 400);
+    }
+
     const communityData: Omit<Community, '_id' | '_rev' | 'createdAt' | 'updatedAt'> = {
       type: 'community',
-      name: req.body.name,
-      description: req.body.description,
+      name: req.body.name.trim(),
+      description: req.body.description.trim(),
+      avatar: req.body.avatar,
+      banner: req.body.banner,
       creator: {
         id: req.user.id,
         name: req.user.name,
         avatar: req.user.avatar
       },
-      avatar: req.body.avatar,
-      banner: req.body.banner,
       members: [{
         id: req.user.id,
         name: req.user.name,
         avatar: req.user.avatar,
         role: 'admin',
-        joinedAt: timestamp
+        joinedAt: new Date().toISOString()
       }],
       settings: {
         isPrivate: req.body.settings?.isPrivate ?? false,
@@ -87,21 +66,21 @@ export const createCommunity = async (
 
     const community = await DatabaseService.create<Community>(communityData);
 
-    // Notify about new community creation
-    RealtimeService.getInstance().broadcastToRoom('communities', 'community_created', community);
+    logger.info(`Community created: ${community._id} by user ${req.user.id}`);
 
     res.status(201).json({
       success: true,
       data: community
     });
   } catch (error) {
+    logger.error('Error creating community:', error);
     next(error);
   }
 };
 
 export const getCommunity = async (
-  req: AuthRequest,
-  res: Response,
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<Community>>,
   next: NextFunction
 ) => {
   try {
@@ -112,9 +91,10 @@ export const getCommunity = async (
       throw new ApiError('Community not found', 404);
     }
 
-    // Check if user can access this community
-    if (community.settings.isPrivate && !community.members.some(m => m.id === req.user?.id)) {
-      throw new ApiError('Not authorized to access this community', 403);
+    // If community is private, check if user is a member
+    if (community.settings.isPrivate && 
+        !community.members.some(member => member.id === req.user?.id)) {
+      throw new ApiError('Not authorized to view this community', 403);
     }
 
     res.json({
@@ -127,8 +107,8 @@ export const getCommunity = async (
 };
 
 export const updateCommunity = async (
-  req: AuthRequest,
-  res: Response,
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<Community>>,
   next: NextFunction
 ) => {
   try {
@@ -146,11 +126,11 @@ export const updateCommunity = async (
     }
 
     const updateData: Partial<Community> = {
-      ...(req.body.name && { name: req.body.name }),
-      ...(req.body.description && { description: req.body.description }),
+      ...(req.body.name && { name: req.body.name.trim() }),
+      ...(req.body.description && { description: req.body.description.trim() }),
       ...(req.body.avatar && { avatar: req.body.avatar }),
       ...(req.body.banner && { banner: req.body.banner }),
-      ...(req.body.settings && {
+      ...(req.body.settings && { 
         settings: {
           isPrivate: req.body.settings.isPrivate ?? community.settings.isPrivate,
           requiresApproval: req.body.settings.requiresApproval ?? community.settings.requiresApproval,
@@ -176,9 +156,149 @@ export const updateCommunity = async (
   }
 };
 
+export const joinCommunity = async (
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<Community>>,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const community = await DatabaseService.read<Community>(id);
+
+    if (!community) {
+      throw new ApiError('Community not found', 404);
+    }
+
+    // Check if user is already a member
+    if (community.members.some(member => member.id === req.user?.id)) {
+      throw new ApiError('Already a member of this community', 400);
+    }
+
+    // If community requires approval, create join request
+    if (community.settings.requiresApproval) {
+      const now = new Date().toISOString();
+      const joinRequest: Omit<JoinRequest, '_id' | '_rev'> = {
+        type: 'join_request',
+        communityId: id,
+        userId: req.user!.id,
+        message: req.body.message,
+        status: 'pending',
+        createdAt: now,
+        updatedAt: now
+      };
+
+      // Store join request in database
+      await DatabaseService.create({
+        ...joinRequest,
+        type: 'join_request'
+      });
+
+      // Notify admins about join request
+      const admins = community.members.filter(m => m.role === 'admin');
+      admins.forEach(admin => {
+        RealtimeService.getInstance().emitToUser(admin.id, 'join_request', joinRequest);
+      });
+
+    res.json({
+      success: true,
+      data: community
+    });
+      return;
+    }
+
+    // Add member directly if no approval required
+    const newMember: CommunityMember = {
+      id: req.user!.id,
+      name: req.user!.name,
+      avatar: req.user?.avatar,
+      role: 'member',
+      joinedAt: new Date().toISOString()
+    };
+
+    const updatedCommunity = await DatabaseService.update<Community>(id, {
+      members: [...community.members, newMember],
+      stats: {
+        ...community.stats,
+        memberCount: community.stats.memberCount + 1,
+        activeMembers: community.stats.activeMembers + 1
+      }
+    });
+
+    // Notify about new member
+    RealtimeService.getInstance().broadcastToRoom(id, 'member_joined', {
+      communityId: id,
+      member: newMember
+    });
+
+    res.json({
+      success: true,
+      data: updatedCommunity
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getCommunities = async (
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<Community[]>>,
+  next: NextFunction
+) => {
+  try {
+    const { filter = 'all' } = req.query;
+    let query: any = {
+      selector: {
+        type: 'community'
+      }
+    };
+
+    // Filter communities based on user's membership
+    if (filter === 'member') {
+      query.selector.members = {
+        $elemMatch: {
+          id: req.user?.id
+        }
+      };
+    } else if (filter === 'admin') {
+      query.selector.members = {
+        $elemMatch: {
+          id: req.user?.id,
+          role: 'admin'
+        }
+      };
+    } else {
+      // For 'all', only include public communities and ones user is member of
+      query = {
+        selector: {
+          type: 'community',
+          $or: [
+            { 'settings.isPrivate': false },
+            {
+              members: {
+                $elemMatch: {
+                  id: req.user?.id
+                }
+              }
+            }
+          ]
+        }
+      };
+    }
+
+    const communities = await DatabaseService.find<Community>(query);
+
+    res.json({
+      success: true,
+      data: communities
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const deleteCommunity = async (
-  req: AuthRequest,
-  res: Response,
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<{ message: string }>>,
   next: NextFunction
 ) => {
   try {
@@ -197,9 +317,6 @@ export const deleteCommunity = async (
 
     await DatabaseService.delete(id);
 
-    // Notify members about community deletion
-    RealtimeService.getInstance().broadcastToRoom(id, 'community_deleted', { id });
-
     res.json({
       success: true,
       data: { message: 'Community deleted successfully' }
@@ -209,16 +326,12 @@ export const deleteCommunity = async (
   }
 };
 
-export const joinCommunity = async (
-  req: AuthRequest,
-  res: Response,
+export const leaveCommunity = async (
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<Community>>,
   next: NextFunction
 ) => {
   try {
-    if (!req.user?.id) {
-      throw new ApiError('Unauthorized', 401);
-    }
-
     const { id } = req.params;
     const community = await DatabaseService.read<Community>(id);
 
@@ -226,31 +339,27 @@ export const joinCommunity = async (
       throw new ApiError('Community not found', 404);
     }
 
-    // Check if user is already a member
-    if (community.members.some(m => m.id === req.user?.id)) {
-      throw new ApiError('Already a member of this community', 400);
+    const memberIndex = community.members.findIndex(m => m.id === req.user?.id);
+    if (memberIndex === -1) {
+      throw new ApiError('Not a member of this community', 400);
     }
 
-    const newMember: CommunityMember = {
-      id: req.user.id,
-      name: req.user.name,
-      avatar: req.user.avatar,
-      role: 'member',
-      joinedAt: new Date().toISOString()
-    };
+    // Check if user is the only admin
+    if (community.members[memberIndex].role === 'admin' &&
+        community.members.filter(m => m.role === 'admin').length === 1) {
+      throw new ApiError('Cannot leave community as the only admin. Transfer ownership first.', 400);
+    }
+
+    const updatedMembers = [...community.members];
+    updatedMembers.splice(memberIndex, 1);
 
     const updatedCommunity = await DatabaseService.update<Community>(id, {
-      members: [...community.members, newMember],
+      members: updatedMembers,
       stats: {
         ...community.stats,
-        memberCount: community.stats.memberCount + 1
+        memberCount: community.stats.memberCount - 1,
+        activeMembers: community.stats.activeMembers - 1
       }
-    });
-
-    // Notify members about new member
-    RealtimeService.getInstance().broadcastToRoom(id, 'member_joined', {
-      communityId: id,
-      member: newMember
     });
 
     res.json({
@@ -262,54 +371,56 @@ export const joinCommunity = async (
   }
 };
 
-export const leaveCommunity = async (
-  req: AuthRequest,
-  res: Response,
+export const inviteMember = async (
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<CommunityInvite>>,
   next: NextFunction
 ) => {
   try {
-    if (!req.user?.id) {
-      throw new ApiError('Unauthorized', 401);
-    }
-
     const { id } = req.params;
+    const { userId } = req.body;
+
     const community = await DatabaseService.read<Community>(id);
 
     if (!community) {
       throw new ApiError('Community not found', 404);
     }
 
-    // Check if user is a member
-    if (!community.members.some(m => m.id === req.user?.id)) {
-      throw new ApiError('Not a member of this community', 400);
+    // Check if user has permission to invite
+    const member = community.members.find(m => m.id === req.user?.id);
+    if (!member || !['admin', 'moderator'].includes(member.role)) {
+      throw new ApiError('Not authorized to invite members', 403);
     }
 
-    // Check if user is the only admin
-    const isOnlyAdmin = 
-      community.members.find(m => m.id === req.user?.id)?.role === 'admin' &&
-      community.members.filter(m => m.role === 'admin').length === 1;
-
-    if (isOnlyAdmin) {
-      throw new ApiError('Cannot leave community as the only admin', 400);
-    }
-
-    const updatedCommunity = await DatabaseService.update<Community>(id, {
-      members: community.members.filter(m => m.id !== req.user?.id),
-      stats: {
-        ...community.stats,
-        memberCount: community.stats.memberCount - 1
-      }
-    });
-
-    // Notify members about member leaving
-    RealtimeService.getInstance().broadcastToRoom(id, 'member_left', {
+    // Create invite
+    const now = new Date().toISOString();
+    const invite: Omit<CommunityInvite, '_id' | '_rev'> = {
+      type: 'invite',
       communityId: id,
-      userId: req.user.id
+      inviterId: req.user!.id,
+      inviteeId: userId,
+      status: 'pending',
+      createdAt: now,
+      updatedAt: now,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+    };
+
+    const createdInvite = await DatabaseService.create<CommunityInvite>(invite);
+
+    // Notify invitee
+    RealtimeService.getInstance().emitToUser(userId, 'community_invite', {
+      invite: createdInvite,
+      community: {
+        id: community._id,
+        name: community.name,
+        description: community.description,
+        avatar: community.avatar
+      }
     });
 
     res.json({
       success: true,
-      data: updatedCommunity
+      data: createdInvite
     });
   } catch (error) {
     next(error);

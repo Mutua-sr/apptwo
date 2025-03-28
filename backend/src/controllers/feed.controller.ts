@@ -1,15 +1,18 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { DatabaseService } from '../services/database';
 import { RealtimeService } from '../services/realtime.service';
 import { ApiError } from '../middleware/errorHandler';
-import { AuthRequest } from '../types';
-import { Post, CreatePost, UpdatePost, Comment } from '../types/feed';
+import { AuthRequest, ApiResponse } from '../types';
+import { Post, UpdatePost, Comment } from '../types/feed';
 import { Classroom } from '../types/classroom';
 import { Community } from '../types/community';
+import logger from '../config/logger';
+
+type AuthenticatedRequest = Request & AuthRequest;
 
 export const getPosts = async (
-  req: AuthRequest,
-  res: Response,
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<Post[]>>,
   next: NextFunction
 ) => {
   try {
@@ -35,8 +38,8 @@ export const getPosts = async (
 };
 
 export const getPost = async (
-  req: AuthRequest,
-  res: Response,
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<Post>>,
   next: NextFunction
 ) => {
   try {
@@ -57,8 +60,8 @@ export const getPost = async (
 };
 
 export const createPost = async (
-  req: AuthRequest,
-  res: Response,
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<Post>>,
   next: NextFunction
 ) => {
   try {
@@ -66,25 +69,41 @@ export const createPost = async (
       throw new ApiError('Unauthorized', 401);
     }
 
-    console.log('Incoming request data:', req.body); // Log the incoming request data
-    const postData: CreatePost = {
+    // Validate required fields
+    if (!req.body.title?.trim()) {
+      throw new ApiError('Title is required', 400);
+    }
+    if (!req.body.content?.trim()) {
+      throw new ApiError('Content is required', 400);
+    }
+
+    // Validate status
+    const status = req.body.status === 'draft' ? 'draft' : 'published';
+    const visibility = req.body.visibility || 'public';
+
+    const postData: Omit<Post, '_id' | '_rev' | 'createdAt' | 'updatedAt'> = {
       type: 'post',
-      title: req.body.title,
-      content: req.body.content,
-      tags: req.body.tags || [],
+      title: req.body.title.trim(),
+      content: req.body.content.trim(),
+      tags: Array.isArray(req.body.tags) ? req.body.tags.filter(Boolean) : [],
       author: {
         id: req.user.id,
         username: req.user.name,
         avatar: req.user.avatar
-      }
-    };
-
-    const post = await DatabaseService.create<Post>({
-      ...postData,
+      },
+      imageUrl: req.body.imageUrl,
+      status,
+      visibility: visibility as 'public' | 'private' | 'shared',
       likes: 0,
       comments: [],
       likedBy: []
-    });
+    };
+
+    // Create post
+    const post = await DatabaseService.create<Post>(postData);
+
+    // Log the creation
+    logger.info(`Post created: ${post._id} by user ${req.user.id}`);
 
     // Notify followers or relevant users about the new post
     RealtimeService.getInstance().broadcastToRoom('feed', 'new_post', post);
@@ -94,13 +113,14 @@ export const createPost = async (
       data: post
     });
   } catch (error) {
+    logger.error('Error creating post:', error);
     next(error);
   }
 };
 
 export const updatePost = async (
-  req: AuthRequest,
-  res: Response,
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<Post>>,
   next: NextFunction
 ) => {
   try {
@@ -115,11 +135,18 @@ export const updatePost = async (
       throw new ApiError('Not authorized to update this post', 403);
     }
 
+    // Validate status if provided
+    const status = req.body.status === 'draft' ? 'draft' : 'published';
+    const visibility = req.body.visibility || post.visibility;
+
     const updateData: UpdatePost = {
-      ...(req.body.title && { title: req.body.title }),
-      ...(req.body.content && { content: req.body.content }),
+      ...(req.body.title && { title: req.body.title.trim() }),
+      ...(req.body.content && { content: req.body.content.trim() }),
       ...(req.body.tags && { tags: req.body.tags }),
-      ...(req.body.sharedTo && { sharedTo: req.body.sharedTo })
+      ...(req.body.sharedTo && { sharedTo: req.body.sharedTo }),
+      ...(req.body.status && { status }),
+      ...(req.body.visibility && { visibility: visibility as 'public' | 'private' | 'shared' }),
+      ...(req.body.imageUrl && { imageUrl: req.body.imageUrl })
     };
 
     const updatedPost = await DatabaseService.update<Post>(id, updateData);
@@ -137,8 +164,8 @@ export const updatePost = async (
 };
 
 export const deletePost = async (
-  req: AuthRequest,
-  res: Response,
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<{ message: string }>>,
   next: NextFunction
 ) => {
   try {
@@ -168,8 +195,8 @@ export const deletePost = async (
 };
 
 export const likePost = async (
-  req: AuthRequest,
-  res: Response,
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<Post>>,
   next: NextFunction
 ) => {
   try {
@@ -211,8 +238,8 @@ export const likePost = async (
 };
 
 export const unlikePost = async (
-  req: AuthRequest,
-  res: Response,
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<Post>>,
   next: NextFunction
 ) => {
   try {
@@ -254,8 +281,8 @@ export const unlikePost = async (
 };
 
 export const addComment = async (
-  req: AuthRequest,
-  res: Response,
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<Post>>,
   next: NextFunction
 ) => {
   try {
@@ -299,8 +326,8 @@ export const addComment = async (
 };
 
 export const sharePost = async (
-  req: AuthRequest,
-  res: Response,
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<Post>>,
   next: NextFunction
 ) => {
   try {

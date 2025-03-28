@@ -1,44 +1,51 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { DatabaseService } from '../services/database';
-import { RealtimeService } from '../services/realtime.service';
 import { ApiError } from '../middleware/errorHandler';
-import { AuthRequest } from '../types';
-import { UserProfile, Activity, Notification, MediaUpload } from '../types/profile';
-import { v4 as uuidv4 } from 'uuid';
-import { Request } from 'express';
+import { AuthRequest, ApiResponse } from '../types';
+import { 
+  UserProfile, 
+  Activity, 
+  Notification, 
+  MediaUpload,
+  FileUploadRequest,
+  FileUploadResponse 
+} from '../types/profile';
+import logger from '../config/logger';
 
-// Use the built-in Express.Multer.File type
-interface MulterRequest extends Request {
-  file?: Express.Multer.File;
-}
+type AuthenticatedRequest = Request & AuthRequest;
 
 export const getProfile = async (
-  req: AuthRequest,
-  res: Response,
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<UserProfile>>,
   next: NextFunction
 ) => {
   try {
-    const { userId } = req.params;
+    const { id } = req.params;
+    const profile = await DatabaseService.read<UserProfile>(id);
 
-    // Check if requesting own profile or has permission
-    if (userId !== req.user?.id && req.user?.role !== 'admin') {
-      throw new ApiError('Not authorized to access this profile', 403);
+    if (!profile) {
+      throw new ApiError('Profile not found', 404);
     }
 
-    const profile = await DatabaseService.find<UserProfile>({
-      selector: {
-        type: 'profile',
-        userId
+    // Create a sanitized copy of the profile based on privacy settings
+    const sanitizedProfile = { ...profile };
+    if (profile.userId !== req.user?.id) {
+      if (!profile.settings.privacy.showEmail) {
+        sanitizedProfile.email = '';
       }
-    });
-
-    if (!profile.length) {
-      throw new ApiError('Profile not found', 404);
+      if (!profile.settings.privacy.showActivity) {
+        sanitizedProfile.stats = {
+          posts: 0,
+          communities: 0,
+          classrooms: 0,
+          lastActive: ''
+        };
+      }
     }
 
     res.json({
       success: true,
-      data: profile[0]
+      data: profile
     });
   } catch (error) {
     next(error);
@@ -46,142 +53,89 @@ export const getProfile = async (
 };
 
 export const updateProfile = async (
-  req: AuthRequest,
-  res: Response,
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<UserProfile>>,
   next: NextFunction
 ) => {
   try {
-    const { userId } = req.params;
+    const { id } = req.params;
+    const profile = await DatabaseService.read<UserProfile>(id);
 
-    // Check if updating own profile
-    if (userId !== req.user?.id) {
-      throw new ApiError('Not authorized to update this profile', 403);
-    }
-
-    const profile = await DatabaseService.find<UserProfile>({
-      selector: {
-        type: 'profile',
-        userId
-      }
-    });
-
-    if (!profile.length) {
+    if (!profile) {
       throw new ApiError('Profile not found', 404);
     }
 
+    // Only allow users to update their own profile
+    if (profile.userId !== req.user?.id) {
+      throw new ApiError('Not authorized to update this profile', 403);
+    }
+
     const updateData: Partial<UserProfile> = {
-      ...(req.body.username && { username: req.body.username }),
-      ...(req.body.name && { name: req.body.name }),
+      ...(req.body.username && { username: req.body.username.trim() }),
+      ...(req.body.name && { name: req.body.name.trim() }),
       ...(req.body.avatar && { avatar: req.body.avatar }),
-      ...(req.body.bio && { bio: req.body.bio }),
+      ...(req.body.bio && { bio: req.body.bio.trim() }),
       ...(req.body.settings && {
         settings: {
-          ...profile[0].settings,
+          ...profile.settings,
           ...req.body.settings,
           notifications: {
-            ...profile[0].settings.notifications,
-            ...req.body.settings?.notifications
+            ...profile.settings.notifications,
+            ...req.body.settings.notifications
           },
           privacy: {
-            ...profile[0].settings.privacy,
-            ...req.body.settings?.privacy
+            ...profile.settings.privacy,
+            ...req.body.settings.privacy
           }
         }
       }),
-      ...(req.body.social && { social: { ...profile[0].social, ...req.body.social } }),
+      ...(req.body.social && {
+        social: {
+          ...profile.social,
+          ...req.body.social
+        }
+      }),
       ...(req.body.education && { education: req.body.education }),
       ...(req.body.skills && { skills: req.body.skills }),
       ...(req.body.interests && { interests: req.body.interests })
     };
 
-    const updatedProfile = await DatabaseService.update<UserProfile>(profile[0]._id, updateData);
+    const updatedProfile = await DatabaseService.update<UserProfile>(id, updateData);
 
-    // Notify about profile update
-    RealtimeService.getInstance().emitToUser(userId, 'profile_updated', updatedProfile);
+    if (!req.user?.id) {
+      throw new ApiError('Unauthorized', 401);
+    }
+
+    logger.info(`Profile updated: ${id} by user ${req.user.id}`);
 
     res.json({
       success: true,
       data: updatedProfile
     });
   } catch (error) {
-    next(error);
-  }
-};
-
-export const uploadMedia = async (
-  req: MulterRequest & AuthRequest,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    if (!req.file) {
-      throw new ApiError('No file uploaded', 400);
-    }
-
-    const { mimetype, size, originalname } = req.file;
-    const userId = req.user?.id;
-
-    if (!userId) {
-      throw new ApiError('Unauthorized', 401);
-    }
-
-    // TODO: Implement actual file upload to cloud storage
-    const uploadResult = {
-      url: `https://storage.example.com/${userId}/${uuidv4()}/${originalname}`,
-      thumbnailUrl: mimetype.startsWith('image/') ? 
-        `https://storage.example.com/${userId}/${uuidv4()}/${originalname}_thumb` : 
-        undefined
-    };
-
-    const mediaUpload: Omit<MediaUpload, '_id' | '_rev' | 'createdAt' | 'updatedAt'> = {
-      type: 'media',
-      userId,
-      mediaType: mimetype.startsWith('image/') ? 'image' : 
-                 mimetype.startsWith('video/') ? 'video' : 'document',
-      filename: originalname,
-      url: uploadResult.url,
-      thumbnailUrl: uploadResult.thumbnailUrl,
-      size,
-      mimeType: mimetype,
-      metadata: {
-        // TODO: Extract metadata based on file type
-      },
-      uploadedAt: new Date().toISOString()
-    };
-
-    const savedMedia = await DatabaseService.create<MediaUpload>(mediaUpload);
-
-    res.json({
-      success: true,
-      data: savedMedia
-    });
-  } catch (error) {
+    logger.error('Error updating profile:', error);
     next(error);
   }
 };
 
 export const getActivities = async (
-  req: AuthRequest,
-  res: Response,
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<Activity[]>>,
   next: NextFunction
 ) => {
   try {
     const { userId } = req.params;
-    const { page = 1, limit = 20 } = req.query;
-
-    // Check if requesting own activities or has permission
-    if (userId !== req.user?.id && req.user?.role !== 'admin') {
-      throw new ApiError('Not authorized to access these activities', 403);
-    }
+    const { page = 1, limit = 10 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
 
     const activities = await DatabaseService.find<Activity>({
       selector: {
         type: 'activity',
         userId
       },
-      skip: (Number(page) - 1) * Number(limit),
-      limit: Number(limit),
-      sort: [{ timestamp: 'desc' } as { [key: string]: 'desc' | 'asc' }]
+      sort: [{ timestamp: 'desc' }],
+      skip,
+      limit: Number(limit)
     });
 
     res.json({
@@ -194,26 +148,27 @@ export const getActivities = async (
 };
 
 export const getNotifications = async (
-  req: AuthRequest,
-  res: Response,
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<Notification[]>>,
   next: NextFunction
 ) => {
   try {
-    const userId = req.user?.id;
-    const { page = 1, limit = 20 } = req.query;
+    const { page = 1, limit = 10, unreadOnly = false } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
 
-    if (!userId) {
+    if (!req.user?.id) {
       throw new ApiError('Unauthorized', 401);
     }
 
     const notifications = await DatabaseService.find<Notification>({
       selector: {
         type: 'notification',
-        userId
+        userId: req.user.id,
+        ...(unreadOnly && { read: false })
       },
-      skip: (Number(page) - 1) * Number(limit),
-      limit: Number(limit),
-      sort: [{ createdAt: 'desc' } as { [key: string]: 'desc' | 'asc' }]
+      sort: [{ createdAt: 'desc' }],
+      skip,
+      limit: Number(limit)
     });
 
     res.json({
@@ -225,30 +180,63 @@ export const getNotifications = async (
   }
 };
 
-export const markNotificationRead = async (
-  req: AuthRequest,
-  res: Response,
+export const markAllNotificationsRead = async (
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<{ message: string }>>,
   next: NextFunction
 ) => {
   try {
-    const { notificationId } = req.params;
-    const userId = req.user?.id;
-
-    if (!userId) {
+    if (!req.user?.id) {
       throw new ApiError('Unauthorized', 401);
     }
 
-    const notification = await DatabaseService.read<Notification>(notificationId);
+    // Find all unread notifications for the user
+    const notifications = await DatabaseService.find<Notification>({
+      selector: {
+        type: 'notification',
+        userId: req.user.id,
+        read: false
+      }
+    });
+
+    // Update all notifications to read
+    const now = new Date().toISOString();
+    await Promise.all(
+      notifications.map(notification =>
+        DatabaseService.update<Notification>(notification._id, {
+          read: true,
+          readAt: now
+        })
+      )
+    );
+
+    res.json({
+      success: true,
+      data: { message: 'All notifications marked as read' }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const markNotificationRead = async (
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<Notification>>,
+  next: NextFunction
+) => {
+  try {
+    const { id } = req.params;
+    const notification = await DatabaseService.read<Notification>(id);
 
     if (!notification) {
       throw new ApiError('Notification not found', 404);
     }
 
-    if (notification.userId !== userId) {
+    if (notification.userId !== req.user?.id) {
       throw new ApiError('Not authorized to update this notification', 403);
     }
 
-    const updatedNotification = await DatabaseService.update<Notification>(notificationId, {
+    const updatedNotification = await DatabaseService.update<Notification>(id, {
       read: true,
       readAt: new Date().toISOString()
     });
@@ -262,41 +250,70 @@ export const markNotificationRead = async (
   }
 };
 
-export const markAllNotificationsRead = async (
-  req: AuthRequest,
-  res: Response,
+export const uploadMedia = async (
+  req: AuthenticatedRequest,
+  res: Response<FileUploadResponse>,
   next: NextFunction
 ) => {
   try {
-    const userId = req.user?.id;
+    if (!req.file) {
+      throw new ApiError('No file uploaded', 400);
+    }
 
-    if (!userId) {
+    const uploadRequest: FileUploadRequest = {
+      file: req.file,
+      userId: req.user!.id,
+      type: req.body.type,
+      metadata: req.body.metadata
+    };
+
+    // Process file upload and get URL
+    const fileUrl = await processFileUpload(uploadRequest);
+
+    const now = new Date().toISOString();
+    const mediaUpload: Omit<MediaUpload, '_id' | '_rev'> = {
+      type: 'media',
+      userId: req.user!.id,
+      mediaType: getMediaType(req.file.mimetype),
+      filename: req.file.originalname,
+      url: fileUrl,
+      thumbnailUrl: req.body.type === 'avatar' ? fileUrl : undefined,
+      size: req.file.size,
+      mimeType: req.file.mimetype,
+      metadata: req.body.metadata,
+      uploadedAt: now,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    if (!req.user?.id) {
       throw new ApiError('Unauthorized', 401);
     }
 
-    const notifications = await DatabaseService.find<Notification>({
-      selector: {
-        type: 'notification',
-        userId,
-        read: false
-      }
-    });
+    const upload = await DatabaseService.create<MediaUpload>(mediaUpload);
 
-    const timestamp = new Date().toISOString();
-    const updatePromises = notifications.map(notification =>
-      DatabaseService.update<Notification>(notification._id, {
-        read: true,
-        readAt: timestamp
-      })
-    );
-
-    await Promise.all(updatePromises);
+    logger.info(`Media uploaded: ${upload._id} by user ${req.user?.id}`);
 
     res.json({
       success: true,
-      data: { message: 'All notifications marked as read' }
+      data: upload
     });
   } catch (error) {
+    logger.error('Error uploading media:', error);
     next(error);
   }
+};
+
+// Helper function to process file upload
+const processFileUpload = async (request: FileUploadRequest): Promise<string> => {
+  // Implementation would depend on your file storage solution (S3, local, etc.)
+  // For now, return a mock URL
+  return `https://storage.example.com/${request.userId}/${request.file.filename}`;
+};
+
+// Helper function to determine media type
+const getMediaType = (mimeType: string): 'image' | 'document' | 'video' => {
+  if (mimeType.startsWith('image/')) return 'image';
+  if (mimeType.startsWith('video/')) return 'video';
+  return 'document';
 };
