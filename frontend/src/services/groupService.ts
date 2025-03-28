@@ -8,7 +8,7 @@ export const groupService = {
   createClassroom: async (data: CreateClassroomData): Promise<Classroom> => {
     try {
       const response = await axios.post(`${API_BASE_URL}/classrooms`, data);
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error('Error creating classroom:', error);
       throw error;
@@ -18,7 +18,7 @@ export const groupService = {
   getClassroom: async (classroomId: string): Promise<Classroom> => {
     try {
       const response = await axios.get(`${API_BASE_URL}/classrooms/${classroomId}`);
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error('Error fetching classroom:', error);
       throw error;
@@ -31,7 +31,7 @@ export const groupService = {
         ? `${API_BASE_URL}/classrooms?userId=${userId}`
         : `${API_BASE_URL}/classrooms`;
       const response = await axios.get(url);
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error('Error fetching classrooms:', error);
       throw error;
@@ -41,7 +41,7 @@ export const groupService = {
   updateClassroom: async (classroomId: string, data: UpdateClassroomData): Promise<Classroom> => {
     try {
       const response = await axios.put(`${API_BASE_URL}/classrooms/${classroomId}`, data);
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error('Error updating classroom:', error);
       throw error;
@@ -61,7 +61,7 @@ export const groupService = {
   createCommunity: async (data: CreateCommunityData): Promise<Community> => {
     try {
       const response = await axios.post(`${API_BASE_URL}/communities`, data);
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error('Error creating community:', error);
       throw error;
@@ -71,7 +71,7 @@ export const groupService = {
   getCommunity: async (communityId: string): Promise<Community> => {
     try {
       const response = await axios.get(`${API_BASE_URL}/communities/${communityId}`);
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error('Error fetching community:', error);
       throw error;
@@ -84,7 +84,7 @@ export const groupService = {
         ? `${API_BASE_URL}/communities?userId=${userId}`
         : `${API_BASE_URL}/communities`;
       const response = await axios.get(url);
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error('Error fetching communities:', error);
       throw error;
@@ -94,7 +94,7 @@ export const groupService = {
   updateCommunity: async (communityId: string, data: UpdateCommunityData): Promise<Community> => {
     try {
       const response = await axios.put(`${API_BASE_URL}/communities/${communityId}`, data);
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error('Error updating community:', error);
       throw error;
@@ -132,7 +132,7 @@ export const groupService = {
   getMembers: async (groupId: string, groupType: 'classroom' | 'community'): Promise<string[]> => {
     try {
       const response = await axios.get(`${API_BASE_URL}/${groupType}s/${groupId}/members`);
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error(`Error fetching ${groupType} members:`, error);
       throw error;
