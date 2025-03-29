@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { postService } from '../../services/postService';
-import { Post } from '../../types/api';
+import { Post } from '../../types/feed';
 import { EditPost } from './EditPost';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -51,7 +51,7 @@ export const PostList: React.FC<PostListProps> = ({
 
     try {
       await postService.deletePost(postId);
-      setPosts(posts.filter(post => post._id !== postId));
+      setPosts(posts.filter(post => post.id !== postId));
       onRefresh?.();
     } catch (err: any) {
       setError(err.message || 'Failed to delete post');
@@ -62,7 +62,7 @@ export const PostList: React.FC<PostListProps> = ({
     if (!currentUser) return;
 
     try {
-      const post = posts.find(p => p._id === postId);
+      const post = posts.find(p => p.id === postId);
       if (!post) return;
 
       const isLiked = post.likedBy?.includes(currentUser.id);
@@ -71,7 +71,7 @@ export const PostList: React.FC<PostListProps> = ({
         : await postService.likePost(postId);
       
       setPosts(posts.map(post => 
-        post._id === postId ? updatedPost : post
+        post.id === postId ? updatedPost : post
       ));
     } catch (err: any) {
       setError(err.message || 'Failed to update like status');
@@ -79,9 +79,9 @@ export const PostList: React.FC<PostListProps> = ({
   };
 
   const handlePostUpdated = (updatedPost: Post) => {
-    setPosts(posts.map(post => 
-      post._id === updatedPost._id ? updatedPost : post
-    ));
+    setPosts(prevPosts => 
+      prevPosts.map(post => post.id === updatedPost.id ? updatedPost : post)
+    );
     setEditingPost(null);
     onRefresh?.();
   };
@@ -113,8 +113,8 @@ export const PostList: React.FC<PostListProps> = ({
   return (
     <div className={`space-y-6 ${className}`}>
       {posts.map(post => (
-        <div key={post._id} className="bg-white rounded-lg shadow p-6">
-          {editingPost?._id === post._id ? (
+        <div key={post.id} className="bg-white rounded-lg shadow p-6">
+          {editingPost?.id === post.id ? (
             <EditPost
               post={post}
               onPostUpdated={handlePostUpdated}
@@ -132,7 +132,7 @@ export const PostList: React.FC<PostListProps> = ({
                     <i className="fas fa-edit"></i>
                   </button>
                   <button
-                    onClick={() => handleDelete(post._id)}
+                    onClick={() => handleDelete(post.id)}
                     className="text-gray-400 hover:text-red-500 transition-colors"
                   >
                     <i className="fas fa-trash"></i>
@@ -143,7 +143,7 @@ export const PostList: React.FC<PostListProps> = ({
               <div className="mt-4 flex justify-between items-center text-sm text-gray-500">
                 <div>
                   <button
-                    onClick={() => handleLike(post._id)}
+                    onClick={() => handleLike(post.id)}
                     className={`flex items-center space-x-1 ${
                       post.likedBy?.includes(currentUser?.id || '') 
                         ? 'text-blue-500' 

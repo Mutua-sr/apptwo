@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { ApiError } from './errorHandler';
 import { AuthRequest, UserRole } from '../types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || 's3cureR@nd0mStr1ngF0rJWT';
 
 export const auth = async (
   req: AuthRequest,

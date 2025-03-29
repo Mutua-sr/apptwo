@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { postService } from '../../services/postService';
-import { CreatePostData } from '../../types/api';
+import { PostInput } from '../../types/feed';
 
 interface CreatePostProps {
   onPostCreated?: () => void;
@@ -24,9 +24,10 @@ export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated, className
       setIsSubmitting(true);
       setError(null);
 
-      const postData: CreatePostData = {
+      const postData: PostInput = {
         title: title.trim(),
-        content: content.trim()
+        content: content.trim(),
+        tags: [] // Add empty tags array to match PostInput type
       };
 
       await postService.createPost(postData);

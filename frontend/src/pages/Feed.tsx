@@ -33,7 +33,10 @@ const Feed: React.FC = () => {
 
     setLoading(true);
     try {
-      const fetchedPosts = await postService.getPosts(currentPage, POSTS_PER_PAGE);
+      const fetchedPosts = await postService.getPosts({
+        page: currentPage,
+        limit: POSTS_PER_PAGE
+      });
       setPosts(prevPosts => currentPage === 1 ? fetchedPosts : [...prevPosts, ...fetchedPosts]);
     } catch (error) {
       console.error('Error loading posts:', error);
@@ -72,10 +75,7 @@ const Feed: React.FC = () => {
 
     try {
       const updatedPost = await postService.addComment(postId, {
-        author: currentUser.name,
-        content: commentText,
-        avatar: currentUser.avatar,
-        likes: 0
+        content: commentText
       });
 
       setPosts(prevPosts =>
@@ -113,7 +113,10 @@ const Feed: React.FC = () => {
 
     try {
       setLoading(true);
-      const searchResults = await postService.searchPosts(searchQuery, 1, POSTS_PER_PAGE);
+      const searchResults = await postService.searchPosts(searchQuery, {
+        page: 1,
+        limit: POSTS_PER_PAGE
+      });
       setPosts(searchResults);
     } catch (error) {
       console.error('Error searching posts:', error);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { postService } from '../../services/postService';
-import { Post, UpdatePostData } from '../../types/api';
+import { Post, PostUpdate } from '../../types/feed';
 
 interface EditPostProps {
   post: Post;
@@ -36,12 +36,12 @@ export const EditPost: React.FC<EditPostProps> = ({
       setIsSubmitting(true);
       setError(null);
 
-      const updateData: UpdatePostData = {
+      const updateData: PostUpdate = {
         title: title.trim(),
         content: content.trim()
       };
 
-      const updatedPost = await postService.updatePost(post._id, updateData);
+      const updatedPost = await postService.updatePost(post.id, updateData);
       
       // Notify parent component
       onPostUpdated?.(updatedPost);

@@ -52,6 +52,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const credentials: LoginCredentials = { email, password };
       const response = await apiService.auth.login(credentials);
       
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+    }
       setCurrentUser(response.data.user);
     } catch (err: any) {
       const errorMessage = apiService.handleError(err);
