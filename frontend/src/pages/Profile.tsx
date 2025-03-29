@@ -9,7 +9,7 @@ type SettingsSection = keyof Pick<UserProfile['settings'], 'notifications' | 'pr
 type SettingsKey = keyof (UserProfile['settings']['notifications'] | UserProfile['settings']['privacy']);
 type Settings = UserProfile['settings'];
 
-// Default settings
+// Default values
 const defaultSettings: Settings = {
   notifications: { email: false, push: false, inApp: false },
   privacy: { showEmail: false, showActivity: false, allowMessages: false },
@@ -17,10 +17,17 @@ const defaultSettings: Settings = {
   language: 'en'
 };
 
+const defaultStats = {
+  posts: 0,
+  communities: 0,
+  classrooms: 0,
+  lastActive: new Date().toISOString()
+};
+
 interface ProfileProps {}
 
 const Profile: React.FC<ProfileProps> = () => {
-  const { currentUser, isAuthenticated } = useAuth();
+  const { currentUser, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -154,9 +161,9 @@ const Profile: React.FC<ProfileProps> = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white shadow-xl rounded-lg overflow-hidden">
+        <div className="bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100">
           {/* Profile Header */}
           <div className="relative h-48 bg-gradient-to-r from-blue-500 to-purple-600">
             <div className="absolute -bottom-16 left-8">
@@ -184,43 +191,65 @@ const Profile: React.FC<ProfileProps> = () => {
                 )}
               </div>
             </div>
-            <div className="absolute bottom-4 right-4">
+            <div className="absolute bottom-4 right-4 flex space-x-3">
               {!isEditing && (
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(true)}
-                  className="bg-white text-blue-600 px-4 py-2 rounded-lg shadow hover:bg-blue-50 transition-colors"
-                >
-                  <i className="fas fa-edit mr-2"></i>
-                  Edit Profile
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(true)}
+                    className="bg-white text-blue-600 px-4 py-2 rounded-lg shadow hover:bg-blue-50 transition-colors flex items-center"
+                  >
+                    <i className="fas fa-edit mr-2"></i>
+                    Edit Profile
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await logout();
+                        navigate('/login');
+                      } catch (err) {
+                        setError('Failed to logout');
+                      }
+                    }}
+                    className="bg-red-600 text-white px-4 py-2 rounded-lg shadow hover:bg-red-700 transition-colors flex items-center"
+                  >
+                    <i className="fas fa-sign-out-alt mr-2"></i>
+                    Logout
+                  </button>
+                </>
               )}
             </div>
           </div>
 
           {/* Profile Content */}
-          <div className="pt-20 pb-8 px-8">
+          <div className="pt-20 pb-8 px-8 bg-white rounded-b-lg shadow-inner">
             <form onSubmit={handleSubmit} className="space-y-6">
               {isEditing && (
                 <div className="flex justify-end space-x-2 mb-4">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditing(false)}
-                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg shadow hover:bg-gray-300 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition-colors"
-                  >
-                    Save Changes
-                  </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg shadow hover:bg-gray-300 transition-colors flex items-center"
+                >
+                  <i className="fas fa-times mr-2"></i>
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition-colors flex items-center"
+                >
+                  <i className="fas fa-check mr-2"></i>
+                  Save Changes
+                </button>
                 </div>
               )}
               {/* Basic Information */}
-              <div className="space-y-4">
-                <h2 className="text-2xl font-bold text-gray-900">Basic Information</h2>
+              <div className="space-y-4 bg-gray-50 p-6 rounded-xl shadow-inner">
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                  <i className="fas fa-user mr-3 text-blue-600"></i>
+                  Basic Information
+                </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Name</label>
@@ -230,7 +259,7 @@ const Profile: React.FC<ProfileProps> = () => {
                       defaultValue={profile?.name}
                       onChange={handleInputChange}
                       disabled={!isEditing}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white transition-shadow hover:shadow-md"
                     />
                   </div>
                   <div>
@@ -241,7 +270,7 @@ const Profile: React.FC<ProfileProps> = () => {
                       defaultValue={profile?.username}
                       onChange={handleInputChange}
                       disabled={!isEditing}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white transition-shadow hover:shadow-md"
                     />
                   </div>
                 </div>
@@ -253,14 +282,17 @@ const Profile: React.FC<ProfileProps> = () => {
                     defaultValue={profile?.bio}
                     onChange={handleInputChange}
                     disabled={!isEditing}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white transition-shadow hover:shadow-md resize-none"
                   />
                 </div>
               </div>
 
               {/* Social Links */}
-              <div className="space-y-4">
-                <h2 className="text-2xl font-bold text-gray-900">Social Links</h2>
+              <div className="space-y-4 bg-gray-50 p-6 rounded-xl shadow-inner">
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                  <i className="fas fa-share-nodes mr-3 text-blue-600"></i>
+                  Social Links
+                </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">
@@ -272,7 +304,8 @@ const Profile: React.FC<ProfileProps> = () => {
                       defaultValue={profile?.social?.github}
                       onChange={(e) => handleInputChange(e, 'social')}
                       disabled={!isEditing}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white transition-shadow hover:shadow-md"
+                      placeholder="Your GitHub profile URL"
                     />
                   </div>
                   <div>
@@ -285,35 +318,48 @@ const Profile: React.FC<ProfileProps> = () => {
                       defaultValue={profile?.social?.linkedin}
                       onChange={(e) => handleInputChange(e, 'social')}
                       disabled={!isEditing}
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                      className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white transition-shadow hover:shadow-md"
+                      placeholder="Your LinkedIn profile URL"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Stats */}
-              <div className="space-y-4">
-                <h2 className="text-2xl font-bold text-gray-900">Activity</h2>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-gray-50 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-blue-600">{profile?.stats.posts}</div>
-                    <div className="text-sm text-gray-500">Posts</div>
+              <div className="space-y-4 bg-gray-50 p-6 rounded-xl shadow-inner">
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                  <i className="fas fa-chart-line mr-3 text-blue-600"></i>
+                  Activity
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 text-center transform hover:-translate-y-1">
+                    <div className="text-3xl font-bold text-blue-600">{profile?.stats?.posts ?? defaultStats.posts}</div>
+                    <div className="text-sm font-medium text-gray-600 mt-2">
+                      <i className="fas fa-pen-to-square mr-2"></i>Posts
+                    </div>
                   </div>
-                  <div className="bg-gray-50 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-blue-600">{profile?.stats.communities}</div>
-                    <div className="text-sm text-gray-500">Communities</div>
+                  <div className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 text-center transform hover:-translate-y-1">
+                    <div className="text-3xl font-bold text-purple-600">{profile?.stats?.communities ?? defaultStats.communities}</div>
+                    <div className="text-sm font-medium text-gray-600 mt-2">
+                      <i className="fas fa-users mr-2"></i>Communities
+                    </div>
                   </div>
-                  <div className="bg-gray-50 p-4 rounded-lg text-center">
-                    <div className="text-2xl font-bold text-blue-600">{profile?.stats.classrooms}</div>
-                    <div className="text-sm text-gray-500">Classrooms</div>
+                  <div className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 text-center transform hover:-translate-y-1">
+                    <div className="text-3xl font-bold text-indigo-600">{profile?.stats?.classrooms ?? defaultStats.classrooms}</div>
+                    <div className="text-sm font-medium text-gray-600 mt-2">
+                      <i className="fas fa-chalkboard-user mr-2"></i>Classrooms
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Settings */}
               {isEditing && (
-                <div className="space-y-4">
-                  <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
+                <div className="space-y-4 bg-gray-50 p-6 rounded-xl shadow-inner">
+                  <h2 className="text-2xl font-bold text-gray-900 flex items-center">
+                    <i className="fas fa-gear mr-3 text-blue-600"></i>
+                    Settings
+                  </h2>
                   <div className="space-y-4">
                     <div>
                       <h3 className="text-lg font-medium text-gray-900">Notifications</h3>
@@ -324,9 +370,9 @@ const Profile: React.FC<ProfileProps> = () => {
                             name="email"
                             checked={profile?.settings.notifications.email || false}
                             onChange={(e) => handleSettingsChange(e.target.name as SettingsKey, e.target.checked, 'notifications')}
-                            className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="w-5 h-5 rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 focus:ring-offset-0 transition-all duration-200 ease-in-out hover:border-blue-400"
                           />
-                          <span className="ml-2">Email Notifications</span>
+                          <span className="ml-3 text-gray-700">Email Notifications</span>
                         </label>
                         <label className="flex items-center">
                           <input
@@ -334,9 +380,9 @@ const Profile: React.FC<ProfileProps> = () => {
                             name="push"
                             checked={profile?.settings.notifications.push || false}
                             onChange={(e) => handleSettingsChange(e.target.name as SettingsKey, e.target.checked, 'notifications')}
-                            className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="w-5 h-5 rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 focus:ring-offset-0 transition-all duration-200 ease-in-out hover:border-blue-400"
                           />
-                          <span className="ml-2">Push Notifications</span>
+                          <span className="ml-3 text-gray-700">Push Notifications</span>
                         </label>
                       </div>
                     </div>
@@ -349,9 +395,9 @@ const Profile: React.FC<ProfileProps> = () => {
                             name="showEmail"
                             checked={profile?.settings.privacy.showEmail || false}
                             onChange={(e) => handleSettingsChange(e.target.name as SettingsKey, e.target.checked, 'privacy')}
-                            className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="w-5 h-5 rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 focus:ring-offset-0 transition-all duration-200 ease-in-out hover:border-blue-400"
                           />
-                          <span className="ml-2">Show Email</span>
+                          <span className="ml-3 text-gray-700">Show Email</span>
                         </label>
                         <label className="flex items-center">
                           <input
@@ -359,9 +405,9 @@ const Profile: React.FC<ProfileProps> = () => {
                             name="showActivity"
                             checked={profile?.settings.privacy.showActivity || false}
                             onChange={(e) => handleSettingsChange(e.target.name as SettingsKey, e.target.checked, 'privacy')}
-                            className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            className="w-5 h-5 rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500 focus:ring-offset-0 transition-all duration-200 ease-in-out hover:border-blue-400"
                           />
-                          <span className="ml-2">Show Activity</span>
+                          <span className="ml-3 text-gray-700">Show Activity</span>
                         </label>
                       </div>
                     </div>
