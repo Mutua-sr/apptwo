@@ -1,8 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, ChangeEvent, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { profileService } from '../services/profileService';
-import { UserProfile } from '../types/profile';
+import { UserProfile, UpdateProfileData } from '../types/profile';
 import { User } from '../types/api';
+
+type SettingsSection = 'notifications' | 'privacy';
+
+type SetUpdateDataType = React.Dispatch<React.SetStateAction<UpdateProfileData>>;
 
 const defaultSettings: UserProfile['settings'] = {
   notifications: { email: false, push: false, inApp: false },
@@ -17,7 +21,7 @@ const Profile: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [updateData, setUpdateData] = useState<Partial<UserProfile>>({
+  const [updateData, setUpdateData] = useState<UpdateProfileData>({
     settings: defaultSettings
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -56,9 +60,9 @@ const Profile: React.FC = () => {
   const handleSettingsChange = (
     name: string,
     value: boolean,
-    section: keyof UserProfile['settings']
+    section: SettingsSection
   ) => {
-    setUpdateData(prev => {
+    setUpdateData((prev: UpdateProfileData) => {
       const currentSettings = prev.settings || defaultSettings;
       if (section === 'notifications' || section === 'privacy') {
         return {
@@ -77,28 +81,28 @@ const Profile: React.FC = () => {
   };
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+    e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
     section?: string
   ) => {
     const { name, value } = e.target;
     
     if (section === 'social') {
-      setUpdateData(prev => ({
-        ...prev,
-        social: {
+    setUpdateData((prev: UpdateProfileData) => ({
+      ...prev,
+      social: {
           ...prev.social,
           [name]: value
         }
       }));
     } else {
-      setUpdateData(prev => ({
-        ...prev,
-        [name]: value
+    setUpdateData((prev: UpdateProfileData) => ({
+      ...prev,
+      [name]: value
       }));
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
@@ -107,7 +111,7 @@ const Profile: React.FC = () => {
           throw new Error('No profile ID found');
         }
         const imageUrl = await profileService.uploadProfileImage(currentUser.profileId, file);
-        setUpdateData(prev => ({
+        setUpdateData((prev: UpdateProfileData) => ({
           ...prev,
           avatar: imageUrl
         }));
@@ -117,7 +121,7 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     try {
       setLoading(true);
@@ -162,7 +166,7 @@ const Profile: React.FC = () => {
             <div className="absolute -bottom-16 left-8">
               <div className="relative">
                 <img
-                  src={profile?.avatar || 'https://via.placeholder.com/150'}
+                  src={profile?.avatar || 'https://placehold.co/150x150'}
                   alt={profile?.name}
                   className="w-32 h-32 rounded-full border-4 border-white shadow-lg object-cover"
                 />

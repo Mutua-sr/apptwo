@@ -1,18 +1,27 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { DatabaseService } from '../services/database';
 import { ApiError } from '../middleware/errorHandler';
-import { AuthRequest, ApiResponse, User } from '../types';
+import { AuthRequest, ApiResponse, User, AuthUser } from '../types';
 import logger from '../config/logger';
 import { 
   UserProfile, 
   Activity, 
   Notification, 
   MediaUpload,
-  FileUploadRequest,
   FileUploadResponse 
 } from '../types/profile';
 
-type AuthenticatedRequest = Request & AuthRequest;
+// Custom header function type that returns string | undefined
+type HeaderFunction = (name: string) => string | undefined;
+
+// Extend AuthRequest with required properties
+interface AuthenticatedRequest extends Omit<AuthRequest, 'header'> {
+  user?: AuthUser;
+  params: Record<string, string>;
+  query: Record<string, string | string[] | undefined>;
+  body: any;
+  header: HeaderFunction;
+}
 
 export const getProfile = async (
   req: AuthenticatedRequest,
@@ -283,13 +292,14 @@ export const markNotificationRead = async (
   }
 };
 
-import { Request } from 'express';
-
-interface MulterRequest extends Request {
+// Define custom request type for file uploads
+interface AuthenticatedMulterRequest extends Omit<AuthenticatedRequest, 'body'> {
   file?: Express.Multer.File;
+  body: {
+    type?: string;
+    metadata?: any;
+  };
 }
-
-interface AuthenticatedMulterRequest extends AuthenticatedRequest, MulterRequest {}
 
 export const uploadMedia = async (
   req: AuthenticatedMulterRequest,
@@ -322,10 +332,6 @@ export const uploadMedia = async (
       updatedAt: now
     };
 
-    if (!req.user?.id) {
-      throw new ApiError('Unauthorized', 401);
-    }
-
     const upload = await DatabaseService.create<MediaUpload>(mediaUpload);
 
     logger.info(`Media ${upload._id} uploaded by user ${req.user?.id}`);
@@ -338,13 +344,6 @@ export const uploadMedia = async (
     logger.error('Error uploading media:', error);
     next(error);
   }
-};
-
-// Helper function to process file upload
-const processFileUpload = async (request: FileUploadRequest): Promise<string> => {
-  // Implementation would depend on your file storage solution (S3, local, etc.)
-  // For now, return a mock URL
-  return `https://storage.example.com/${request.userId}/${request.file.filename}`;
 };
 
 // Helper function to determine media type
