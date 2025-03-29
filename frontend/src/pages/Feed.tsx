@@ -12,7 +12,7 @@ import {
   Search as SearchIcon,
   Add as AddIcon,
 } from '@mui/icons-material';
-import { Post } from '../types/api';
+import { Post } from '../types/feed';
 import { postService } from '../services/postService';
 import { PostCard } from '../components/feed/PostCard';
 import CreatePost from '../components/feed/CreatePost';
@@ -33,14 +33,11 @@ const Feed: React.FC = () => {
 
     setLoading(true);
     try {
-      const fetchedPosts = await postService.getPosts({
-        page: currentPage,
-        limit: POSTS_PER_PAGE
-      });
+      const fetchedPosts = await postService.getPosts(currentPage, POSTS_PER_PAGE);
       setPosts(prevPosts => currentPage === 1 ? fetchedPosts : [...prevPosts, ...fetchedPosts]);
     } catch (error) {
       console.error('Error loading posts:', error);
-      setError('Failed to load posts');
+      setError(error instanceof Error ? error.message : 'Failed to load posts');
     } finally {
       setLoading(false);
     }
@@ -54,7 +51,7 @@ const Feed: React.FC = () => {
     if (!currentUser) return;
 
     try {
-      const post = posts.find(p => p._id === postId);
+      const post = posts.find(p => p.id === postId);
       if (!post) return;
 
       const isLiked = post.likedBy?.includes(currentUser.id);
@@ -63,7 +60,7 @@ const Feed: React.FC = () => {
         : await postService.likePost(postId);
 
       setPosts(prevPosts => 
-        prevPosts.map(p => p._id === postId ? updatedPost : p)
+        prevPosts.map(p => p.id === postId ? updatedPost : p)
       );
     } catch (error) {
       console.error('Error updating like:', error);
@@ -77,24 +74,25 @@ const Feed: React.FC = () => {
       const updatedPost = await postService.addComment(postId, {
         author: currentUser.name,
         content: commentText,
-        avatar: currentUser.avatar
+        avatar: currentUser.avatar,
+        likes: 0
       });
 
       setPosts(prevPosts =>
-        prevPosts.map(p => p._id === postId ? updatedPost : p)
+        prevPosts.map(p => p.id === postId ? updatedPost : p)
       );
     } catch (error) {
       console.error('Error adding comment:', error);
     }
   };
 
-  const handleShare = async (postId: string, destination: { type: 'classroom' | 'community', id: string, name: string }) => {
+  const handleShare = async (postId: string, destination: NonNullable<Post['sharedTo']>) => {
     if (!currentUser) return;
 
     try {
       const updatedPost = await postService.sharePost(postId, destination);
       setPosts(prevPosts =>
-        prevPosts.map(p => p._id === postId ? updatedPost : p)
+        prevPosts.map(p => p.id === postId ? updatedPost : p)
       );
     } catch (error) {
       console.error('Error sharing post:', error);
@@ -115,11 +113,7 @@ const Feed: React.FC = () => {
 
     try {
       setLoading(true);
-      const searchResults = await postService.searchPosts({
-        q: searchQuery,
-        page: 1,
-        limit: POSTS_PER_PAGE
-      });
+      const searchResults = await postService.searchPosts(searchQuery, 1, POSTS_PER_PAGE);
       setPosts(searchResults);
     } catch (error) {
       console.error('Error searching posts:', error);
@@ -169,7 +163,7 @@ const Feed: React.FC = () => {
       ) : (
         posts.map(post => (
           <PostCard
-            key={post._id}
+            key={post.id}
             post={post}
             onLike={handleLike}
             onComment={handleComment}

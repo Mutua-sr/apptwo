@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import { PostInput } from '../../types/feed';
-import { DatabaseService } from '../../services/databaseService';
+import { postService } from '../../services/postService';
 
 interface CreatePostProps {
   open: boolean;
@@ -57,13 +57,12 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, onClose, onPostCreated })
         tags
       };
 
-      console.log('Post Input:', postInput); // Log the post input
-      const response = await DatabaseService.createPost(postInput);
+      await postService.createPost(postInput);
       onPostCreated();
       handleClose();
     } catch (error) {
       console.error('Error creating post:', error);
-      setError('Failed to create post. Please try again.');
+      setError(error instanceof Error ? error.message : 'Failed to create post. Please try again.');
     } finally {
       setLoading(false);
     }
