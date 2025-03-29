@@ -22,12 +22,19 @@ export const auth = async (
 
     const decoded = jwt.verify(token, JWT_SECRET) as {
       id: string;
+      profileId: string;
       email: string;
       name: string;
       role: UserRole;
     };
 
-    req.user = decoded;
+    req.user = {
+      id: decoded.id,
+      profileId: decoded.profileId,
+      email: decoded.email,
+      name: decoded.name,
+      role: decoded.role
+    };
     next();
   } catch (error) {
     const apiError = new Error('Please authenticate') as ApiError;

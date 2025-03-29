@@ -10,6 +10,7 @@ export interface ApiResponse<T> {
 // Auth Types
 export interface User {
   id: string;
+  profileId: string;
   email: string;
   name: string;
   role: string;

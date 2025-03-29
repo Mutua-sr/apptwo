@@ -17,10 +17,10 @@ router.post('/auth/login', authController.login);
 router.post('/auth/register', authController.register);
 
 // Profile routes
-router.get('/profile/:userId', auth, profileController.getProfile);
-router.put('/profile/:userId', auth, profileController.updateProfile);
+router.get('/profile/:id', auth, profileController.getProfile);
+router.put('/profile/:id', auth, profileController.updateProfile);
 router.post('/profile/media', auth, upload.single('file'), profileController.uploadMedia);
-router.get('/profile/:userId/activities', auth, profileController.getActivities);
+router.get('/profile/:id/activities', auth, profileController.getActivities);
 router.get('/profile/notifications', auth, profileController.getNotifications);
 router.put('/profile/notifications/:notificationId/read', auth, profileController.markNotificationRead);
 router.put('/profile/notifications/read-all', auth, profileController.markAllNotificationsRead);

@@ -22,9 +22,9 @@ api.interceptors.request.use((config) => {
 });
 
 export const profileService = {
-  getProfile: async (userId: string): Promise<UserProfile> => {
+  getProfile: async (profileId: string): Promise<UserProfile> => {
     try {
-      const response = await api.get(`/profile/${userId}`);
+      const response = await api.get(`/profile/${profileId}`);
       return response.data.data;
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -32,9 +32,9 @@ export const profileService = {
     }
   },
 
-  updateProfile: async (userId: string, profileData: Partial<UserProfile>): Promise<UserProfile> => {
+  updateProfile: async (profileId: string, profileData: Partial<UserProfile>): Promise<UserProfile> => {
     try {
-      const response = await api.put(`/profile/${userId}`, profileData);
+      const response = await api.put(`/profile/${profileId}`, profileData);
       return response.data.data;
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -42,7 +42,7 @@ export const profileService = {
     }
   },
 
-  uploadProfileImage: async (userId: string, imageFile: File): Promise<string> => {
+  uploadProfileImage: async (profileId: string, imageFile: File): Promise<string> => {
     try {
       const formData = new FormData();
       formData.append('file', imageFile);

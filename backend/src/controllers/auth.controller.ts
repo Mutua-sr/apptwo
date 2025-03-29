@@ -1,13 +1,29 @@
-import { Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { DatabaseService } from '../services/database';
 import { ApiError } from '../middleware/errorHandler';
-import { AuthRequest, User, CreateUser, UserRole } from '../types';
+import { User, CreateUser, UserRole } from '../types';
+import { UserProfile } from '../types/profile';
+
+interface AuthenticatedRequest extends Request {
+  body: {
+    email: string;
+    password: string;
+  };
+}
+
+interface RegisterRequest extends AuthenticatedRequest {
+  body: {
+    email: string;
+    password: string;
+    name: string;
+  };
+}
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 export const login = async (
-  req: AuthRequest,
+  req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ) => {
@@ -35,9 +51,53 @@ export const login = async (
       throw error;
     }
 
+    // Find or create profile
+    const profiles = await DatabaseService.find<any>({
+      selector: {
+        type: 'profile',
+        userId: user._id
+      }
+    });
+
+    let profile = profiles[0];
+    
+    if (!profile) {
+      // Create profile if it doesn't exist
+      const newProfileData: Omit<UserProfile, '_id' | '_rev' | 'createdAt' | 'updatedAt'> = {
+        type: 'profile',
+        userId: user._id,
+        username: email.split('@')[0],
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        settings: {
+          notifications: {
+            email: true,
+            push: true,
+            inApp: true
+          },
+          privacy: {
+            showEmail: false,
+            showActivity: true,
+            allowMessages: true
+          },
+          theme: 'light',
+          language: 'en'
+        },
+        stats: {
+          posts: 0,
+          communities: 0,
+          classrooms: 0,
+          lastActive: new Date().toISOString()
+        }
+      };
+      profile = await DatabaseService.create<UserProfile>(newProfileData);
+    }
+
     const token = jwt.sign(
       {
         id: user._id,
+        profileId: profile._id,
         email: user.email,
         name: user.name,
         role: user.role
@@ -52,10 +112,11 @@ export const login = async (
         token,
         user: {
           id: user._id,
+          profileId: profile._id,
           email: user.email,
           name: user.name,
           role: user.role,
-          avatar: user.avatar
+          avatar: profile.avatar
         }
       }
     });
@@ -65,7 +126,7 @@ export const login = async (
 };
 
 export const register = async (
-  req: AuthRequest,
+  req: RegisterRequest,
   res: Response,
   next: NextFunction
 ) => {
@@ -101,9 +162,42 @@ export const register = async (
 
     const user = await DatabaseService.create<User>(userData);
 
+    // Create associated profile document
+    const newProfileData: Omit<UserProfile, '_id' | '_rev' | 'createdAt' | 'updatedAt'> = {
+      type: 'profile',
+      userId: user._id,
+      username: email.split('@')[0],
+      email,
+      name,
+      role: UserRole.STUDENT,
+      settings: {
+        notifications: {
+          email: true,
+          push: true,
+          inApp: true
+        },
+        privacy: {
+          showEmail: false,
+          showActivity: true,
+          allowMessages: true
+        },
+        theme: 'light',
+        language: 'en'
+      },
+      stats: {
+        posts: 0,
+        communities: 0,
+        classrooms: 0,
+        lastActive: new Date().toISOString()
+      }
+    };
+
+    const profile = await DatabaseService.create<UserProfile>(newProfileData);
+
     const token = jwt.sign(
       {
         id: user._id,
+        profileId: profile._id,
         email: user.email,
         name: user.name,
         role: user.role
@@ -118,10 +212,11 @@ export const register = async (
         token,
         user: {
           id: user._id,
+          profileId: profile._id,
           email: user.email,
           name: user.name,
           role: user.role,
-          avatar: user.avatar
+          avatar: profile.avatar
         }
       }
     });

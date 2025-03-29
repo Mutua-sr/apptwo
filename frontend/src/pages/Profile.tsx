@@ -26,7 +26,7 @@ const Profile: React.FC = () => {
   const currentUser: User | null = JSON.parse(localStorage.getItem('user') || 'null');
 
   useEffect(() => {
-    if (!currentUser?.id) {
+    if (!currentUser?.id || !currentUser?.profileId) {
       navigate('/login');
       return;
     }
@@ -35,8 +35,11 @@ const Profile: React.FC = () => {
 
   const loadProfile = async () => {
     try {
+      if (!currentUser?.profileId) {
+        throw new Error('No profile ID found');
+      }
       setLoading(true);
-      const profileData = await profileService.getProfile(currentUser!.id);
+      const profileData = await profileService.getProfile(currentUser.profileId);
       setProfile(profileData);
       // Initialize updateData with current profile settings
       setUpdateData({
@@ -100,7 +103,10 @@ const Profile: React.FC = () => {
     if (file) {
       setSelectedFile(file);
       try {
-        const imageUrl = await profileService.uploadProfileImage(currentUser!.id, file);
+        if (!currentUser?.profileId) {
+          throw new Error('No profile ID found');
+        }
+        const imageUrl = await profileService.uploadProfileImage(currentUser.profileId, file);
         setUpdateData(prev => ({
           ...prev,
           avatar: imageUrl
@@ -115,7 +121,10 @@ const Profile: React.FC = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      const updatedProfile = await profileService.updateProfile(currentUser!.id, updateData);
+      if (!currentUser?.profileId) {
+        throw new Error('No profile ID found');
+      }
+      const updatedProfile = await profileService.updateProfile(currentUser.profileId, updateData);
       setProfile(updatedProfile);
       setIsEditing(false);
       setError(null);
