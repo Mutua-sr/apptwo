@@ -9,7 +9,7 @@ import {
   SearchQuery 
 } from '../types/api';
 
-const API_BASE_URL = 'http://localhost:3000/api';
+const API_BASE_URL = 'http://localhost:8000/api';
 
 // Add token to requests if it exists
 axios.interceptors.request.use((config) => {
