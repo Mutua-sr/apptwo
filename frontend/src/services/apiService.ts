@@ -97,27 +97,27 @@ export const classroomService = {
 // Post Services
 export const postService = {
   getAll: async (): Promise<ApiResponse<Post[]>> => {
-    const response = await api.get<ApiResponse<Post[]>>('/posts'); // Updated endpoint
+    const response = await api.get<ApiResponse<Post[]>>('/feed/posts'); // Updated endpoint
     return response.data;
   },
 
   getById: async (id: string): Promise<ApiResponse<Post>> => {
-    const response = await api.get<ApiResponse<Post>>(`/posts/${id}`); // Updated endpoint
+    const response = await api.get<ApiResponse<Post>>(`/feed/posts/${id}`); // Updated endpoint
     return response.data;
   },
 
   create: async (data: CreatePostData): Promise<ApiResponse<Post>> => {
-    const response = await api.post<ApiResponse<Post>>('/posts', data); // Updated endpoint
+    const response = await api.post<ApiResponse<Post>>('/feed/posts', data); // Updated endpoint
     return response.data;
   },
 
   update: async (id: string, data: UpdatePostData): Promise<ApiResponse<Post>> => {
-    const response = await api.put<ApiResponse<Post>>(`/posts/${id}`, data); // Updated endpoint
+    const response = await api.put<ApiResponse<Post>>(`/feed/posts/${id}`, data); // Updated endpoint
     return response.data;
   },
 
   delete: async (id: string): Promise<ApiResponse<{ message: string }>> => {
-    const response = await api.delete<ApiResponse<{ message: string }>>(`/posts/${id}`); // Updated endpoint
+    const response = await api.delete<ApiResponse<{ message: string }>>(`/feed/posts/${id}`); // Updated endpoint
     return response.data;
   }
 };
