@@ -59,12 +59,16 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onLike, onComment, onS
           {/* Author Info */}
           <Stack direction="row" alignItems="center" justifyContent="space-between">
             <Stack direction="row" spacing={1} alignItems="center">
-              <Avatar src={post.author.avatar} sx={{ bgcolor: 'primary.main' }}>
-                {post.author.username[0]}
+              <Avatar 
+                src={post.author.avatar} 
+                sx={{ bgcolor: 'primary.main' }}
+                alt={post.author.username}
+              >
+                {post.author.username?.charAt(0) || '?'}
               </Avatar>
               <Box>
                 <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                  {post.author.username}
+                  {post.author.username || 'Unknown User'}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   {new Date(post.createdAt).toLocaleString()}

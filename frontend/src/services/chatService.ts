@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { ChatMessage, NewChatMessage } from '../types/chat';
+import apiService from './apiService';
 
 class ChatService {
   private socket: Socket | null = null;
@@ -10,16 +11,30 @@ class ChatService {
   }
 
   private connect() {
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+    const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+    const token = localStorage.getItem('token');
+    
     this.socket = io(API_URL, {
       autoConnect: false,
-      withCredentials: true
+      withCredentials: true,
+      auth: {
+        token
+      }
     });
 
     this.socket.on('message', (message: ChatMessage) => {
       this.messageHandlers.forEach(handler => handler(message));
     });
+
+    this.socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+      if (error.message === 'Unauthorized') {
+        // Redirect to login if unauthorized
+        window.location.href = '/login';
+      }
+    });
   }
+
   public joinRoom(roomId: string) {
     if (this.socket) {
       this.socket.emit('join_room', roomId);
@@ -32,15 +47,20 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
     }
   }
 
-  public sendMessage(content: string, roomId: string) {
+  public async sendMessage(content: string, roomId: string) {
     if (this.socket) {
+      const currentUser = apiService.auth.getCurrentUser();
+      if (!currentUser) {
+        throw new Error('User not authenticated');
+      }
+
       const message: NewChatMessage = {
         type: 'message',
         content,
         roomId,
         sender: {
-          id: 'temp-id', // This should be replaced with actual user ID
-          name: 'User', // This should be replaced with actual user name
+          id: currentUser.id,
+          name: currentUser.name,
         },
         timestamp: new Date().toISOString()
       };
@@ -59,6 +79,12 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
   public disconnect() {
     if (this.socket) {
       this.socket.disconnect();
+    }
+  }
+
+  public reconnect() {
+    if (this.socket) {
+      this.socket.connect();
     }
   }
 }

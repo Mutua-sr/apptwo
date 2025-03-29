@@ -21,11 +21,13 @@ export const getPosts = async (
 
     const posts = await DatabaseService.find<Post>({
       selector: {
-        type: 'post'
+        type: 'post',
+        createdAt: { $gt: null }
       },
       skip,
       limit: Number(limit),
-      sort: [{ createdAt: 'desc' }]
+      sort: [{ createdAt: 'desc' }],
+      use_index: 'posts-by-date-index'
     });
 
     res.json({

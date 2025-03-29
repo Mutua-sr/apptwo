@@ -37,6 +37,11 @@ export interface Post {
   title: string;
   content: string;
   createdBy: string;
+  author?: {
+    id: string;
+    username: string;
+    avatar?: string;
+  };
   createdAt: string;
   updatedAt?: string;
   likes?: number;

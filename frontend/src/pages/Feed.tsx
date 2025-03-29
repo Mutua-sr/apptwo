@@ -39,8 +39,13 @@ const Feed: React.FC = () => {
       });
       setPosts(prevPosts => currentPage === 1 ? fetchedPosts : [...prevPosts, ...fetchedPosts]);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load posts';
       console.error('Error loading posts:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load posts');
+      setError(errorMessage);
+      // Reset posts if it's a critical error
+      if (currentPage === 1) {
+        setPosts([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -156,7 +161,33 @@ const Feed: React.FC = () => {
 
       {/* Posts */}
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
+        <Alert 
+          severity="error" 
+          sx={{ 
+            mb: 2,
+            '& .MuiAlert-message': {
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1
+            }
+          }}
+          action={
+            <Button 
+              color="inherit" 
+              size="small" 
+              onClick={() => {
+                setError(null);
+                if (currentPage === 1) {
+                  loadPosts();
+                }
+              }}
+            >
+              Try Again
+            </Button>
+          }
+        >
+          {error}
+        </Alert>
       )}
 
       {loading && posts.length === 0 ? (

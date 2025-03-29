@@ -1,15 +1,10 @@
 import axios from 'axios';
+import apiService from './apiService';
 import { UserProfile } from '../types/profile';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
-// Helper function to get auth token
-const getAuthToken = () => {
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
-  return user?.token;
-};
-
-// Create axios instance with default headers
+// Create axios instance with auth headers
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -17,10 +12,10 @@ const api = axios.create({
   }
 });
 
-// Add auth token to requests
+// Add token to requests if it exists
 api.interceptors.request.use((config) => {
-  const token = getAuthToken();
-  if (token) {
+  const token = localStorage.getItem('token');
+  if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;

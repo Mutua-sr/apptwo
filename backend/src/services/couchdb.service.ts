@@ -203,6 +203,34 @@ export const DatabaseService = {
   }
 };
 
+// Create required indexes
+const createRequiredIndexes = async () => {
+  try {
+    // Create index for posts sorted by createdAt
+    await db.createIndex({
+      index: {
+        fields: ['type', 'createdAt']
+      },
+      ddoc: 'posts-by-date-index',
+      type: 'json'
+    });
+
+    // Create index for posts by type
+    await db.createIndex({
+      index: {
+        fields: ['type']
+      },
+      ddoc: 'posts-by-type-index',
+      type: 'json'
+    });
+    
+    logger.info('Created/Updated required database indexes');
+  } catch (error: any) {
+    logger.error('Error creating indexes:', error);
+    throw new DatabaseError('Failed to create required indexes', 500);
+  }
+};
+
 // Initialize database connection
 export const initializeDatabase = async (): Promise<void> => {
   try {
@@ -211,6 +239,8 @@ export const initializeDatabase = async (): Promise<void> => {
       await couchdb.db.create(process.env.DB_NAME || 'eduapp');
       logger.info('Created new CouchDB database');
     }
+    // Create required indexes after ensuring database exists
+    await createRequiredIndexes();
     logger.info('Connected to CouchDB database');
   } catch (error: any) {
     logger.error('Error initializing database:', error);
