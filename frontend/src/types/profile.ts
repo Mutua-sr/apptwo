@@ -59,18 +59,18 @@ export interface UpdateProfileData {
   avatar?: string;
   bio?: string;
   settings?: {
-    notifications?: {
-      email?: boolean;
-      push?: boolean;
-      inApp?: boolean;
+    notifications: {
+      email: boolean;
+      push: boolean;
+      inApp: boolean;
     };
-    privacy?: {
-      showEmail?: boolean;
-      showActivity?: boolean;
-      allowMessages?: boolean;
+    privacy: {
+      showEmail: boolean;
+      showActivity: boolean;
+      allowMessages: boolean;
     };
-    theme?: 'light' | 'dark' | 'system';
-    language?: string;
+    theme: 'light' | 'dark' | 'system';
+    language: string;
   };
   social?: {
     github?: string;

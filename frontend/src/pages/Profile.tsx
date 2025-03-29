@@ -1,43 +1,34 @@
-import React, { useEffect, useState, ChangeEvent, FormEvent } from 'react';
+import React, { useEffect, useState, useCallback, ChangeEvent, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { profileService } from '../services/profileService';
 import { UserProfile, UpdateProfileData } from '../types/profile';
-import { User } from '../types/api';
+import { useAuth } from '../contexts/AuthContext';
 
-type SettingsSection = 'notifications' | 'privacy';
+// Type definitions
+type SettingsSection = keyof Pick<UserProfile['settings'], 'notifications' | 'privacy'>;
+type SettingsKey = keyof (UserProfile['settings']['notifications'] | UserProfile['settings']['privacy']);
+type Settings = UserProfile['settings'];
 
-type SetUpdateDataType = React.Dispatch<React.SetStateAction<UpdateProfileData>>;
-
-const defaultSettings: UserProfile['settings'] = {
+// Default settings
+const defaultSettings: Settings = {
   notifications: { email: false, push: false, inApp: false },
   privacy: { showEmail: false, showActivity: false, allowMessages: false },
   theme: 'light',
   language: 'en'
 };
 
-const Profile: React.FC = () => {
+interface ProfileProps {}
+
+const Profile: React.FC<ProfileProps> = () => {
+  const { currentUser, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [updateData, setUpdateData] = useState<UpdateProfileData>({
-    settings: defaultSettings
-  });
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [updateData, setUpdateData] = useState<UpdateProfileData>({});
 
-  // Get current user from localStorage
-  const currentUser: User | null = JSON.parse(localStorage.getItem('user') || 'null');
-
-  useEffect(() => {
-    if (!currentUser?.id || !currentUser?.profileId) {
-      navigate('/login');
-      return;
-    }
-    loadProfile();
-  }, [currentUser]);
-
-  const loadProfile = async () => {
+  const loadProfile = useCallback(async () => {
     try {
       if (!currentUser?.profileId) {
         throw new Error('No profile ID found');
@@ -55,73 +46,77 @@ const Profile: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser?.profileId]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    if (currentUser?.profileId) {
+      loadProfile();
+    }
+  }, [currentUser, loadProfile, isAuthenticated, navigate]);
 
   const handleSettingsChange = (
-    name: string,
+    name: SettingsKey,
     value: boolean,
     section: SettingsSection
-  ) => {
-    setUpdateData((prev: UpdateProfileData) => {
-      const currentSettings = prev.settings || defaultSettings;
-      if (section === 'notifications' || section === 'privacy') {
-        return {
-          ...prev,
-          settings: {
-            ...currentSettings,
-            [section]: {
-              ...currentSettings[section],
-              [name]: value
-            }
-          }
-        };
+  ): void => {
+    setUpdateData((prev) => ({
+      ...prev,
+      settings: {
+        ...(prev.settings || profile?.settings || defaultSettings),
+        [section]: {
+          ...(prev.settings?.[section] || profile?.settings?.[section] || defaultSettings[section]),
+          [name]: value
+        }
       }
-      return prev;
-    });
+    }));
   };
 
   const handleInputChange = (
     e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-    section?: string
-  ) => {
+    section?: 'social'
+  ): void => {
     const { name, value } = e.target;
     
     if (section === 'social') {
-    setUpdateData((prev: UpdateProfileData) => ({
-      ...prev,
-      social: {
+      setUpdateData((prev: UpdateProfileData) => ({
+        ...prev,
+        social: {
           ...prev.social,
-          [name]: value
+          [name as keyof UserProfile['social']]: value
         }
       }));
     } else {
-    setUpdateData((prev: UpdateProfileData) => ({
-      ...prev,
-      [name]: value
+      setUpdateData((prev: UpdateProfileData) => ({
+        ...prev,
+        [name as keyof UpdateProfileData]: value
       }));
     }
   };
 
-  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = e.target.files?.[0];
-    if (file) {
-      setSelectedFile(file);
-      try {
-        if (!currentUser?.profileId) {
-          throw new Error('No profile ID found');
-        }
-        const imageUrl = await profileService.uploadProfileImage(currentUser.profileId, file);
-        setUpdateData((prev: UpdateProfileData) => ({
-          ...prev,
-          avatar: imageUrl
-        }));
-      } catch (err: any) {
-        setError(err.message || 'Failed to upload avatar');
+    if (!file) return;
+
+    try {
+      if (!currentUser?.profileId) {
+        throw new Error('No profile ID found');
       }
+      const imageUrl = await profileService.uploadProfileImage(currentUser.profileId, file);
+      setUpdateData((prev: UpdateProfileData) => ({
+        ...prev,
+        avatar: imageUrl
+      }));
+    } catch (err) {
+      const error = err as Error;
+      setError(error.message || 'Failed to upload avatar');
     }
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     try {
       setLoading(true);
@@ -132,8 +127,9 @@ const Profile: React.FC = () => {
       setProfile(updatedProfile);
       setIsEditing(false);
       setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to update profile');
+    } catch (err) {
+      const error = err as Error;
+      setError(error.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }
@@ -166,9 +162,14 @@ const Profile: React.FC = () => {
             <div className="absolute -bottom-16 left-8">
               <div className="relative">
                 <img
-                  src={profile?.avatar || 'https://placehold.co/150x150'}
-                  alt={profile?.name}
+                  src={profile?.avatar || "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='12' fill='%23E5E7EB'/%3E%3Cpath d='M12 14c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' fill='%236B7280'/%3E%3C/svg%3E"}
+                  alt={profile?.name || 'Profile'}
                   className="w-32 h-32 rounded-full border-4 border-white shadow-lg object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.onerror = null;
+                    target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='12' fill='%23E5E7EB'/%3E%3Cpath d='M12 14c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z' fill='%236B7280'/%3E%3C/svg%3E";
+                  }}
                 />
                 {isEditing && (
                   <label className="absolute bottom-0 right-0 bg-blue-500 rounded-full p-2 cursor-pointer shadow-lg">
@@ -184,29 +185,15 @@ const Profile: React.FC = () => {
               </div>
             </div>
             <div className="absolute bottom-4 right-4">
-              {!isEditing ? (
+              {!isEditing && (
                 <button
+                  type="button"
                   onClick={() => setIsEditing(true)}
                   className="bg-white text-blue-600 px-4 py-2 rounded-lg shadow hover:bg-blue-50 transition-colors"
                 >
                   <i className="fas fa-edit mr-2"></i>
                   Edit Profile
                 </button>
-              ) : (
-                <div className="space-x-2">
-                  <button
-                    onClick={() => setIsEditing(false)}
-                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg shadow hover:bg-gray-300 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleSubmit}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition-colors"
-                  >
-                    Save Changes
-                  </button>
-                </div>
               )}
             </div>
           </div>
@@ -214,6 +201,23 @@ const Profile: React.FC = () => {
           {/* Profile Content */}
           <div className="pt-20 pb-8 px-8">
             <form onSubmit={handleSubmit} className="space-y-6">
+              {isEditing && (
+                <div className="flex justify-end space-x-2 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg shadow hover:bg-gray-300 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition-colors"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              )}
               {/* Basic Information */}
               <div className="space-y-4">
                 <h2 className="text-2xl font-bold text-gray-900">Basic Information</h2>
@@ -318,8 +322,8 @@ const Profile: React.FC = () => {
                           <input
                             type="checkbox"
                             name="email"
-                            defaultChecked={profile?.settings.notifications.email}
-                            onChange={(e) => handleSettingsChange('email', e.target.checked, 'notifications')}
+                            checked={profile?.settings.notifications.email || false}
+                            onChange={(e) => handleSettingsChange(e.target.name as SettingsKey, e.target.checked, 'notifications')}
                             className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                           />
                           <span className="ml-2">Email Notifications</span>
@@ -328,8 +332,8 @@ const Profile: React.FC = () => {
                           <input
                             type="checkbox"
                             name="push"
-                            defaultChecked={profile?.settings.notifications.push}
-                            onChange={(e) => handleSettingsChange('push', e.target.checked, 'notifications')}
+                            checked={profile?.settings.notifications.push || false}
+                            onChange={(e) => handleSettingsChange(e.target.name as SettingsKey, e.target.checked, 'notifications')}
                             className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                           />
                           <span className="ml-2">Push Notifications</span>
@@ -343,8 +347,8 @@ const Profile: React.FC = () => {
                           <input
                             type="checkbox"
                             name="showEmail"
-                            defaultChecked={profile?.settings.privacy.showEmail}
-                            onChange={(e) => handleSettingsChange('showEmail', e.target.checked, 'privacy')}
+                            checked={profile?.settings.privacy.showEmail || false}
+                            onChange={(e) => handleSettingsChange(e.target.name as SettingsKey, e.target.checked, 'privacy')}
                             className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                           />
                           <span className="ml-2">Show Email</span>
@@ -353,8 +357,8 @@ const Profile: React.FC = () => {
                           <input
                             type="checkbox"
                             name="showActivity"
-                            defaultChecked={profile?.settings.privacy.showActivity}
-                            onChange={(e) => handleSettingsChange('showActivity', e.target.checked, 'privacy')}
+                            checked={profile?.settings.privacy.showActivity || false}
+                            onChange={(e) => handleSettingsChange(e.target.name as SettingsKey, e.target.checked, 'privacy')}
                             className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                           />
                           <span className="ml-2">Show Activity</span>
