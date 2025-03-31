@@ -26,31 +26,25 @@ const Communities: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      // First try to get all communities
+      // Get user's communities
+      const userCommunitiesRes = await apiService.communities.getUserCommunities();
+      const userCommunities = userCommunitiesRes.data.data || [];
+      setCommunities(userCommunities.map(community => ({
+        ...community,
+        type: 'community' as const,
+        participants: community.members
+      })));
+
+      // Get all communities
       const allCommunitiesRes = await apiService.communities.getAll();
       const allCommunities = allCommunitiesRes.data.data || [];
 
-      // Then try to get user's communities
-      try {
-        const userCommunitiesRes = await apiService.communities.getUserCommunities();
-        const userCommunities = userCommunitiesRes.data.data || [];
-        setCommunities(userCommunities.map(community => ({
-          ...community,
-          type: 'community' as const,
-          participants: community.participants || []
-        })));
-
-        // Filter out communities the user is already a member of
-        const userCommunityIds = new Set(userCommunities.map(c => c._id));
-        const available = allCommunities.filter(
-          community => !userCommunityIds.has(community._id)
-        );
-        setAvailableCommunities(available);
-      } catch (err) {
-        console.warn('Failed to fetch user communities:', err);
-        setCommunities([]);
-        setAvailableCommunities(allCommunities);
-      }
+      // Filter out communities the user is already a member of
+      const userCommunityIds = new Set(userCommunities.map(c => c._id));
+      const available = allCommunities.filter(
+        community => !userCommunityIds.has(community._id)
+      );
+      setAvailableCommunities(available);
     } catch (err) {
       console.error('Failed to fetch communities:', err);
       setError('Failed to load communities');

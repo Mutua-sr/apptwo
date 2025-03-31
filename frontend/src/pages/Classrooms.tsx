@@ -26,31 +26,25 @@ const Classrooms: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      // First try to get all classrooms
+      // Get user's classrooms
+      const userClassroomsRes = await apiService.classrooms.getUserClassrooms();
+      const userClassrooms = userClassroomsRes.data.data || [];
+      setClassrooms(userClassrooms.map(classroom => ({
+        ...classroom,
+        type: 'classroom' as const,
+        participants: classroom.students
+      })));
+
+      // Get all classrooms
       const allClassroomsRes = await apiService.classrooms.getAll();
       const allClassrooms = allClassroomsRes.data.data || [];
 
-      // Then try to get user's classrooms
-      try {
-        const userClassroomsRes = await apiService.classrooms.getUserClassrooms();
-        const userClassrooms = userClassroomsRes.data.data || [];
-        setClassrooms(userClassrooms.map(classroom => ({
-          ...classroom,
-          type: 'classroom' as const,
-          participants: classroom.participants || []
-        })));
-
-        // Filter out classrooms the user is already a member of
-        const userClassroomIds = new Set(userClassrooms.map(c => c._id));
-        const available = allClassrooms.filter(
-          classroom => !userClassroomIds.has(classroom._id)
-        );
-        setAvailableClassrooms(available);
-      } catch (err) {
-        console.warn('Failed to fetch user classrooms:', err);
-        setClassrooms([]);
-        setAvailableClassrooms(allClassrooms);
-      }
+      // Filter out classrooms the user is already a member of
+      const userClassroomIds = new Set(userClassrooms.map(c => c._id));
+      const available = allClassrooms.filter(
+        classroom => !userClassroomIds.has(classroom._id)
+      );
+      setAvailableClassrooms(available);
     } catch (err) {
       console.error('Failed to fetch classrooms:', err);
       setError('Failed to load classrooms');
