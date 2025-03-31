@@ -1,5 +1,5 @@
-export interface Message {
-  _id?: string;
+export interface ChatMessage {
+  _id: string;
   type: 'message';
   content: string;
   sender: {
@@ -13,9 +13,14 @@ export interface Message {
 
 export interface ChatRoom {
   _id: string;
-  type: 'direct' | 'classroom' | 'community';
   name: string;
+  type: 'classroom' | 'community';
   description?: string;
+  createdBy: string;
+  createdAt: string;
+  lastMessage?: string;
+  unreadCount?: number;
+  avatar?: string;
   participants: Array<{
     id: string;
     name: string;
@@ -23,10 +28,14 @@ export interface ChatRoom {
   }>;
 }
 
-export interface ChatMessage extends Message {
-  _id: string;  // Required for existing messages
-}
-
-export interface NewChatMessage extends Omit<Message, '_id'> {
-  _id?: string;  // Optional for new messages
+export interface NewChatMessage {
+  type: 'message';
+  content: string;
+  roomId: string;
+  sender: {
+    id: string;
+    name: string;
+    avatar?: string;
+  };
+  timestamp: string;
 }

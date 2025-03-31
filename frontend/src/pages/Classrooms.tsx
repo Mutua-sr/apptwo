@@ -1,68 +1,91 @@
-import React, { useState } from 'react';
-import { GroupList, GroupDetails } from '../components/groups';
-import { Classroom } from '../types/api';
+import React, { useState, useEffect } from 'react';
+import { Box, CircularProgress } from '@mui/material';
+import ChatLayout from '../components/layout/ChatLayout';
 import { useAuth } from '../contexts/AuthContext';
+import apiService from '../services/apiService';
+import { Classroom } from '../types/api';
 
 const Classrooms: React.FC = () => {
   const { currentUser } = useAuth();
-  const [selectedClassroom, setSelectedClassroom] = useState<Classroom | null>(null);
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchClassrooms = async () => {
+      try {
+        setLoading(true);
+        const response = await apiService.classrooms.getAll();
+        setClassrooms(response.data.map((classroom: Classroom) => ({
+          ...classroom,
+          type: 'classroom' as const,
+          participants: classroom.participants || []
+        })));
+      } catch (err) {
+        console.error('Failed to fetch classrooms:', err);
+        setError('Failed to load classrooms');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (currentUser) {
+      fetchClassrooms();
+    }
+  }, [currentUser]);
 
   if (!currentUser) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
+      <Box 
+        display="flex" 
+        alignItems="center" 
+        justifyContent="center" 
+        minHeight="100vh"
+      >
+        <Box textAlign="center">
           <h2 className="text-2xl font-bold text-gray-900">Please log in</h2>
-          <p className="mt-2 text-gray-600">You need to be logged in to view classrooms</p>
-        </div>
-      </div>
+          <p className="mt-2 text-gray-600">
+            You need to be logged in to view classrooms
+          </p>
+        </Box>
+      </Box>
+    );
+  }
+
+  if (loading) {
+    return (
+      <Box 
+        display="flex" 
+        alignItems="center" 
+        justifyContent="center" 
+        minHeight="100vh"
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box 
+        display="flex" 
+        alignItems="center" 
+        justifyContent="center" 
+        minHeight="100vh"
+      >
+        <Box textAlign="center" color="error.main">
+          {error}
+        </Box>
+      </Box>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar with classroom list */}
-      <div className="w-full md:w-1/3 border-r bg-white">
-        <GroupList
-          type="classroom"
-          userId={currentUser.id}
-          onGroupSelect={(classroom) => setSelectedClassroom(classroom as Classroom)}
-          className="h-full"
-        />
-      </div>
-
-      {/* Main content area */}
-      <div className="hidden md:block md:w-2/3">
-        {selectedClassroom ? (
-          <GroupDetails
-            group={selectedClassroom}
-            currentUser={currentUser}
-            onGroupUpdated={(classroom) => setSelectedClassroom(classroom as Classroom)}
-            onClose={() => setSelectedClassroom(null)}
-            className="h-full"
-          />
-        ) : (
-          <div className="flex items-center justify-center h-full text-gray-500">
-            <div className="text-center">
-              <i className="fas fa-chalkboard text-6xl mb-4"></i>
-              <p>Select a classroom to view details</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Mobile view for selected classroom */}
-      {selectedClassroom && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <GroupDetails
-            group={selectedClassroom}
-            currentUser={currentUser}
-            onGroupUpdated={(classroom) => setSelectedClassroom(classroom as Classroom)}
-            onClose={() => setSelectedClassroom(null)}
-            className="h-full"
-          />
-        </div>
-      )}
-    </div>
+    <ChatLayout 
+      type="classroom"
+      rooms={classrooms}
+      currentUser={currentUser}
+    />
   );
 };
 
