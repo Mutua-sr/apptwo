@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, CircularProgress } from '@mui/material';
+import { Box, CircularProgress, Snackbar, Alert } from '@mui/material';
 import ChatLayout from '../components/layout/ChatLayout';
 import { useAuth } from '../contexts/AuthContext';
 import apiService from '../services/apiService';
@@ -11,31 +11,51 @@ const Communities: React.FC = () => {
   const [availableCommunities, setAvailableCommunities] = useState<Community[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   const fetchCommunities = async () => {
     try {
       setLoading(true);
-      const [userCommunitiesRes, allCommunitiesRes] = await Promise.all([
-        apiService.communities.getUserCommunities(),
-        apiService.communities.getAll()
-      ]);
+      setError(null);
+      
+      // First try to get all communities
+      const allCommunitiesRes = await apiService.communities.getAll();
+      const allCommunities = allCommunitiesRes.data.data || [];
 
-      const userCommunities = userCommunitiesRes.data.data.map((community: Community) => ({
-        ...community,
-        type: 'community' as const,
-        participants: community.participants || []
-      }));
-      setCommunities(userCommunities);
+      // Then try to get user's communities
+      try {
+        const userCommunitiesRes = await apiService.communities.getUserCommunities();
+        const userCommunities = userCommunitiesRes.data.data || [];
+        setCommunities(userCommunities.map(community => ({
+          ...community,
+          type: 'community' as const,
+          participants: community.participants || []
+        })));
 
-      // Filter out communities the user is already a member of
-      const userCommunityIds = new Set(userCommunities.map((c: Community) => c._id));
-      const available = allCommunitiesRes.data.data.filter(
-        (community: Community) => !userCommunityIds.has(community._id)
-      );
-      setAvailableCommunities(available);
+        // Filter out communities the user is already a member of
+        const userCommunityIds = new Set(userCommunities.map(c => c._id));
+        const available = allCommunities.filter(
+          community => !userCommunityIds.has(community._id)
+        );
+        setAvailableCommunities(available);
+      } catch (err) {
+        console.warn('Failed to fetch user communities:', err);
+        setCommunities([]);
+        setAvailableCommunities(allCommunities);
+      }
     } catch (err) {
       console.error('Failed to fetch communities:', err);
       setError('Failed to load communities');
+      setCommunities([]);
+      setAvailableCommunities([]);
     } finally {
       setLoading(false);
     }
@@ -50,22 +70,38 @@ const Communities: React.FC = () => {
   const handleJoinCommunity = async (communityId: string) => {
     try {
       await apiService.communities.join(communityId);
-      // Refresh the communities lists
-      fetchCommunities();
+      await fetchCommunities();
+      setSnackbar({
+        open: true,
+        message: 'Successfully joined community',
+        severity: 'success'
+      });
     } catch (err) {
       console.error('Failed to join community:', err);
-      // You might want to show an error message to the user
+      setSnackbar({
+        open: true,
+        message: 'Failed to join community',
+        severity: 'error'
+      });
     }
   };
 
   const handleCreateCommunity = async (name: string, description: string) => {
     try {
       await apiService.communities.create({ name, description });
-      // Refresh the communities lists
-      fetchCommunities();
+      await fetchCommunities();
+      setSnackbar({
+        open: true,
+        message: 'Successfully created community',
+        severity: 'success'
+      });
     } catch (err) {
       console.error('Failed to create community:', err);
-      // You might want to show an error message to the user
+      setSnackbar({
+        open: true,
+        message: 'Failed to create community',
+        severity: 'error'
+      });
     }
   };
 
@@ -116,14 +152,28 @@ const Communities: React.FC = () => {
   }
 
   return (
-    <ChatLayout 
-      type="community"
-      rooms={communities}
-      availableRooms={availableCommunities}
-      currentUser={currentUser}
-      onJoinRoom={handleJoinCommunity}
-      onCreateRoom={handleCreateCommunity}
-    />
+    <>
+      <ChatLayout 
+        type="community"
+        rooms={communities}
+        availableRooms={availableCommunities}
+        currentUser={currentUser}
+        onJoinRoom={handleJoinCommunity}
+        onCreateRoom={handleCreateCommunity}
+      />
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+      >
+        <Alert 
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))} 
+          severity={snackbar.severity}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </>
   );
 };
 

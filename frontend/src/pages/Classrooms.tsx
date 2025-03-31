@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, CircularProgress } from '@mui/material';
+import { Box, CircularProgress, Snackbar, Alert } from '@mui/material';
 import ChatLayout from '../components/layout/ChatLayout';
 import { useAuth } from '../contexts/AuthContext';
 import apiService from '../services/apiService';
@@ -11,31 +11,51 @@ const Classrooms: React.FC = () => {
   const [availableClassrooms, setAvailableClassrooms] = useState<Classroom[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error';
+  }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   const fetchClassrooms = async () => {
     try {
       setLoading(true);
-      const [userClassroomsRes, allClassroomsRes] = await Promise.all([
-        apiService.classrooms.getUserClassrooms(),
-        apiService.classrooms.getAll()
-      ]);
+      setError(null);
+      
+      // First try to get all classrooms
+      const allClassroomsRes = await apiService.classrooms.getAll();
+      const allClassrooms = allClassroomsRes.data.data || [];
 
-      const userClassrooms = userClassroomsRes.data.data.map((classroom: Classroom) => ({
-        ...classroom,
-        type: 'classroom' as const,
-        participants: classroom.participants || []
-      }));
-      setClassrooms(userClassrooms);
+      // Then try to get user's classrooms
+      try {
+        const userClassroomsRes = await apiService.classrooms.getUserClassrooms();
+        const userClassrooms = userClassroomsRes.data.data || [];
+        setClassrooms(userClassrooms.map(classroom => ({
+          ...classroom,
+          type: 'classroom' as const,
+          participants: classroom.participants || []
+        })));
 
-      // Filter out classrooms the user is already a member of
-      const userClassroomIds = new Set(userClassrooms.map((c: Classroom) => c._id));
-      const available = allClassroomsRes.data.data.filter(
-        (classroom: Classroom) => !userClassroomIds.has(classroom._id)
-      );
-      setAvailableClassrooms(available);
+        // Filter out classrooms the user is already a member of
+        const userClassroomIds = new Set(userClassrooms.map(c => c._id));
+        const available = allClassrooms.filter(
+          classroom => !userClassroomIds.has(classroom._id)
+        );
+        setAvailableClassrooms(available);
+      } catch (err) {
+        console.warn('Failed to fetch user classrooms:', err);
+        setClassrooms([]);
+        setAvailableClassrooms(allClassrooms);
+      }
     } catch (err) {
       console.error('Failed to fetch classrooms:', err);
       setError('Failed to load classrooms');
+      setClassrooms([]);
+      setAvailableClassrooms([]);
     } finally {
       setLoading(false);
     }
@@ -50,22 +70,38 @@ const Classrooms: React.FC = () => {
   const handleJoinClassroom = async (classroomId: string) => {
     try {
       await apiService.classrooms.join(classroomId);
-      // Refresh the classrooms lists
-      fetchClassrooms();
+      await fetchClassrooms();
+      setSnackbar({
+        open: true,
+        message: 'Successfully joined classroom',
+        severity: 'success'
+      });
     } catch (err) {
       console.error('Failed to join classroom:', err);
-      // You might want to show an error message to the user
+      setSnackbar({
+        open: true,
+        message: 'Failed to join classroom',
+        severity: 'error'
+      });
     }
   };
 
   const handleCreateClassroom = async (name: string, description: string) => {
     try {
       await apiService.classrooms.create({ name, description });
-      // Refresh the classrooms lists
-      fetchClassrooms();
+      await fetchClassrooms();
+      setSnackbar({
+        open: true,
+        message: 'Successfully created classroom',
+        severity: 'success'
+      });
     } catch (err) {
       console.error('Failed to create classroom:', err);
-      // You might want to show an error message to the user
+      setSnackbar({
+        open: true,
+        message: 'Failed to create classroom',
+        severity: 'error'
+      });
     }
   };
 
@@ -116,14 +152,28 @@ const Classrooms: React.FC = () => {
   }
 
   return (
-    <ChatLayout 
-      type="classroom"
-      rooms={classrooms}
-      availableRooms={availableClassrooms}
-      currentUser={currentUser}
-      onJoinRoom={handleJoinClassroom}
-      onCreateRoom={handleCreateClassroom}
-    />
+    <>
+      <ChatLayout 
+        type="classroom"
+        rooms={classrooms}
+        availableRooms={availableClassrooms}
+        currentUser={currentUser}
+        onJoinRoom={handleJoinClassroom}
+        onCreateRoom={handleCreateClassroom}
+      />
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+      >
+        <Alert 
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))} 
+          severity={snackbar.severity}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </>
   );
 };
 
