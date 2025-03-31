@@ -8,11 +8,22 @@ import { Community, Classroom, User } from '../../types/api';
 interface ChatLayoutProps {
   type: 'classroom' | 'community';
   rooms: (Community | Classroom)[];
+  availableRooms: (Community | Classroom)[];
   currentUser: User;
+  onJoinRoom: (roomId: string) => void;
+  onCreateRoom: (name: string, description: string) => void;
   children?: React.ReactNode;
 }
 
-const ChatLayout: FC<ChatLayoutProps> = ({ type, rooms, currentUser, children }) => {
+const ChatLayout: FC<ChatLayoutProps> = ({
+  type,
+  rooms,
+  availableRooms,
+  currentUser,
+  onJoinRoom,
+  onCreateRoom,
+  children
+}) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [selectedRoom, setSelectedRoom] = useState<Community | Classroom | null>(null);
@@ -41,10 +52,14 @@ const ChatLayout: FC<ChatLayoutProps> = ({ type, rooms, currentUser, children })
         }}
       >
         <ChatSidebar
+          type={type}
           rooms={rooms}
+          availableRooms={availableRooms}
           selectedRoomId={selectedRoom?._id}
           onRoomSelect={handleRoomSelect}
           onInfoClick={handleInfoClick}
+          onJoinRoom={onJoinRoom}
+          onCreateRoom={onCreateRoom}
         />
       </Box>
 

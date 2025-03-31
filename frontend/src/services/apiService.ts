@@ -1,235 +1,99 @@
 import axios from 'axios';
-import type { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
-import {
-  ApiResponse,
-  AuthResponse,
-  LoginCredentials,
-  RegisterCredentials,
-  Classroom,
-  CreateClassroomData,
-  UpdateClassroomData,
-  Post,
-  CreatePostData,
-  UpdatePostData,
-  Community,
-  CreateCommunityData,
-  UpdateCommunityData
-} from '../types/api';
+import { Community, Classroom, User } from '../types/api';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_URL = 'http://localhost:8000/api';
 
-// Create axios instance with default config
-const api: AxiosInstance = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
-
-// Add token to requests if it exists
-api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  const token = localStorage.getItem('token');
-  if (token && config.headers) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Auth Services
-export const authService = {
-  login: async (credentials: LoginCredentials): Promise<ApiResponse<AuthResponse>> => {
-    const response = await api.post<ApiResponse<AuthResponse>>('/auth/login', credentials);
-    if (response.data.data.token) {
-      localStorage.setItem('token', response.data.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.data.user));
-    }
-    return response.data;
-  },
-
-  register: async (credentials: RegisterCredentials): Promise<ApiResponse<AuthResponse>> => {
-    const response = await api.post<ApiResponse<AuthResponse>>('/auth/register', credentials);
-    if (response.data.data.token) {
-      localStorage.setItem('token', response.data.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.data.user));
-    }
-    return response.data;
-  },
-
-  logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-  },
-
-  getCurrentUser: () => {
-    const userStr = localStorage.getItem('user');
-    return userStr ? JSON.parse(userStr) : null;
-  }
-};
-
-// Classroom Services
-export const classroomService = {
-  getAll: async (): Promise<ApiResponse<Classroom[]>> => {
-    const response = await api.get<ApiResponse<Classroom[]>>('/classrooms');
-    return response.data;
-  },
-
-  getById: async (id: string): Promise<ApiResponse<Classroom>> => {
-    const response = await api.get<ApiResponse<Classroom>>(`/classrooms/${id}`);
-    return response.data;
-  },
-
-  create: async (data: CreateClassroomData): Promise<ApiResponse<Classroom>> => {
-    const response = await api.post<ApiResponse<Classroom>>('/classrooms', data);
-    return response.data;
-  },
-
-  update: async (id: string, data: UpdateClassroomData): Promise<ApiResponse<Classroom>> => {
-    const response = await api.put<ApiResponse<Classroom>>(`/classrooms/${id}`, data);
-    return response.data;
-  },
-
-  delete: async (id: string): Promise<ApiResponse<{ message: string }>> => {
-    const response = await api.delete<ApiResponse<{ message: string }>>(`/classrooms/${id}`);
-    return response.data;
-  }
-};
-
-// Post Services
-export const postService = {
-  getAll: async (): Promise<ApiResponse<Post[]>> => {
-    const response = await api.get<ApiResponse<Post[]>>('/feed/posts'); // Updated endpoint
-    return response.data;
-  },
-
-  getById: async (id: string): Promise<ApiResponse<Post>> => {
-    const response = await api.get<ApiResponse<Post>>(`/feed/posts/${id}`); // Updated endpoint
-    return response.data;
-  },
-
-  create: async (data: CreatePostData): Promise<ApiResponse<Post>> => {
-    const response = await api.post<ApiResponse<Post>>('/feed/posts', data); // Updated endpoint
-    return response.data;
-  },
-
-  update: async (id: string, data: UpdatePostData): Promise<ApiResponse<Post>> => {
-    const response = await api.put<ApiResponse<Post>>(`/feed/posts/${id}`, data); // Updated endpoint
-    return response.data;
-  },
-
-  delete: async (id: string): Promise<ApiResponse<{ message: string }>> => {
-    const response = await api.delete<ApiResponse<{ message: string }>>(`/feed/posts/${id}`); // Updated endpoint
-    return response.data;
-  }
-};
-
-// Community Services
-export const communityService = {
-  getAll: async (): Promise<ApiResponse<Community[]>> => {
-    const response = await api.get<ApiResponse<Community[]>>('/communities');
-    return response.data;
-  },
-
-  getById: async (id: string): Promise<ApiResponse<Community>> => {
-    const response = await api.get<ApiResponse<Community>>(`/communities/${id}`);
-    return response.data;
-  },
-
-  create: async (data: CreateCommunityData): Promise<ApiResponse<Community>> => {
-    const response = await api.post<ApiResponse<Community>>('/communities', data);
-    return response.data;
-  },
-
-  update: async (id: string, data: UpdateCommunityData): Promise<ApiResponse<Community>> => {
-    const response = await api.put<ApiResponse<Community>>(`/communities/${id}`, data);
-    return response.data;
-  },
-
-  delete: async (id: string): Promise<ApiResponse<{ message: string }>> => {
-    const response = await api.delete<ApiResponse<{ message: string }>>(`/communities/${id}`);
-    return response.data;
-  }
-};
-
-// Custom error class for API errors
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public status?: number,
-    public code?: string
-  ) {
-    super(message);
-    this.name = 'ApiError';
-  }
+interface ApiResponse<T> {
+  data: T;
+  message?: string;
 }
 
-// Error handling interceptor
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    // Get error details
-    const status = error.response?.status;
-    const message = error.response?.data?.message || error.message;
-    const code = error.response?.data?.code;
+interface CreateRoomData {
+  name: string;
+  description?: string;
+}
 
-    // Log error for debugging
-    console.error(`API Error: [${status}] ${message}`, {
-      url: error.config?.url,
-      method: error.config?.method,
-      code,
-      error
-    });
+interface UpdateRoomData {
+  name?: string;
+  description?: string;
+}
 
-    // Handle specific error cases
-    switch (status) {
-      case 401:
-        // Unauthorized - clear local storage and redirect to login
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-        break;
-      case 403:
-        // Forbidden - user doesn't have necessary permissions
-        console.warn('Access forbidden:', message);
-        break;
-      case 404:
-        // Not found
-        console.warn('Resource not found:', message);
-        break;
-      case 500:
-        // Server error
-        console.error('Server error:', message);
-        break;
+const createApiService = () => {
+  const instance = axios.create({
+    baseURL: API_URL,
+    withCredentials: true,
+  });
+
+  // Add token to requests
+  instance.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
+    return config;
+  });
 
-    // Throw custom error
-    return Promise.reject(new ApiError(message, status, code));
-  }
-);
+  return {
+    auth: {
+      getCurrentUser: (): User | null => {
+        const userStr = localStorage.getItem('user');
+        return userStr ? JSON.parse(userStr) : null;
+      },
+    },
 
-const apiService = {
-  auth: authService,
-  classrooms: classroomService,
-  posts: postService,
-  communities: communityService,
-  handleError: (error: unknown) => {
-    if (error instanceof ApiError) {
-      switch (error.status) {
-        case 400:
-          return 'Invalid request. Please check your input.';
-        case 401:
-          return 'Please log in to continue.';
-        case 403:
-          return 'You do not have permission to perform this action.';
-        case 404:
-          return 'The requested resource was not found.';
-        case 500:
-          return 'An unexpected error occurred. Please try again later.';
-        default:
-          return 'Something went wrong. Please try again.';
-      }
-    }
-    return 'An unexpected error occurred. Please try again later.';
-  }
+    communities: {
+      getAll: () => 
+        instance.get<{ data: Community[] }>('/communities'),
+
+      getUserCommunities: () =>
+        instance.get<{ data: Community[] }>('/communities/user'),
+
+      getById: (id: string) =>
+        instance.get<{ data: Community }>(`/communities/${id}`),
+
+      create: (data: CreateRoomData) =>
+        instance.post<{ data: Community }>('/communities', data),
+
+      update: (id: string, data: UpdateRoomData) =>
+        instance.put<{ data: Community }>(`/communities/${id}`, data),
+
+      delete: (id: string) =>
+        instance.delete<{ data: void }>(`/communities/${id}`),
+
+      join: (id: string) =>
+        instance.post<{ data: void }>(`/communities/${id}/join`),
+
+      leave: (id: string) =>
+        instance.post<{ data: void }>(`/communities/${id}/leave`),
+    },
+
+    classrooms: {
+      getAll: () =>
+        instance.get<{ data: Classroom[] }>('/classrooms'),
+
+      getUserClassrooms: () =>
+        instance.get<{ data: Classroom[] }>('/classrooms/user'),
+
+      getById: (id: string) =>
+        instance.get<{ data: Classroom }>(`/classrooms/${id}`),
+
+      create: (data: CreateRoomData) =>
+        instance.post<{ data: Classroom }>('/classrooms', data),
+
+      update: (id: string, data: UpdateRoomData) =>
+        instance.put<{ data: Classroom }>(`/classrooms/${id}`, data),
+
+      delete: (id: string) =>
+        instance.delete<{ data: void }>(`/classrooms/${id}`),
+
+      join: (id: string) =>
+        instance.post<{ data: void }>(`/classrooms/${id}/join`),
+
+      leave: (id: string) =>
+        instance.post<{ data: void }>(`/classrooms/${id}/leave`),
+    },
+  };
 };
 
-export default apiService; // Export the variable
+const apiService = createApiService();
+export default apiService;
