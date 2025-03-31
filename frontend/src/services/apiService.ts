@@ -46,7 +46,7 @@ const createApiService = () => {
         instance.get<{ data: Community[] }>('/communities'),
 
       getUserCommunities: () =>
-        instance.get<{ data: Community[] }>('/communities/user'),
+        instance.get<{ data: Community[] }>('/communities/me'),
 
       getById: (id: string) =>
         instance.get<{ data: Community }>(`/communities/${id}`),
@@ -61,10 +61,10 @@ const createApiService = () => {
         instance.delete<{ data: void }>(`/communities/${id}`),
 
       join: (id: string) =>
-        instance.post<{ data: void }>(`/communities/${id}/join`),
+        instance.post<{ data: void }>(`/communities/${id}/members`),
 
       leave: (id: string) =>
-        instance.post<{ data: void }>(`/communities/${id}/leave`),
+        instance.delete<{ data: void }>(`/communities/${id}/members`),
     },
 
     classrooms: {
@@ -72,7 +72,7 @@ const createApiService = () => {
         instance.get<{ data: Classroom[] }>('/classrooms'),
 
       getUserClassrooms: () =>
-        instance.get<{ data: Classroom[] }>('/classrooms/user'),
+        instance.get<{ data: Classroom[] }>('/classrooms/me'),
 
       getById: (id: string) =>
         instance.get<{ data: Classroom }>(`/classrooms/${id}`),
@@ -87,10 +87,10 @@ const createApiService = () => {
         instance.delete<{ data: void }>(`/classrooms/${id}`),
 
       join: (id: string) =>
-        instance.post<{ data: void }>(`/classrooms/${id}/join`),
+        instance.post<{ data: void }>(`/classrooms/${id}/members`),
 
       leave: (id: string) =>
-        instance.post<{ data: void }>(`/classrooms/${id}/leave`),
+        instance.delete<{ data: void }>(`/classrooms/${id}/members`),
     },
   };
 };
