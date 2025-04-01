@@ -18,7 +18,11 @@ export const GroupDetails: React.FC<GroupDetailsProps> = ({
   onClose,
   className = ''
 }) => {
-  const [members, setMembers] = useState<string[]>([]);
+  const [members, setMembers] = useState<Array<{
+    id: string;
+    name: string;
+    avatar?: string;
+  }>>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,18 +136,26 @@ export const GroupDetails: React.FC<GroupDetailsProps> = ({
           <div className="text-red-600 text-center py-4">{error}</div>
         ) : (
           <div className="space-y-2">
-            {members.map(memberId => (
+            {members.map(member => (
               <div
-                key={memberId}
+                key={member.id}
                 className="flex items-center justify-between py-2"
               >
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                    <i className="fas fa-user text-gray-500"></i>
+                    {member.avatar ? (
+                      <img 
+                        src={member.avatar} 
+                        alt={member.name}
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <i className="fas fa-user text-gray-500"></i>
+                    )}
                   </div>
-                  <span className="text-gray-900">{memberId}</span>
+                  <span className="text-gray-900">{member.name}</span>
                 </div>
-                {memberId === group.createdBy && (
+                {member.id === group.createdBy && (
                   <span className="text-sm text-gray-500">Admin</span>
                 )}
               </div>
