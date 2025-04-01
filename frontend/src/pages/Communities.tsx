@@ -1,146 +1,137 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Button, Typography, Snackbar, Alert } from '@mui/material';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useEffect, useState } from 'react';
+import { Box, Button, Container, Grid, Typography, CircularProgress } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { CommunityDetail } from '../components/community/CommunityDetail';
+import { Community as UICommuntiy } from '../types/community';
+import { Community as ApiCommunity } from '../types/room';
+import { chatService } from '../services/chatService';
 import apiService from '../services/apiService';
-import { Community, CreateCommunityData } from '../types/room';
+
+const transformCommunity = (apiCommunity: ApiCommunity): UICommuntiy => {
+  return {
+    _id: apiCommunity._id,
+    name: apiCommunity.name,
+    description: apiCommunity.description,
+    coverImage: apiCommunity.avatar,
+    creator: {
+      id: apiCommunity.createdBy.id,
+      name: apiCommunity.createdBy.name,
+      avatar: apiCommunity.createdBy.avatar,
+    },
+    members: apiCommunity.members.map(member => ({
+      id: member.id,
+      name: member.name,
+      avatar: member.avatar,
+      role: member.role,
+    })),
+    settings: {
+      isPrivate: apiCommunity.settings.isPrivate,
+      requiresApproval: apiCommunity.settings.requirePostApproval,
+      allowInvites: apiCommunity.settings.allowMemberInvites,
+    },
+    createdAt: apiCommunity.createdAt,
+    updatedAt: apiCommunity.updatedAt,
+  };
+};
 
 const Communities: React.FC = () => {
-  const { currentUser } = useAuth();
-  const [communities, setCommunities] = useState<Community[]>([]);
+  const [communities, setCommunities] = useState<UICommuntiy[]>([]);
   const [loading, setLoading] = useState(true);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success' as 'success' | 'error'
-  });
-
-  const fetchCommunities = async () => {
-    try {
-      setLoading(true);
-      const response = await apiService.communities.getAll();
-      setCommunities(response.data.data);
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: 'Failed to load communities',
-        severity: 'error'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
+    const fetchCommunities = async () => {
+      try {
+        // Connect to chat service for real-time updates
+        await chatService.connect();
+        
+        // Fetch communities
+        const response = await apiService.communities.getAll();
+        const communityData = response.data.data as ApiCommunity[];
+        
+        // Transform API response to match UI Community type
+        const transformedCommunities = communityData.map(transformCommunity);
+        setCommunities(transformedCommunities);
+        setLoading(false);
+
+        // Subscribe to community updates
+        chatService.onMessageReceived(() => {
+          // Refresh communities to get updated unread counts
+          apiService.communities.getAll().then(response => {
+            const updatedData = response.data.data as ApiCommunity[];
+            setCommunities(updatedData.map(transformCommunity));
+          });
+        });
+      } catch (error) {
+        console.error('Error fetching communities:', error);
+        setError('Failed to load communities');
+        setLoading(false);
+      }
+    };
+
     fetchCommunities();
+
+    // Cleanup chat connection
+    return () => {
+      chatService.disconnect();
+    };
   }, []);
 
-  const handleCreateCommunity = async (name: string, description: string) => {
-    try {
-      const newCommunity: CreateCommunityData = {
-        type: 'community',
-        name,
-        description,
-        settings: {
-          isPrivate: false,
-          allowMemberPosts: true,
-          allowMemberInvites: true,
-          requirePostApproval: false
-        }
-      };
-
-      await apiService.communities.create(newCommunity);
-      await fetchCommunities();
-      setSnackbar({
-        open: true,
-        message: 'Community created successfully',
-        severity: 'success'
-      });
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message: 'Failed to create community',
-        severity: 'error'
-      });
-    }
+  const handleCommunityClick = (community: UICommuntiy) => {
+    navigate(`/chat/community/${community._id}`);
   };
 
-  if (!currentUser) {
+  const handleCreateCommunity = () => {
+    navigate('/create-community');
+  };
+
+  if (loading) {
     return (
-      <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography>Please log in to view communities.</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
       </Box>
     );
   }
 
-  if (loading) {
+  if (error) {
     return (
-      <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography>Loading communities...</Typography>
-      </Box>
+      <Container maxWidth="lg">
+        <Box sx={{ mt: 4, textAlign: 'center' }}>
+          <Typography color="error">{error}</Typography>
+        </Box>
+      </Container>
     );
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Communities
-      </Typography>
-
-      <Box sx={{ mb: 3 }}>
-        <Button
-          variant="contained"
-          onClick={() => handleCreateCommunity('New Community', 'A new community')}
-        >
-          Create Community
-        </Button>
-      </Box>
-
-      {communities.length === 0 ? (
-        <Typography>No communities found.</Typography>
-      ) : (
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
-          {communities.map(community => (
-            <Box
-              key={community._id}
-              sx={{
-                p: 2,
-                border: 1,
-                borderColor: 'divider',
-                borderRadius: 1,
-              }}
-            >
-              <Typography variant="h6">{community.name}</Typography>
-              <Typography color="text.secondary">{community.description}</Typography>
-              <Box sx={{ mt: 1, display: 'flex', gap: 1 }}>
-                {community.settings.isPrivate && (
-                  <Typography variant="caption" color="primary">Private</Typography>
-                )}
-                {community.settings.requirePostApproval && (
-                  <Typography variant="caption" color="warning.main">Approval Required</Typography>
-                )}
-                <Typography variant="caption" color="text.secondary">
-                  {community.members.length} members
-                </Typography>
-              </Box>
-            </Box>
-          ))}
+    <Container maxWidth="lg">
+      <Box sx={{ mt: 4, mb: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h4" component="h1">
+            Communities
+          </Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleCreateCommunity}
+          >
+            Create New Community
+          </Button>
         </Box>
-      )}
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={6000}
-        onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-      >
-        <Alert
-          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-          severity={snackbar.severity}
-          sx={{ width: '100%' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+        
+        <Grid container spacing={3}>
+          {communities.map((community) => (
+            <Grid item xs={12} sm={6} md={4} key={community._id}>
+              <CommunityDetail
+                community={community}
+                onClick={() => handleCommunityClick(community)}
+              />
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
+    </Container>
   );
 };
 

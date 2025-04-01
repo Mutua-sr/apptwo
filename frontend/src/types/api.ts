@@ -1,3 +1,4 @@
+// User related types
 export interface User {
   id: string;
   name: string;
@@ -14,6 +15,7 @@ export interface User {
 
 export type UserStatus = 'active' | 'inactive' | 'pending' | 'suspended' | 'banned';
 
+// Profile related types
 export interface Profile {
   id: string;
   userId: string;
@@ -46,6 +48,7 @@ export interface UpdateProfileData {
   settings?: ProfileSettings;
 }
 
+// Community related types
 export interface Community {
   _id: string;
   type: 'community';
@@ -112,6 +115,7 @@ export interface UpdateCommunityData {
   tags?: string[];
 }
 
+// Classroom related types
 export interface Classroom {
   _id: string;
   type: 'classroom';
@@ -206,6 +210,7 @@ export interface ScheduleEvent {
   };
 }
 
+// Post and Comment types
 export interface Post {
   _id: string;
   content: string;
@@ -241,6 +246,7 @@ export interface Comment {
   likes: number;
 }
 
+// API Response types
 export interface ApiResponse<T> {
   success: boolean;
   message?: string;
@@ -278,6 +284,7 @@ export interface ErrorResponse {
   };
 }
 
+// Admin related types
 export interface AdminDashboardStats {
   users: {
     total: number;
@@ -314,59 +321,7 @@ export interface AdminSettings {
   };
 }
 
-export interface Report {
-  _id: string;
-  type: 'post' | 'comment' | 'user' | 'community';
-  targetId: string;
-  reportedBy: string;
-  reason: string;
-  description?: string;
-  status: 'pending' | 'approved' | 'rejected';
-  createdAt: string;
-  updatedAt: string;
-  metadata?: {
-    contentPreview?: string;
-    reportedUserName?: string;
-    communityName?: string;
-  };
-}
-
-export interface AdminDashboardStats {
-  users: {
-    total: number;
-    active: number;
-    newThisMonth: number;
-  };
-  content: {
-    posts: number;
-    comments: number;
-    reports: number;
-  };
-  engagement: {
-    dailyActiveUsers: number;
-    monthlyActiveUsers: number;
-    averageSessionDuration: number;
-  };
-}
-
-export interface AdminSettings {
-  general: {
-    siteName: string;
-    maintenanceMode: boolean;
-    allowRegistration: boolean;
-  };
-  security: {
-    maxLoginAttempts: number;
-    sessionTimeout: number;
-    requireEmailVerification: boolean;
-  };
-  content: {
-    allowUserUploads: boolean;
-    maxUploadSize: number;
-    allowedFileTypes: string[];
-  };
-}
-
+// Report related types
 export interface Report {
   _id: string;
   type: 'post' | 'comment' | 'user' | 'community';

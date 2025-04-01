@@ -1,234 +1,159 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
-  Stack,
   TextField,
   IconButton,
+  Paper,
   Typography,
   Avatar,
-  Paper,
+  List,
+  ListItem,
   CircularProgress,
 } from '@mui/material';
-import {
-  Send as SendIcon,
-  AttachFile as AttachFileIcon,
-  Videocam as VideocamIcon,
-  Call as CallIcon,
-  MoreVert as MoreVertIcon,
-  EmojiEmotions as EmojiIcon,
-} from '@mui/icons-material';
-import { chatInterfaceStyles as styles } from '../../styles/components/ChatInterface.styles';
-import { ChatMessage, ChatRoom } from '../../types/chat';
-import { useAuth } from '../../contexts/AuthContext';
+import { Send as SendIcon, EmojiEmotions as EmojiIcon } from '@mui/icons-material';
+import { ChatMessage } from '../../types/chat';
 import { chatService } from '../../services/chatService';
-import apiService from '../../services/apiService';
 
 interface ChatInterfaceProps {
   roomId: string;
-  title: string;
-  subtitle?: string;
-  avatar?: string;
-  isLive?: boolean;
-  onStartVideoCall?: () => void;
-  onStartVoiceCall?: () => void;
+  userId: string;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({
-  roomId,
-  title,
-  subtitle,
-  avatar,
-  isLive,
-  onStartVideoCall,
-  onStartVoiceCall,
-}) => {
-  const { currentUser } = useAuth();
-  const [message, setMessage] = useState<string>('');
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ roomId, userId }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [room, setRoom] = useState<ChatRoom | null>(null);
-
-  // Load initial messages and room info
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        const [messagesResponse, roomResponse] = await Promise.all([
-          apiService.chat.getMessages(roomId),
-          apiService.chat.getRoom(roomId)
-        ]);
-        setMessages(messagesResponse.data.data);
-        setRoom(roomResponse.data.data);
-      } catch (err) {
-        console.error('Error loading chat data:', err);
-        setError('Failed to load chat');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (roomId) {
-      loadData();
-    }
-  }, [roomId]);
-
-  // Handle real-time messages
-  useEffect(() => {
-    const handleNewMessage = (message: ChatMessage) => {
-      if (message.roomId === roomId) {
-        setMessages(prev => [...prev, message]);
-      }
-    };
-
-    chatService.onMessageReceived(handleNewMessage);
-    chatService.joinRoom(roomId);
-
-    return () => {
-      chatService.leaveRoom(roomId);
-      chatService.disconnect();
-    };
-  }, [roomId]);
-
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [newMessage, setNewMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const handleSend = async () => {
-    if (message.trim() && currentUser) {
+    const fetchMessages = async () => {
       try {
-        const trimmedMessage = message.trim();
-        setMessage(''); // Clear input immediately for better UX
-        await apiService.chat.sendMessage(roomId, { content: trimmedMessage });
-      } catch (err) {
-        console.error('Error sending message:', err);
-        setError('Failed to send message');
-        setMessage(message); // Restore message if failed
+        const fetchedMessages = await chatService.getMessages(roomId);
+        setMessages(fetchedMessages);
+        setIsLoading(false);
+        scrollToBottom();
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+        setIsLoading(false);
       }
+    };
+
+    fetchMessages();
+
+    // Subscribe to new messages
+    chatService.onMessageReceived((message) => {
+      setMessages(prev => [...prev, message]);
+      scrollToBottom();
+    });
+  }, [roomId]);
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim()) return;
+
+    try {
+      await chatService.sendMessage(roomId, newMessage);
+      setNewMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
+  const handleKeyPress = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      handleSendMessage();
     }
   };
+
+  if (isLoading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
-    <Box sx={styles.container}>
-      {/* Header */}
-      <Paper elevation={2} sx={styles.header}>
-        <Stack sx={styles.headerContent}>
-          <Stack sx={styles.userInfo}>
-            <Avatar src={avatar} alt={title} />
-            <Box>
-              <Typography variant="subtitle1" fontWeight={500}>
-                {title}
-              </Typography>
-              {subtitle && (
-                <Typography variant="caption" color="text.secondary">
-                  {subtitle}
-                </Typography>
-              )}
-            </Box>
-          </Stack>
-          <Stack sx={styles.actions}>
-            {onStartVoiceCall && (
-              <IconButton onClick={onStartVoiceCall}>
-                <CallIcon />
-              </IconButton>
-            )}
-            {onStartVideoCall && (
-              <IconButton 
-                onClick={onStartVideoCall}
-                color={isLive ? "error" : "default"}
-              >
-                <VideocamIcon />
-              </IconButton>
-            )}
-            <IconButton>
-              <MoreVertIcon />
-            </IconButton>
-          </Stack>
-        </Stack>
-      </Paper>
-
-      {/* Messages */}
-      <Box sx={styles.messageContainer}>
-        <Stack spacing={2}>
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-              <CircularProgress />
-            </Box>
-          ) : error ? (
-            <Box sx={{ p: 2, textAlign: 'center', color: 'error.main' }}>
-              <Typography>{error}</Typography>
-            </Box>
-          ) : (
-            messages.map((msg: ChatMessage) => (
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Paper
+        sx={{
+          flex: 1,
+          overflow: 'auto',
+          p: 2,
+          backgroundColor: 'background.default',
+        }}
+      >
+        <List>
+          {messages.map((message, index) => (
+            <ListItem
+              key={message.id || index}
+              sx={{
+                display: 'flex',
+                flexDirection: message.senderId === userId ? 'row-reverse' : 'row',
+                gap: 1,
+                mb: 1,
+              }}
+            >
+              <Avatar src={message.senderAvatar} alt={message.senderName} />
               <Box
-                key={msg._id}
-                sx={styles.messageWrapper(msg.sender.id === currentUser?.id)}
+                sx={{
+                  backgroundColor: message.senderId === userId ? 'primary.main' : 'grey.200',
+                  color: message.senderId === userId ? 'primary.contrastText' : 'text.primary',
+                  p: 2,
+                  borderRadius: 2,
+                  maxWidth: '70%',
+                }}
               >
-                <Paper sx={styles.messageContent(msg.sender.id === currentUser?.id)}>
-                  {msg.sender.id !== currentUser?.id && (
-                    <Typography variant="caption" fontWeight={500}>
-                      {msg.sender.name}
-                    </Typography>
-                  )}
-                  <Typography variant="body1">{msg.content}</Typography>
-                  <Typography sx={styles.timestamp}>
-                    {new Date(msg.createdAt).toLocaleTimeString([], { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
-                  </Typography>
-                </Paper>
+                <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+                  {message.senderName}
+                </Typography>
+                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                  {message.content}
+                </Typography>
+                <Typography variant="caption" color="inherit" sx={{ opacity: 0.7 }}>
+                  {new Date(message.timestamp).toLocaleTimeString()}
+                </Typography>
               </Box>
-            ))
-          )}
+            </ListItem>
+          ))}
           <div ref={messagesEndRef} />
-        </Stack>
-      </Box>
-
-      {/* Input */}
-      <Paper elevation={3} sx={styles.inputContainer}>
-        <Stack sx={styles.inputWrapper}>
-          <IconButton size="small" sx={styles.emojiButton}>
+        </List>
+      </Paper>
+      
+      <Box sx={{ p: 2, backgroundColor: 'background.paper', borderTop: 1, borderColor: 'divider' }}>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton size="small" sx={{ alignSelf: 'flex-end' }}>
             <EmojiIcon />
-          </IconButton>
-          <IconButton size="small" sx={styles.attachButton}>
-            <AttachFileIcon />
           </IconButton>
           <TextField
             fullWidth
             multiline
             maxRows={4}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Type a message"
             variant="outlined"
-            size="small"
-            sx={styles.messageField}
+            placeholder="Type a message..."
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                borderRadius: 2,
+              },
+            }}
           />
           <IconButton 
             color="primary"
-            onClick={handleSend}
-            disabled={!message.trim()}
-            sx={styles.sendButton}
+            onClick={handleSendMessage}
+            disabled={!newMessage.trim()}
+            sx={{ alignSelf: 'flex-end' }}
           >
             <SendIcon />
           </IconButton>
-        </Stack>
-      </Paper>
+        </Box>
+      </Box>
     </Box>
   );
 };

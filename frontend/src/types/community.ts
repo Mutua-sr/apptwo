@@ -2,6 +2,7 @@ export interface Community {
   _id: string;
   name: string;
   description?: string;
+  coverImage?: string;
   creator: {
     id: string;
     name: string;

@@ -1,54 +1,41 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
-import { Box, CircularProgress, Typography, TextField, Button } from '@mui/material';
-import { ChatMessage, ChatParticipant } from '../types/chat';
+import React, { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Box, Typography, Paper, IconButton, Avatar, Divider } from '@mui/material';
+import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import ChatInterface from '../components/chat/ChatInterface';
 import { chatService } from '../services/chatService';
-import { useAuth } from '../contexts/AuthContext';
+import { ChatRoom as ChatRoomType, ChatParticipant } from '../types/chat';
 
 const ChatRoom: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
-  const { currentUser } = useAuth();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [participants, setParticipants] = useState<ChatParticipant[]>([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const [room, setRoom] = useState<ChatRoomType | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [participants, setParticipants] = useState<ChatParticipant[]>([]);
 
   useEffect(() => {
-    if (!roomId) return;
+    const initializeChat = async () => {
+      if (!roomId) return;
 
-    const loadRoom = async () => {
       try {
-        setLoading(true);
+        // Connect to chat service
         await chatService.connect();
+        
+        // Join the room
         chatService.joinRoom(roomId);
+        
+        // Get room details
+        const roomData = await chatService.getRoom(roomId);
+        setRoom(roomData);
+        
+        // Get participants
+        const participantsData = await chatService.getRoomParticipants(roomId);
+        setParticipants(participantsData);
 
-        // Load messages and participants
-        const [roomMessages, roomParticipants] = await Promise.all([
-          chatService.getMessages(roomId),
-          chatService.getRoomParticipants(roomId)
-        ]);
+        // Mark messages as read
+        await chatService.markAsRead(roomId);
 
-        setMessages(roomMessages);
-        setParticipants(roomParticipants);
-
-        // Set up socket event listeners
-        chatService.onMessageReceived((message) => {
-          setMessages(prev => [...prev, message]);
-          scrollToBottom();
-        });
-
-        chatService.onMessageUpdated((updatedMessage) => {
-          setMessages(prev => prev.map(msg => 
-            msg._id === updatedMessage._id ? updatedMessage : msg
-          ));
-        });
-
-        chatService.onMessageDeleted((messageId) => {
-          setMessages(prev => prev.filter(msg => msg._id !== messageId));
-        });
-
+        // Setup event listeners
         chatService.onUserJoined((participant) => {
           setParticipants(prev => [...prev, participant]);
         });
@@ -58,14 +45,14 @@ const ChatRoom: React.FC = () => {
         });
 
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load chat room');
-      } finally {
-        setLoading(false);
+        console.error('Failed to initialize chat:', err);
+        setError('Failed to load chat room');
       }
     };
 
-    loadRoom();
+    initializeChat();
 
+    // Cleanup function
     return () => {
       if (roomId) {
         chatService.leaveRoom(roomId);
@@ -74,105 +61,85 @@ const ChatRoom: React.FC = () => {
     };
   }, [roomId]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!roomId || !newMessage.trim()) return;
-
-    try {
-      await chatService.sendMessage(roomId, newMessage.trim());
-      setNewMessage('');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send message');
-    }
-  };
-
-  if (loading) {
+  if (error) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-        <CircularProgress />
+      <Box sx={{ p: 3 }}>
+        <Typography color="error">{error}</Typography>
       </Box>
     );
   }
 
-  if (error) {
+  if (!room) {
     return (
-      <Box sx={{ p: 3, textAlign: 'center' }}>
-        <Typography color="error">
-          {error}
-        </Typography>
+      <Box sx={{ p: 3, display: 'flex', justifyContent: 'center' }}>
+        <Typography>Loading chat room...</Typography>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      {/* Messages */}
-      <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-        {messages.map((message) => (
-          <Box
-            key={message._id}
-            sx={{
-              mb: 2,
-              display: 'flex',
-              flexDirection: message.sender.id === currentUser?.id ? 'row-reverse' : 'row',
-              alignItems: 'flex-start',
-            }}
-          >
-            <Box
-              sx={{
-                maxWidth: '70%',
-                bgcolor: message.sender.id === currentUser?.id ? 'primary.main' : 'grey.100',
-                color: message.sender.id === currentUser?.id ? 'white' : 'text.primary',
-                borderRadius: 2,
-                p: 2,
-              }}
-            >
-              <Typography variant="body2" sx={{ mb: 1 }}>
-                {message.sender.name}
-              </Typography>
-              <Typography>{message.content}</Typography>
-              <Typography variant="caption" sx={{ mt: 1, display: 'block', textAlign: 'right' }}>
-                {new Date(message.createdAt).toLocaleTimeString()}
-              </Typography>
-            </Box>
-          </Box>
-        ))}
-        <div ref={messagesEndRef} />
+    <Paper sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <Box sx={{ 
+        p: 2, 
+        borderBottom: 1, 
+        borderColor: 'divider',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2,
+        bgcolor: 'primary.main',
+        color: 'primary.contrastText'
+      }}>
+        <IconButton onClick={() => navigate(-1)} sx={{ color: 'inherit' }}>
+          <ArrowBackIcon />
+        </IconButton>
+        <Typography variant="h6" sx={{ flex: 1 }}>{room.name}</Typography>
+        <Typography variant="body2">
+          {participants.length} members
+        </Typography>
       </Box>
 
-      {/* Message Input */}
-      <Box
-        component="form"
-        onSubmit={handleSendMessage}
-        sx={{
-          p: 2,
-          borderTop: 1,
-          borderColor: 'divider',
-          bgcolor: 'background.paper',
-        }}
-      >
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <TextField
-            fullWidth
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type a message..."
-            size="small"
-          />
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={!newMessage.trim()}
-          >
-            Send
-          </Button>
-        </Box>
+      {/* Active Participants */}
+      <Box sx={{ 
+        p: 1, 
+        borderBottom: 1, 
+        borderColor: 'divider', 
+        display: 'flex', 
+        gap: 1, 
+        overflowX: 'auto',
+        bgcolor: 'background.paper'
+      }}>
+        {participants.map((participant) => (
+          <Box key={participant.id} sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center',
+            px: 1 
+          }}>
+            <Avatar
+              src={participant.avatar}
+              alt={participant.name}
+              sx={{ 
+                width: 32, 
+                height: 32,
+                border: '2px solid',
+                borderColor: 'primary.main'
+              }}
+            />
+            <Typography variant="caption" sx={{ mt: 0.5 }}>
+              {participant.name.split(' ')[0]}
+            </Typography>
+          </Box>
+        ))}
       </Box>
-    </Box>
+
+      {/* Chat Interface */}
+      <Box sx={{ flex: 1, overflow: 'hidden' }}>
+        {roomId && room.id && (
+          <ChatInterface roomId={roomId} userId={room.id} />
+        )}
+      </Box>
+    </Paper>
   );
 };
 
