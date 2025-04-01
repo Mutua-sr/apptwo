@@ -1,5 +1,5 @@
 import { DatabaseService } from './database';
-import { Classroom, ClassroomSettings } from '../types/classroom';
+import { Classroom } from '../types/classroom';
 import logger from '../config/logger';
 
 interface DatabaseQuery {
