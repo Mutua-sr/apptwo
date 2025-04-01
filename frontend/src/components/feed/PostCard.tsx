@@ -27,6 +27,7 @@ import {
   Send as SendIcon,
 } from '@mui/icons-material';
 import { Post, Comment, ShareTarget } from '../../types/feed';
+import type { BoxProps } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface PostCardProps {
@@ -60,15 +61,15 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onLike, onComment, onS
           <Stack direction="row" alignItems="center" justifyContent="space-between">
             <Stack direction="row" spacing={1} alignItems="center">
               <Avatar 
-                src={post.author.avatar} 
+                src={post.author.avatar || undefined} 
                 sx={{ bgcolor: 'primary.main' }}
-                alt={post.author.username}
+                alt={post.author.username || 'User avatar'}
               >
-                {(post.author.username || post.author.id || 'A').charAt(0)}
+                {(post.author.username || 'A').charAt(0)}
               </Avatar>
               <Box>
                 <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                  {post.author.username || post.author.id || 'Anonymous'}
+                  {post.author.username || 'Anonymous'}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   {new Date(post.createdAt).toLocaleString()}
@@ -134,12 +135,16 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onLike, onComment, onS
               <Stack spacing={2}>
                 {comments.map((comment: Comment) => (
                   <Stack key={comment.id} direction="row" spacing={1}>
-                    <Avatar sx={{ width: 32, height: 32 }}>
-                      {(comment.author.username || comment.author.id || 'A').charAt(0)}
+                    <Avatar 
+                      src={comment.author.avatar || undefined}
+                      sx={{ width: 32, height: 32 }}
+                      alt={comment.author.username || 'User avatar'}
+                    >
+                      {(comment.author.username || 'A').charAt(0)}
                     </Avatar>
                     <Box sx={{ flex: 1 }}>
                       <Typography variant="subtitle2">
-                        {comment.author.username || comment.author.id || 'Anonymous'}
+                        {comment.author.username || 'Anonymous'}
                       </Typography>
                       <Typography variant="body2">{comment.content}</Typography>
                       <Typography variant="caption" color="text.secondary">
@@ -149,8 +154,12 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onLike, onComment, onS
                   </Stack>
                 ))}
                 <Stack direction="row" spacing={1}>
-                  <Avatar sx={{ width: 32, height: 32 }}>
-                    {(currentUser?.username || currentUser?.id || 'A').charAt(0)}
+                  <Avatar 
+                    src={currentUser?.avatar || undefined}
+                    sx={{ width: 32, height: 32 }}
+                    alt={currentUser?.username || 'User avatar'}
+                  >
+                    {(currentUser?.username || 'A').charAt(0)}
                   </Avatar>
                   <TextField
                     fullWidth
