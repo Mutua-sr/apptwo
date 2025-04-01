@@ -2,6 +2,7 @@ export interface UserProfile {
   id: string;
   name: string;
   email: string;
+  username: string;
   avatar?: string;
   bio?: string;
   social: {
@@ -36,6 +37,7 @@ export interface UserProfile {
 
 export interface UpdateProfileData {
   name?: string;
+  username?: string;
   bio?: string;
   avatar?: string;
   social?: {
@@ -44,19 +46,19 @@ export interface UpdateProfileData {
     github?: string;
     website?: string;
   };
-  settings?: {
-    notifications?: {
-      email?: boolean;
-      push?: boolean;
-      inApp?: boolean;
+  settings: {
+    notifications: {
+      email: boolean;
+      push: boolean;
+      inApp: boolean;
     };
-    privacy?: {
-      showEmail?: boolean;
-      showActivity?: boolean;
-      allowMessages?: boolean;
+    privacy: {
+      showEmail: boolean;
+      showActivity: boolean;
+      allowMessages: boolean;
     };
-    theme?: 'light' | 'dark';
-    language?: string;
+    theme: 'light' | 'dark';
+    language: string;
   };
 }
 
