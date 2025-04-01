@@ -21,6 +21,55 @@ export interface ChatParticipant {
   lastSeen?: string;
 }
 
+export interface ChatRoomInfo {
+  unreadCount: number;
+  lastMessage?: string;
+}
+
+export interface ExtendedRoom {
+  _id: string;
+  name: string;
+  description?: string;
+  type: 'community' | 'classroom';
+  avatar?: string;
+  createdById: string;
+  createdBy: {
+    id: string;
+    name: string;
+    avatar?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+  settings: {
+    isPrivate: boolean;
+    allowStudentPosts?: boolean;
+    allowStudentComments?: boolean;
+    allowStudentChat?: boolean;
+    allowMemberPosts?: boolean;
+    allowMemberInvites?: boolean;
+    requirePostApproval: boolean;
+    notifications?: boolean;
+  };
+  unreadCount?: number;
+  lastMessage?: string;
+  // Classroom specific properties
+  students?: Array<{
+    id: string;
+    name: string;
+    avatar?: string;
+    status?: string;
+    joinedAt?: string;
+  }>;
+  // Community specific properties
+  members?: Array<{
+    id: string;
+    name: string;
+    avatar?: string;
+    role?: string;
+    joinedAt?: string;
+  }>;
+}
+
 export interface ChatRoom {
   id: string;
   name: string;
