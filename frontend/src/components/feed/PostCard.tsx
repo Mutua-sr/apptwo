@@ -43,8 +43,8 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLike, onComment, onShare })
   const [commentText, setCommentText] = useState('');
   const [showComments, setShowComments] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [classrooms, setClassrooms] = useState<ShareTarget[]>([]);
-  const [communities, setCommunities] = useState<ShareTarget[]>([]);
+  const [classrooms] = useState<ShareTarget[]>([]);
+  const [communities] = useState<ShareTarget[]>([]);
   const [userDetails, setUserDetails] = useState<Map<string, { username: string; avatar?: string }>>(new Map());
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
 

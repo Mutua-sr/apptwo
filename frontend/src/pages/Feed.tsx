@@ -14,7 +14,7 @@ import {
 } from '@mui/icons-material';
 import { Post } from '../types/feed';
 import postService from '../services/postService';
-import { PostCard } from '../components/feed/PostCard';
+import PostCard from '../components/feed/PostCard';
 import CreatePost from '../components/feed/CreatePost';
 import { useAuth } from '../contexts/AuthContext';
 
