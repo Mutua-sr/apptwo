@@ -47,7 +47,7 @@ class ChatService {
     }
   }
 
-  public async sendMessage(content: string, roomId: string) {
+  public async sendMessage(content: string, roomId: string, roomType: 'classroom' | 'community') {
     if (this.socket) {
       const currentUser = apiService.auth.getCurrentUser();
       if (!currentUser) {
@@ -58,6 +58,7 @@ class ChatService {
         type: 'message',
         content,
         roomId,
+        roomType,
         sender: {
           id: currentUser.id,
           name: currentUser.name,
@@ -65,6 +66,9 @@ class ChatService {
         timestamp: new Date().toISOString()
       };
       this.socket.emit('message', message);
+      
+      // Also send through REST API for persistence
+      await apiService.chat.sendMessage(roomId, roomType, content);
     }
   }
 

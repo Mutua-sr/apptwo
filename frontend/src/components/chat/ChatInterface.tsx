@@ -25,6 +25,7 @@ import apiService from '../../services/apiService';
 
 interface ChatInterfaceProps {
   roomId: string;
+  roomType: 'classroom' | 'community';
   title: string;
   subtitle?: string;
   avatar: string;
@@ -35,6 +36,7 @@ interface ChatInterfaceProps {
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
   roomId,
+  roomType,
   title,
   subtitle,
   avatar,
@@ -55,8 +57,8 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       try {
         setLoading(true);
         const [messagesResponse, roomResponse] = await Promise.all([
-          apiService.chat.getMessages(roomId),
-          apiService.chat.getRoomInfo(roomId)
+          apiService.chat.getMessages(roomId, roomType),
+          apiService.chat.getRoomInfo(roomId, roomType)
         ]);
         
         setMessages(messagesResponse.data.data);
@@ -72,7 +74,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (roomId) {
       loadData();
     }
-  }, [roomId]);
+  }, [roomId, roomType]);
 
   // Handle real-time messages
   useEffect(() => {
@@ -106,7 +108,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       try {
         const trimmedMessage = message.trim();
         setMessage(''); // Clear input immediately for better UX
-        await chatService.sendMessage(trimmedMessage, roomId);
+        await chatService.sendMessage(trimmedMessage, roomId, roomType);
       } catch (err) {
         console.error('Error sending message:', err);
         setError('Failed to send message');

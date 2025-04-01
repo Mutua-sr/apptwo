@@ -100,13 +100,13 @@ const createApiService = () => {
     },
 
     chat: {
-      getMessages: (roomId: string) =>
-        instance.get<ApiResponse<ChatMessage[]>>(`/chat/rooms/${roomId}/messages`, {
+      getMessages: (roomId: string, roomType: 'classroom' | 'community') =>
+        instance.get<ApiResponse<ChatMessage[]>>(`/${roomType}s/${roomId}/messages`, {
           params: { limit: 50, offset: 0 }
         }),
       
-      sendMessage: (roomId: string, content: string) =>
-        instance.post<ApiResponse<ChatMessage>>(`/chat/rooms/${roomId}/messages`, { 
+      sendMessage: (roomId: string, roomType: 'classroom' | 'community', content: string) =>
+        instance.post<ApiResponse<ChatMessage>>(`/${roomType}s/${roomId}/messages`, { 
           content,
           type: 'text'
         }),
@@ -114,11 +114,11 @@ const createApiService = () => {
       deleteMessage: (messageId: string) =>
         instance.delete<ApiResponse<void>>(`/chat/messages/${messageId}`),
 
-      getRoomInfo: (roomId: string) =>
-        instance.get<ApiResponse<ChatRoom>>(`/chat/rooms/${roomId}`),
+      getRoomInfo: (roomId: string, roomType: 'classroom' | 'community') =>
+        instance.get<ApiResponse<ChatRoom>>(`/${roomType}s/${roomId}`),
         
       getRoomMembers: (roomId: string, roomType: 'classroom' | 'community') =>
-        instance.get<ApiResponse<ChatRoom>>(`/${roomType}s/${roomId}/members`),
+        instance.get<ApiResponse<ChatRoom>>(`/${roomType}s/${roomId}`),
     },
 
     classrooms: {

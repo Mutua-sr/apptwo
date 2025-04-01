@@ -8,6 +8,7 @@ export interface ChatMessage {
     avatar?: string;
   };
   roomId: string;
+  roomType: 'classroom' | 'community';
   timestamp: string;
 }
 
@@ -32,6 +33,7 @@ export interface NewChatMessage {
   type: 'message';
   content: string;
   roomId: string;
+  roomType: 'classroom' | 'community';
   sender: {
     id: string;
     name: string;
