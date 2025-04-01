@@ -54,6 +54,13 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   // Load initial messages and room info
   useEffect(() => {
     const loadData = async () => {
+      if (!roomType) {
+        console.error('Room type is undefined');
+        setError('Invalid room configuration');
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         const [messagesResponse, roomResponse] = await Promise.all([
@@ -104,7 +111,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   }, [messages]);
 
   const handleSend = async () => {
-    if (message.trim() && currentUser) {
+    if (message.trim() && currentUser && roomType) {
       try {
         const trimmedMessage = message.trim();
         setMessage(''); // Clear input immediately for better UX

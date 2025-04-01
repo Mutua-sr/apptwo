@@ -48,6 +48,7 @@ const ChatLayout: FC<ChatLayoutProps> = ({
     <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       {/* Sidebar with chat rooms list */}
       <Box
+        component="nav"
         sx={{
           width: { xs: '100%', md: 320 },
           display: { xs: !selectedRoom ? 'block' : 'none', md: 'block' },
@@ -69,6 +70,7 @@ const ChatLayout: FC<ChatLayoutProps> = ({
 
       {/* Main chat area */}
       <Box
+        component="main"
         sx={{
           flexGrow: 1,
           display: { xs: selectedRoom ? 'block' : 'none', md: 'block' },
@@ -108,6 +110,10 @@ const ChatLayout: FC<ChatLayoutProps> = ({
         open={isInfoOpen}
         onClose={() => setIsInfoOpen(false)}
         variant={isMobile ? 'temporary' : 'persistent'}
+        keepMounted={false}
+        ModalProps={{
+          keepMounted: false
+        }}
         sx={{
           width: { xs: '100%', sm: 320 },
           flexShrink: 0,
