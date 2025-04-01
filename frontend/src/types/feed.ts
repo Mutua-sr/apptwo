@@ -34,6 +34,7 @@ export interface ShareTarget {
 }
 
 export interface PostInput {
+  title: string;
   content: string;
   tags?: string[];
   sharedTo?: ShareTarget;

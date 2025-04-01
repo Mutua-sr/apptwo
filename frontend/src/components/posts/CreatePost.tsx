@@ -13,6 +13,7 @@ export const CreatePost: React.FC<CreatePostProps> = ({
   onCancel,
   className = ''
 }) => {
+  const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -20,6 +21,11 @@ export const CreatePost: React.FC<CreatePostProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!title.trim()) {
+      setError('Title is required');
+      return;
+    }
 
     if (!content.trim()) {
       setError('Content is required');
@@ -31,12 +37,14 @@ export const CreatePost: React.FC<CreatePostProps> = ({
 
     try {
       const postData: PostInput = {
+        title: title.trim(),
         content: content.trim(),
         tags: tags.length > 0 ? tags : undefined
       };
 
       await postService.createPost(postData);
       onPostCreated();
+      setTitle('');
       setContent('');
       setTags([]);
     } catch (err) {
@@ -49,6 +57,13 @@ export const CreatePost: React.FC<CreatePostProps> = ({
   return (
     <div className={`bg-white rounded-lg shadow p-4 ${className}`}>
       <form onSubmit={handleSubmit}>
+        <input
+          type="text"
+          className="w-full p-2 border rounded-lg mb-4 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Post title"
+        />
         <textarea
           className="w-full p-2 border rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           rows={4}

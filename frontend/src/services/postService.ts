@@ -74,6 +74,7 @@ const postService = {
 
       const postData = {
         type: 'post',
+        title: data.title,
         content: data.content,
         tags: data.tags || [],
         status: 'published',
