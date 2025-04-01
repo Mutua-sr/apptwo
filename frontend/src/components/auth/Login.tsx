@@ -35,8 +35,13 @@ const Login: React.FC = () => {
     try {
       setError(null);
       setLoading(true);
-      await login(email, password);
-      navigate(from, { replace: true });
+      const user = await login(email, password);
+      // Redirect admin users to admin dashboard, others to their requested page
+      if (user?.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to log in');
     } finally {

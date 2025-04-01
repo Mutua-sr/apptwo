@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Box, CssBaseline } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/auth/PrivateRoute';
+import AdminRoute from './components/auth/AdminRoute';
 import MainLayout from './components/layout/MainLayout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
@@ -37,10 +38,12 @@ const App: React.FC = () => {
               <Route path="/chat/community/:roomId" element={<ChatRoom />} />
 
               {/* Admin Routes */}
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/classrooms" element={<ClassroomManagement />} />
-              <Route path="/admin/communities" element={<CommunityManagement />} />
-              <Route path="/admin/users" element={<UserManagement />} />
+              <Route element={<AdminRoute />}>
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/classrooms" element={<ClassroomManagement />} />
+                <Route path="/admin/communities" element={<CommunityManagement />} />
+                <Route path="/admin/users" element={<UserManagement />} />
+              </Route>
             </Route>
 
             {/* Fallback Route */}
