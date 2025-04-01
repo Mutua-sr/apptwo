@@ -47,11 +47,13 @@ const chatController = __importStar(require("../controllers/chat.controller"));
 const profileController = __importStar(require("../controllers/profile.controller"));
 const report_routes_1 = __importDefault(require("./report.routes"));
 const multer_1 = __importDefault(require("multer"));
+const userController = __importStar(require("../controllers/user.controller"));
 const router = (0, express_1.Router)();
 const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage() });
 // Auth routes
 router.post('/auth/login', authController.login);
 router.post('/auth/register', authController.register);
+router.get('/auth/me', auth_1.auth, authController.getMe);
 // Profile routes
 router.get('/profile/:id', auth_1.auth, profileController.getProfile);
 router.put('/profile/:id', auth_1.auth, profileController.updateProfile);
@@ -72,16 +74,16 @@ router.post('/classrooms/:id/materials', auth_1.auth, classroomController.addMat
 router.post('/classrooms/:id/schedule', auth_1.auth, classroomController.addScheduleEvent);
 router.post('/classrooms/:classroomId/assignments/:assignmentId/submit', auth_1.auth, classroomController.submitAssignment);
 router.put('/classrooms/:classroomId/assignments/:assignmentId/submissions/:studentId/grade', auth_1.auth, classroomController.gradeSubmission);
-// Feed routes
-router.get('/feed', auth_1.auth, feedController.getPosts);
-router.post('/feed/posts', auth_1.auth, feedController.createPost);
-router.get('/feed/posts/:id', auth_1.auth, feedController.getPost);
-router.put('/feed/posts/:id', auth_1.auth, feedController.updatePost);
-router.delete('/feed/posts/:id', auth_1.auth, feedController.deletePost);
-router.post('/feed/posts/:id/like', auth_1.auth, feedController.likePost);
-router.delete('/feed/posts/:id/like', auth_1.auth, feedController.unlikePost);
-router.post('/feed/posts/:id/comments', auth_1.auth, feedController.addComment);
-router.post('/feed/posts/:id/share', auth_1.auth, feedController.sharePost);
+// Posts routes
+router.get('/posts', auth_1.auth, feedController.getPosts);
+router.post('/posts', auth_1.auth, feedController.createPost);
+router.get('/posts/:id', auth_1.auth, feedController.getPost);
+router.put('/posts/:id', auth_1.auth, feedController.updatePost);
+router.delete('/posts/:id', auth_1.auth, feedController.deletePost);
+router.post('/posts/:id/like', auth_1.auth, feedController.likePost);
+router.delete('/posts/:id/like', auth_1.auth, feedController.unlikePost);
+router.post('/posts/:id/comments', auth_1.auth, feedController.addComment);
+router.post('/posts/:id/share', auth_1.auth, feedController.sharePost);
 // Community routes
 router.get('/communities', auth_1.auth, communityController.getCommunities);
 router.post('/communities', auth_1.auth, communityController.createCommunity);
@@ -91,6 +93,7 @@ router.delete('/communities/:id', auth_1.auth, communityController.deleteCommuni
 router.post('/communities/:id/join', auth_1.auth, communityController.joinCommunity);
 router.post('/communities/:id/leave', auth_1.auth, communityController.leaveCommunity);
 // Chat routes
+router.get('/chat/rooms/:id', auth_1.auth, chatController.getChatRoom);
 router.get('/chat/rooms/:roomId/messages', auth_1.auth, chatController.getChatHistory);
 router.post('/chat/rooms/:roomId/messages', auth_1.auth, chatController.sendMessage);
 router.delete('/chat/messages/:messageId', auth_1.auth, chatController.deleteMessage);
@@ -103,5 +106,7 @@ router.put('/video/call/:sessionId/end', auth_1.auth, videoController.endSession
 router.use('/reports', report_routes_1.default);
 // Health check
 router.get('/health', (_, res) => res.json({ status: 'ok' }));
+// User routes
+router.post('/users/batch', auth_1.auth, userController.getBatchUsers);
 exports.default = router;
 //# sourceMappingURL=api.js.map

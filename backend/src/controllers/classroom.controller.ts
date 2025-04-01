@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { DatabaseService } from '../services/database';
 import { RealtimeService } from '../services/realtime.service';
+import { ClassroomService } from '../services/classroom.service';
 import { ApiError } from '../middleware/errorHandler';
 import { AuthRequest, ApiResponse } from '../types';
 import { 
@@ -17,6 +18,53 @@ type AuthenticatedRequest = Request & AuthRequest;
 // Helper function to generate a unique classroom code
 const generateClassroomCode = (): string => {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
+};
+
+export const getClassrooms = async (
+  req: AuthenticatedRequest,
+  res: Response<ApiResponse<Classroom[]>>,
+  next: NextFunction
+) => {
+  try {
+    if (!req.user?.id) {
+      throw new ApiError('Unauthorized', 401);
+    }
+
+    const { role = 'all' } = req.query;
+    let classrooms: Classroom[];
+
+    switch (role) {
+      case 'teacher':
+        classrooms = await ClassroomService.getByTeacher(req.user.id);
+        break;
+      case 'student':
+        classrooms = await ClassroomService.getByStudent(req.user.id);
+        break;
+      default:
+        classrooms = await ClassroomService.getAll(req.user.id);
+    }
+
+    // Add real-time data like unread messages count
+    const classroomsWithMeta = await Promise.all(
+      classrooms.map(async (classroom) => {
+        const unreadCount = await RealtimeService.getInstance().getUnreadCount(
+          `classroom-${classroom._id}`,
+          req.user!.id
+        );
+        return {
+          ...classroom,
+          unreadCount
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      data: classroomsWithMeta
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
 export const createClassroom = async (
@@ -54,6 +102,7 @@ export const createClassroom = async (
       settings: {
         allowStudentPosts: true,
         allowStudentComments: true,
+        allowStudentChat: true,
         isArchived: false,
         notifications: {
           assignments: true,
@@ -96,9 +145,18 @@ export const getClassroom = async (
       throw new ApiError('Not authorized to access this classroom', 403);
     }
 
+    // Add real-time data
+    const unreadCount = await RealtimeService.getInstance().getUnreadCount(
+      `classroom-${classroom._id}`,
+      req.user!.id
+    );
+
     res.json({
       success: true,
-      data: classroom
+      data: {
+        ...classroom,
+        unreadCount
+      }
     });
   } catch (error) {
     next(error);
@@ -130,6 +188,7 @@ export const updateClassroom = async (
         settings: {
           allowStudentPosts: req.body.settings.allowStudentPosts ?? classroom.settings.allowStudentPosts,
           allowStudentComments: req.body.settings.allowStudentComments ?? classroom.settings.allowStudentComments,
+          allowStudentChat: req.body.settings.allowStudentChat ?? classroom.settings.allowStudentChat,
           isArchived: req.body.settings.isArchived ?? classroom.settings.isArchived,
           notifications: {
             assignments: req.body.settings.notifications?.assignments ?? classroom.settings.notifications.assignments,
@@ -325,223 +384,6 @@ export const deleteClassroom = async (
     res.json({
       success: true,
       data: { message: 'Classroom deleted successfully' }
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const addScheduleEvent = async (
-  req: AuthenticatedRequest,
-  res: Response<ApiResponse<Classroom>>,
-  next: NextFunction
-) => {
-  try {
-    const { id } = req.params;
-    const classroom = await DatabaseService.read<Classroom>(id);
-
-    if (!classroom) {
-      throw new ApiError('Classroom not found', 404);
-    }
-
-    if (classroom.teacher.id !== req.user?.id) {
-      throw new ApiError('Not authorized to add schedule events', 403);
-    }
-
-    const event = {
-      id: `event_${Date.now()}`,
-      title: req.body.title,
-      startTime: req.body.startTime,
-      endTime: req.body.endTime,
-      recurring: req.body.recurring
-    };
-
-    const updatedClassroom = await DatabaseService.update<Classroom>(id, {
-      schedule: [...classroom.schedule, event]
-    });
-
-    res.json({
-      success: true,
-      data: updatedClassroom
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const gradeSubmission = async (
-  req: AuthenticatedRequest,
-  res: Response<ApiResponse<Classroom>>,
-  next: NextFunction
-) => {
-  try {
-    const { classroomId, assignmentId, studentId } = req.params;
-    const classroom = await DatabaseService.read<Classroom>(classroomId);
-
-    if (!classroom) {
-      throw new ApiError('Classroom not found', 404);
-    }
-
-    if (classroom.teacher.id !== req.user?.id) {
-      throw new ApiError('Not authorized to grade submissions', 403);
-    }
-
-    const assignment = classroom.assignments.find(a => a.id === assignmentId);
-    if (!assignment) {
-      throw new ApiError('Assignment not found', 404);
-    }
-
-    const submission = assignment.submissions.find(s => s.studentId === studentId);
-    if (!submission) {
-      throw new ApiError('Submission not found', 404);
-    }
-
-    const updatedAssignments = classroom.assignments.map(a => {
-      if (a.id === assignmentId) {
-        return {
-          ...a,
-          submissions: a.submissions.map(s => {
-            if (s.studentId === studentId) {
-              return {
-                ...s,
-                grade: req.body.grade,
-                feedback: req.body.feedback
-              };
-            }
-            return s;
-          })
-        };
-      }
-      return a;
-    });
-
-    const updatedClassroom = await DatabaseService.update<Classroom>(classroomId, {
-      assignments: updatedAssignments
-    });
-
-    // Notify student about grade
-    RealtimeService.getInstance().emitToUser(studentId, 'assignment_graded', {
-      classroomId,
-      assignmentId,
-      grade: req.body.grade,
-      feedback: req.body.feedback
-    });
-
-    res.json({
-      success: true,
-      data: updatedClassroom
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const submitAssignment = async (
-  req: AuthenticatedRequest,
-  res: Response<ApiResponse<Classroom>>,
-  next: NextFunction
-) => {
-  try {
-    const { id, assignmentId } = req.params;
-    const classroom = await DatabaseService.read<Classroom>(id);
-
-    if (!classroom) {
-      throw new ApiError('Classroom not found', 404);
-    }
-
-    // Check if user is a student in the classroom
-    if (!classroom.students.some(student => student.id === req.user?.id)) {
-      throw new ApiError('Not authorized to submit assignment', 403);
-    }
-
-    const assignment = classroom.assignments.find(a => a.id === assignmentId);
-    if (!assignment) {
-      throw new ApiError('Assignment not found', 404);
-    }
-
-    const submission: AssignmentSubmission = {
-      studentId: req.user!.id,
-      submittedAt: new Date().toISOString(),
-      files: req.body.files
-    };
-
-    // Update assignment submissions
-    const updatedAssignments = classroom.assignments.map(a => {
-      if (a.id === assignmentId) {
-        return {
-          ...a,
-          submissions: [...a.submissions, submission]
-        };
-      }
-      return a;
-    });
-
-    const updatedClassroom = await DatabaseService.update<Classroom>(id, {
-      assignments: updatedAssignments
-    });
-
-    // Notify about assignment submission
-    RealtimeService.getInstance().broadcastToRoom(id, 'assignment_submitted', {
-      classroomId: id,
-      assignmentId,
-      submission
-    });
-
-    res.json({
-      success: true,
-      data: updatedClassroom
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getClassrooms = async (
-  req: AuthenticatedRequest,
-  res: Response<ApiResponse<Classroom[]>>,
-  next: NextFunction
-) => {
-  try {
-    const { role = 'all' } = req.query;
-    let query: any = {
-      selector: {
-        type: 'classroom'
-      }
-    };
-
-    // Filter classrooms based on user role
-    if (role === 'teacher') {
-      query.selector['teacher.id'] = req.user?.id;
-    } else if (role === 'student') {
-      query.selector['students'] = {
-        $elemMatch: {
-          id: req.user?.id
-        }
-      };
-    } else {
-      // For 'all', get both teaching and enrolled classrooms
-      query = {
-        selector: {
-          type: 'classroom',
-          $or: [
-            { 'teacher.id': req.user?.id },
-            {
-              students: {
-                $elemMatch: {
-                  id: req.user?.id
-                }
-              }
-            }
-          ]
-        }
-      };
-    }
-
-    const classrooms = await DatabaseService.find<Classroom>(query);
-
-    res.json({
-      success: true,
-      data: classrooms
     });
   } catch (error) {
     next(error);

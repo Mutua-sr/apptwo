@@ -27,11 +27,11 @@ declare const resolvers: {
         }, context: import("../../types").Context) => Promise<import("../../types").Community[]>;
         classroom: (_: any, { id }: {
             id: string;
-        }, context: import("../../types").Context) => Promise<import("../../types").Classroom | null>;
+        }, context: import("../../types").Context) => Promise<any>;
         classrooms: (_: any, { page, limit }: {
             page?: number;
             limit?: number;
-        }, context: import("../../types").Context) => Promise<import("../../types").Classroom[]>;
+        }, context: import("../../types").Context) => Promise<any>;
         myClassrooms: (_: any, __: any, context: import("../../types").Context) => Promise<import("../../types").Classroom[]>;
     };
     Mutation: {
@@ -70,15 +70,15 @@ declare const resolvers: {
             topic: string;
         }, context: import("../../types").Context) => Promise<import("../../types").Community>;
         createClassroom: (_: any, { input }: {
-            input: import("../../types").CreateClassroom;
-        }, context: import("../../types").Context) => Promise<import("../../types").Classroom>;
+            input: CreateClassroom;
+        }, context: import("../../types").Context) => Promise<any>;
         updateClassroom: (_: any, { id, input }: {
             id: string;
-            input: import("../../types").UpdateClassroomInput;
-        }, context: import("../../types").Context) => Promise<import("../../types").Classroom>;
+            input: UpdateClassroomInput;
+        }, context: import("../../types").Context) => Promise<any>;
         deleteClassroom: (_: any, { id }: {
             id: string;
-        }, context: import("../../types").Context) => Promise<boolean>;
+        }, context: import("../../types").Context) => Promise<any>;
     };
     Classroom: {
         teacher: (parent: import("../../types").Classroom) => {

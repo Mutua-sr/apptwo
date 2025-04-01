@@ -7,96 +7,41 @@ exports.ClassroomService = void 0;
 const database_1 = require("./database");
 const logger_1 = __importDefault(require("../config/logger"));
 class ClassroomService {
-    static async create(input) {
+    static async createIndexes() {
         try {
-            const defaultSettings = {
-                allowStudentPosts: true,
-                allowStudentComments: true,
-                isArchived: false,
-                notifications: {
-                    assignments: true,
-                    materials: true,
-                    announcements: true
-                }
-            };
-            const classroom = {
-                ...input,
-                type: this.TYPE,
-                code: Math.random().toString(36).substring(7).toUpperCase(),
-                students: [],
-                assignments: [],
-                materials: [],
-                schedule: [],
-                settings: defaultSettings
-            };
-            return await database_1.DatabaseService.create(classroom);
-        }
-        catch (error) {
-            logger_1.default.error('Error creating classroom:', error);
-            throw new Error('Failed to create classroom');
-        }
-    }
-    static async getById(id) {
-        try {
-            return await database_1.DatabaseService.read(id);
-        }
-        catch (error) {
-            logger_1.default.error(`Error getting classroom ${id}:`, error);
-            throw new Error('Failed to get classroom');
-        }
-    }
-    static async list(page = 1, limit = 10) {
-        try {
-            const skip = (page - 1) * limit;
-            const query = {
-                selector: {
-                    type: this.TYPE
+            // Index for classrooms by teacher
+            const teacherIndex = {
+                index: {
+                    fields: ['type', 'teacher.id']
                 },
-                sort: [{ createdAt: 'desc' }],
-                skip,
-                limit
+                ddoc: 'classrooms-by-teacher-index',
+                name: 'classrooms-by-teacher-index'
             };
-            return await database_1.DatabaseService.find(query);
-        }
-        catch (error) {
-            logger_1.default.error('Error listing classrooms:', error);
-            throw new Error('Failed to list classrooms');
-        }
-    }
-    static async update(id, input) {
-        try {
-            const classroom = await this.getById(id);
-            if (!classroom) {
-                throw new Error('Classroom not found');
-            }
-            const updatedSettings = input.settings
-                ? {
-                    ...classroom.settings,
-                    ...input.settings,
-                    notifications: {
-                        ...classroom.settings.notifications,
-                        ...input.settings.notifications
-                    }
-                }
-                : undefined;
-            const updateData = {
-                ...input,
-                settings: updatedSettings
+            // Index for classrooms by student
+            const studentIndex = {
+                index: {
+                    fields: ['type', 'students.id']
+                },
+                ddoc: 'classrooms-by-student-index',
+                name: 'classrooms-by-student-index'
             };
-            return await database_1.DatabaseService.update(id, updateData);
+            // Index for active classrooms
+            const activeIndex = {
+                index: {
+                    fields: ['type', 'settings.isArchived', 'updatedAt']
+                },
+                ddoc: 'active-classrooms-index',
+                name: 'active-classrooms-index'
+            };
+            await Promise.all([
+                database_1.DatabaseService.createIndex(teacherIndex),
+                database_1.DatabaseService.createIndex(studentIndex),
+                database_1.DatabaseService.createIndex(activeIndex)
+            ]);
+            logger_1.default.info('Created classroom indexes');
         }
         catch (error) {
-            logger_1.default.error(`Error updating classroom ${id}:`, error);
-            throw new Error('Failed to update classroom');
-        }
-    }
-    static async delete(id) {
-        try {
-            return await database_1.DatabaseService.delete(id);
-        }
-        catch (error) {
-            logger_1.default.error(`Error deleting classroom ${id}:`, error);
-            throw new Error('Failed to delete classroom');
+            logger_1.default.error('Error creating classroom indexes:', error);
         }
     }
     static async getByTeacher(teacherId) {
@@ -104,9 +49,11 @@ class ClassroomService {
             const query = {
                 selector: {
                     type: this.TYPE,
-                    'teacher.id': teacherId
+                    'teacher.id': teacherId,
+                    'settings.isArchived': false
                 },
-                sort: [{ createdAt: 'desc' }]
+                use_index: 'classrooms-by-teacher-index',
+                sort: [{ updatedAt: 'desc' }]
             };
             return await database_1.DatabaseService.find(query);
         }
@@ -122,11 +69,14 @@ class ClassroomService {
                     type: this.TYPE,
                     'students': {
                         $elemMatch: {
-                            id: studentId
+                            id: studentId,
+                            status: 'active'
                         }
-                    }
+                    },
+                    'settings.isArchived': false
                 },
-                sort: [{ createdAt: 'desc' }]
+                use_index: 'classrooms-by-student-index',
+                sort: [{ updatedAt: 'desc' }]
             };
             return await database_1.DatabaseService.find(query);
         }
@@ -135,46 +85,49 @@ class ClassroomService {
             throw new Error('Failed to get classrooms by student');
         }
     }
-    static async addStudent(classroomId, student) {
+    static async getAll(userId) {
         try {
-            const classroom = await this.getById(classroomId);
-            if (!classroom) {
-                throw new Error('Classroom not found');
-            }
-            if (classroom.students.some(s => s.id === student.id)) {
-                throw new Error('Student already in classroom');
-            }
-            const newStudent = {
-                ...student,
-                joinedAt: new Date().toISOString(),
-                status: 'active'
+            const query = {
+                selector: {
+                    type: this.TYPE,
+                    'settings.isArchived': false,
+                    $or: [
+                        { 'teacher.id': userId },
+                        {
+                            students: {
+                                $elemMatch: {
+                                    id: userId,
+                                    status: 'active'
+                                }
+                            }
+                        }
+                    ]
+                },
+                use_index: 'active-classrooms-index',
+                sort: [{ updatedAt: 'desc' }]
             };
-            const updatedClassroom = {
-                ...classroom,
-                students: [...classroom.students, newStudent]
-            };
-            return await database_1.DatabaseService.update(classroomId, updatedClassroom);
+            return await database_1.DatabaseService.find(query);
         }
         catch (error) {
-            logger_1.default.error(`Error adding student to classroom ${classroomId}:`, error);
-            throw new Error('Failed to add student to classroom');
+            logger_1.default.error('Error getting all classrooms:', error);
+            throw new Error('Failed to get classrooms');
         }
     }
-    static async removeStudent(classroomId, studentId) {
+    static async getActiveClassrooms() {
         try {
-            const classroom = await this.getById(classroomId);
-            if (!classroom) {
-                throw new Error('Classroom not found');
-            }
-            const updatedClassroom = {
-                ...classroom,
-                students: classroom.students.filter(s => s.id !== studentId)
+            const query = {
+                selector: {
+                    type: this.TYPE,
+                    'settings.isArchived': false
+                },
+                use_index: 'active-classrooms-index',
+                sort: [{ updatedAt: 'desc' }]
             };
-            return await database_1.DatabaseService.update(classroomId, updatedClassroom);
+            return await database_1.DatabaseService.find(query);
         }
         catch (error) {
-            logger_1.default.error(`Error removing student from classroom ${classroomId}:`, error);
-            throw new Error('Failed to remove student from classroom');
+            logger_1.default.error('Error getting active classrooms:', error);
+            throw new Error('Failed to get active classrooms');
         }
     }
 }

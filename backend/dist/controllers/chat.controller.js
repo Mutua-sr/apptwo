@@ -80,11 +80,20 @@ const createChatRoom = async (req, res, next) => {
 };
 exports.createChatRoom = createChatRoom;
 const getChatRoom = async (req, res, next) => {
+    var _a;
     try {
         const { id } = req.params;
+        if (!((_a = req.user) === null || _a === void 0 ? void 0 : _a.id)) {
+            throw new errorHandler_1.ApiError('Unauthorized', 401);
+        }
         const room = await database_1.DatabaseService.read(id);
         if (!room) {
             throw new errorHandler_1.ApiError('Chat room not found', 404);
+        }
+        // Validate room structure according to ChatRoom interface
+        if (!room.type || room.type !== 'room' || !room.name || !room.roomType ||
+            !room.participants || !Array.isArray(room.participants) || room.participants.length === 0) {
+            throw new errorHandler_1.ApiError('Invalid room structure', 500);
         }
         // Check if user is a participant
         if (!room.participants.some(p => { var _a; return p.id === ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id); })) {

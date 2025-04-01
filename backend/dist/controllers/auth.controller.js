@@ -3,11 +3,41 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.register = exports.login = void 0;
+exports.register = exports.login = exports.getMe = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const database_1 = require("../services/database");
 const types_1 = require("../types");
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const getMe = async (req, res, next) => {
+    try {
+        if (!req.user) {
+            const error = new Error('Not authenticated');
+            error.statusCode = 401;
+            throw error;
+        }
+        const profile = await database_1.DatabaseService.read(req.user.profileId);
+        if (!profile) {
+            const error = new Error('Profile not found');
+            error.statusCode = 404;
+            throw error;
+        }
+        res.json({
+            success: true,
+            data: {
+                id: req.user.id,
+                profileId: profile._id,
+                email: req.user.email,
+                name: req.user.name,
+                role: req.user.role,
+                avatar: profile.avatar
+            }
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.getMe = getMe;
 const login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
@@ -97,7 +127,7 @@ const login = async (req, res, next) => {
 exports.login = login;
 const register = async (req, res, next) => {
     try {
-        const { email, password, name } = req.body;
+        const { email, password, name, role } = req.body; // Accept role from request
         if (!email || !password || !name) {
             const error = new Error('Email, password, and name are required');
             error.statusCode = 400;
@@ -119,7 +149,7 @@ const register = async (req, res, next) => {
             email,
             password,
             name,
-            role: types_1.UserRole.STUDENT // Default role for new users
+            role: role || types_1.UserRole.STUDENT // Default to STUDENT if no role provided
         };
         const user = await database_1.DatabaseService.create(userData);
         // Create associated profile document
@@ -129,7 +159,7 @@ const register = async (req, res, next) => {
             username: email.split('@')[0],
             email,
             name,
-            role: types_1.UserRole.STUDENT,
+            role: userData.role,
             settings: {
                 notifications: {
                     email: true,

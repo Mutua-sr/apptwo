@@ -4,24 +4,24 @@ export declare const classroomResolvers: {
     Query: {
         classroom: (_: any, { id }: {
             id: string;
-        }, context: Context) => Promise<Classroom | null>;
+        }, context: Context) => Promise<any>;
         classrooms: (_: any, { page, limit }: {
             page?: number;
             limit?: number;
-        }, context: Context) => Promise<Classroom[]>;
+        }, context: Context) => Promise<any>;
         myClassrooms: (_: any, __: any, context: Context) => Promise<Classroom[]>;
     };
     Mutation: {
         createClassroom: (_: any, { input }: {
             input: CreateClassroom;
-        }, context: Context) => Promise<Classroom>;
+        }, context: Context) => Promise<any>;
         updateClassroom: (_: any, { id, input }: {
             id: string;
             input: UpdateClassroomInput;
-        }, context: Context) => Promise<Classroom>;
+        }, context: Context) => Promise<any>;
         deleteClassroom: (_: any, { id }: {
             id: string;
-        }, context: Context) => Promise<boolean>;
+        }, context: Context) => Promise<any>;
     };
     Classroom: {
         teacher: (parent: Classroom) => {

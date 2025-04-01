@@ -1,24 +1,31 @@
-import { Server as HttpServer } from 'http';
+import * as http from 'http';
 import { UserStatus } from '../types/realtime';
+import { ServerToClientEvents } from '../types/socket';
+import 'dotenv/config';
 export declare class RealtimeService {
     private static instance;
     private io;
     private userSockets;
     private userStatuses;
+    private messageTrackers;
     private constructor();
-    static initialize(server: HttpServer): RealtimeService;
+    static initialize(server: http.Server): RealtimeService;
     static getInstance(): RealtimeService;
     private setupSocketHandlers;
     private getUserIdFromSocket;
     private handleUserConnection;
     private handleMessage;
+    private getRoomUsers;
+    private incrementUnreadCount;
+    private handleMarkRead;
+    getUnreadCount(roomId: string, userId: string): Promise<number>;
     private handleTyping;
     private handleSignaling;
     private handleJoinRoom;
     private handleLeaveRoom;
     private handleDisconnect;
-    emitToUser(userId: string, event: string, data: any): void;
-    broadcastToRoom(roomId: string, event: string, data: any): void;
+    emitToUser(userId: string, event: keyof ServerToClientEvents, data: any): void;
+    broadcastToRoom(roomId: string, event: keyof ServerToClientEvents, data: any): void;
     getUserStatus(userId: string): UserStatus | undefined;
 }
 export default RealtimeService;
