@@ -44,9 +44,18 @@ const ChatRoom: React.FC = () => {
           setParticipants(prev => prev.filter(p => p.id !== participant.id));
         });
 
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to initialize chat:', err);
-        setError('Failed to load chat room');
+        // Handle specific error cases
+        if (err.response?.status === 404) {
+          setError('Chat room not found');
+        } else if (err.response?.status === 403) {
+          setError('You do not have permission to access this chat room');
+        } else if (err.response?.status === 500 && err.response?.data?.message === 'Invalid room structure') {
+          setError('This chat room appears to be corrupted. Please contact support.');
+        } else {
+          setError('Failed to load chat room. Please try again later.');
+        }
       }
     };
 
@@ -63,8 +72,28 @@ const ChatRoom: React.FC = () => {
 
   if (error) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Typography color="error">{error}</Typography>
+      <Box sx={{ 
+        p: 3, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center',
+        gap: 2 
+      }}>
+        <Typography variant="h6" color="error">
+          {error}
+        </Typography>
+        <IconButton 
+          onClick={() => navigate(-1)}
+          sx={{ 
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
+            '&:hover': {
+              bgcolor: 'primary.dark',
+            }
+          }}
+        >
+          <ArrowBackIcon />
+        </IconButton>
       </Box>
     );
   }

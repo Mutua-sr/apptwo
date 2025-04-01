@@ -110,7 +110,9 @@ export const getChatRoom = async (
       throw new ApiError('Chat room not found', 404);
     }
 
-    if (!room.participants || !Array.isArray(room.participants)) {
+    // Validate room structure according to ChatRoom interface
+    if (!room.type || room.type !== 'room' || !room.name || !room.roomType || 
+        !room.participants || !Array.isArray(room.participants) || room.participants.length === 0) {
       throw new ApiError('Invalid room structure', 500);
     }
 

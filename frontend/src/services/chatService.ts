@@ -84,9 +84,15 @@ class ChatServiceImpl implements ChatService {
   async getRoomParticipants(roomId: string): Promise<ChatParticipant[]> {
     try {
       const response = await apiService.chat.getParticipants(roomId);
+      if (!response.data.success) {
+        throw new Error(response.data.error?.message || 'Failed to get room participants');
+      }
       return response.data.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to get room participants:', error);
+      if (error.response?.data?.error?.message) {
+        throw new Error(error.response.data.error.message);
+      }
       throw error;
     }
   }
@@ -143,9 +149,15 @@ class ChatServiceImpl implements ChatService {
   async getRoom(roomId: string): Promise<ChatRoom> {
     try {
       const response = await apiService.chat.getRoom(roomId);
+      if (!response.data.success) {
+        throw new Error(response.data.error?.message || 'Failed to get room');
+      }
       return response.data.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to get room:', error);
+      if (error.response?.data?.error?.message) {
+        throw new Error(error.response.data.error.message);
+      }
       throw error;
     }
   }
