@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { Community, Classroom, User, Post, ApiResponse } from '../types/api';
 import { PostInput, PostUpdate } from '../types/feed';
+import { ChatMessage } from '../types/chat';
 
 const API_URL = 'http://localhost:8000/api';
 
@@ -96,6 +97,18 @@ const createApiService = () => {
       
       delete: (id: string) =>
         instance.delete<ApiResponse<void>>(`/posts/${id}`),
+    },
+
+
+    chat: {
+      getMessages: (roomId: string) =>
+        instance.get<ApiResponse<ChatMessage[]>>(`/chat/rooms/${roomId}/messages`),
+      
+      sendMessage: (roomId: string, content: string) =>
+        instance.post<ApiResponse<ChatMessage>>(`/chat/rooms/${roomId}/messages`, { content }),
+      
+      deleteMessage: (messageId: string) =>
+        instance.delete<ApiResponse<void>>(`/chat/messages/${messageId}`),
     },
 
     classrooms: {

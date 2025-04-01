@@ -7,6 +7,7 @@ import {
   Typography,
   Avatar,
   Paper,
+  CircularProgress,
 } from '@mui/material';
 import {
   Send as SendIcon,
@@ -17,16 +18,13 @@ import {
   EmojiEmotions as EmojiIcon,
 } from '@mui/icons-material';
 import { chatInterfaceStyles as styles } from '../../styles/components/ChatInterface.styles';
-
-interface Message {
-  id: string;
-  sender: string;
-  content: string;
-  timestamp: string;
-  isOwn: boolean;
-}
+import { ChatMessage } from '../../types/chat';
+import { useAuth } from '../../contexts/AuthContext';
+import chatService from '../../services/chatService';
+import apiService from '../../services/apiService';
 
 interface ChatInterfaceProps {
+  roomId: string;
   title: string;
   subtitle?: string;
   avatar: string;
@@ -36,6 +34,7 @@ interface ChatInterfaceProps {
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
+  roomId,
   title,
   subtitle,
   avatar,
@@ -43,23 +42,48 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onStartVideoCall,
   onStartVoiceCall,
 }) => {
+  const { currentUser } = useAuth();
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      sender: 'John Doe',
-      content: 'Hello everyone!',
-      timestamp: '10:30 AM',
-      isOwn: false,
-    },
-    {
-      id: '2',
-      sender: 'You',
-      content: 'Hi John! How are you?',
-      timestamp: '10:31 AM',
-      isOwn: true,
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load initial messages
+  useEffect(() => {
+    const loadMessages = async () => {
+      try {
+        setLoading(true);
+        const response = await apiService.chat.getMessages(roomId);
+        setMessages(response.data.data);
+      } catch (err) {
+        console.error('Error loading messages:', err);
+        setError('Failed to load messages');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (roomId) {
+      loadMessages();
+    }
+  }, [roomId]);
+
+  // Handle real-time messages
+  useEffect(() => {
+    const handleNewMessage = (message: ChatMessage) => {
+      if (message.roomId === roomId) {
+        setMessages(prev => [...prev, message]);
+      }
+    };
+
+    chatService.onMessage(handleNewMessage);
+    chatService.joinRoom(roomId);
+
+    return () => {
+      chatService.offMessage(handleNewMessage);
+      chatService.leaveRoom(roomId);
+    };
+  }, [roomId]);
 
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
@@ -71,17 +95,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = () => {
-    if (message.trim()) {
-      const newMessage: Message = {
-        id: Date.now().toString(),
-        sender: 'You',
-        content: message,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        isOwn: true,
-      };
-      setMessages([...messages, newMessage]);
-      setMessage('');
+  const handleSend = async () => {
+    if (message.trim() && currentUser) {
+      try {
+        await chatService.sendMessage(message.trim(), roomId);
+        setMessage('');
+      } catch (err) {
+        console.error('Error sending message:', err);
+        setError('Failed to send message');
+      }
     }
   };
 
@@ -134,24 +156,37 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       {/* Messages */}
       <Box sx={styles.messageContainer}>
         <Stack spacing={2}>
-          {messages.map((msg) => (
-            <Box
-              key={msg.id}
-              sx={styles.messageWrapper(msg.isOwn)}
-            >
-              <Paper sx={styles.messageContent(msg.isOwn)}>
-                {!msg.isOwn && (
-                  <Typography variant="caption" fontWeight={500}>
-                    {msg.sender}
-                  </Typography>
-                )}
-                <Typography variant="body1">{msg.content}</Typography>
-                <Typography sx={styles.timestamp}>
-                  {msg.timestamp}
-                </Typography>
-              </Paper>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+              <CircularProgress />
             </Box>
-          ))}
+          ) : error ? (
+            <Box sx={{ p: 2, textAlign: 'center', color: 'error.main' }}>
+              <Typography>{error}</Typography>
+            </Box>
+          ) : (
+            messages.map((msg) => (
+              <Box
+                key={msg._id}
+                sx={styles.messageWrapper(msg.sender.id === currentUser?.id)}
+              >
+                <Paper sx={styles.messageContent(msg.sender.id === currentUser?.id)}>
+                  {msg.sender.id !== currentUser?.id && (
+                    <Typography variant="caption" fontWeight={500}>
+                      {msg.sender.name}
+                    </Typography>
+                  )}
+                  <Typography variant="body1">{msg.content}</Typography>
+                  <Typography sx={styles.timestamp}>
+                    {new Date(msg.timestamp).toLocaleTimeString([], { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </Typography>
+                </Paper>
+              </Box>
+            ))
+          )}
           <div ref={messagesEndRef} />
         </Stack>
       </Box>
