@@ -38,7 +38,7 @@ interface PostCardProps {
   onShare: (postId: string, destination: NonNullable<Post['sharedTo']>) => void;
 }
 
-const PostCard: React.FC<PostCardProps> = ({ post, onLike, onComment, onShare }) => {
+export const PostCard: React.FC<PostCardProps> = ({ post, onLike, onComment, onShare }) => {
   const { currentUser } = useAuth();
   const [commentText, setCommentText] = useState('');
   const [showComments, setShowComments] = useState(false);
@@ -95,19 +95,19 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLike, onComment, onShare })
     
     if (isLoadingUsers) {
       return (
-        <Stack direction="row" spacing={1} alignItems="center">
+        <>
           <Skeleton variant="circular" width={avatarSize} height={avatarSize} />
           <Box>
             <Skeleton variant="text" width={120} />
             <Skeleton variant="text" width={80} />
           </Box>
-        </Stack>
+        </>
       );
     }
 
     const user = getUserDisplay(userId);
     return (
-      <Stack direction="row" spacing={1} alignItems="center">
+      <>
         <Avatar 
           src={user.avatar || undefined}
           sx={{ 
@@ -127,18 +127,9 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLike, onComment, onShare })
             {new Date(timestamp).toLocaleString()}
           </Typography>
         </Box>
-      </Stack>
+      </>
     );
   };
-
-  const renderComment = (comment: Comment) => (
-    <Stack key={comment.id} direction="row" spacing={2} alignItems="flex-start">
-      {renderUserInfo(comment.author.id, comment.timestamp, 'small')}
-      <Typography variant="body2" sx={{ flex: 1 }}>
-        {comment.content}
-      </Typography>
-    </Stack>
-  );
 
   return (
     <Card sx={{ mb: 2 }}>
@@ -146,7 +137,9 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLike, onComment, onShare })
         <Stack spacing={2}>
           {/* Author Info */}
           <Stack direction="row" alignItems="center" justifyContent="space-between">
-            {renderUserInfo(post.author.id, post.createdAt)}
+            <Stack direction="row" spacing={1} alignItems="center">
+              {renderUserInfo(post.author.id, post.createdAt)}
+            </Stack>
             {post.sharedTo && (
               <Chip
                 size="small"
@@ -204,35 +197,37 @@ const PostCard: React.FC<PostCardProps> = ({ post, onLike, onComment, onShare })
             <Box>
               <Divider sx={{ my: 2 }} />
               <Stack spacing={2}>
-                {comments.map(renderComment)}
-                <Stack direction="row" spacing={2} alignItems="flex-start">
+                {comments.map((comment: Comment) => (
+                  <Stack key={comment.id} direction="row" spacing={1}>
+                    {renderUserInfo(comment.author.id, comment.timestamp, 'small')}
+                  </Stack>
+                ))}
+                <Stack direction="row" spacing={1}>
                   {currentUser && renderUserInfo(currentUser.id, new Date().toISOString(), 'small')}
-                  <Box sx={{ flex: 1 }}>
-                    <TextField
-                      fullWidth
-                      size="small"
-                      placeholder="Write a comment..."
-                      value={commentText}
-                      onChange={(e) => setCommentText(e.target.value)}
-                      InputProps={{
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <IconButton
-                              size="small"
-                              onClick={() => {
-                                if (commentText.trim()) {
-                                  onComment(post.id, commentText);
-                                  setCommentText('');
-                                }
-                              }}
-                            >
-                              <SendIcon />
-                            </IconButton>
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                  </Box>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="Write a comment..."
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              if (commentText.trim()) {
+                                onComment(post.id, commentText);
+                                setCommentText('');
+                              }
+                            }}
+                          >
+                            <SendIcon />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
                 </Stack>
               </Stack>
             </Box>
