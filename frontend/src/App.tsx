@@ -10,6 +10,7 @@ import Register from './pages/auth/Register';
 import Profile from './pages/Profile';
 import Feed from './pages/Feed';
 import Classrooms from './pages/Classrooms';
+import ClassroomChats from './pages/ClassroomChats';
 import Communities from './pages/Communities';
 import ChatRoom from './pages/ChatRoom';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -33,6 +34,7 @@ const App: React.FC = () => {
               <Route path="/" element={<Feed />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/classrooms" element={<Classrooms />} />
+              <Route path="/classrooms/chat" element={<ClassroomChats />} />
               <Route path="/communities" element={<Communities />} />
               <Route path="/chat/classroom/:roomId" element={<ChatRoom />} />
               <Route path="/chat/community/:roomId" element={<ChatRoom />} />
