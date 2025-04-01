@@ -1,14 +1,15 @@
-// Profile Types
 export interface UserProfile {
-  _id: string;
-  type: 'profile';
-  userId: string;
-  username: string;
-  email: string;
+  id: string;
   name: string;
+  email: string;
   avatar?: string;
   bio?: string;
-  role: 'student' | 'teacher' | 'admin';
+  social: {
+    twitter?: string;
+    linkedin?: string;
+    github?: string;
+    website?: string;
+  };
   settings: {
     notifications: {
       email: boolean;
@@ -20,7 +21,7 @@ export interface UserProfile {
       showActivity: boolean;
       allowMessages: boolean;
     };
-    theme: 'light' | 'dark' | 'system';
+    theme: 'light' | 'dark';
     language: string;
   };
   stats: {
@@ -29,81 +30,38 @@ export interface UserProfile {
     classrooms: number;
     lastActive: string;
   };
-  social?: {
-    github?: string;
-    linkedin?: string;
-    twitter?: string;
-    website?: string;
-  };
-  education?: {
-    institution: string;
-    degree: string;
-    field: string;
-    startYear: number;
-    endYear?: number;
-  }[];
-  skills?: string[];
-  interests?: string[];
-  achievements?: {
-    id: string;
-    title: string;
-    description: string;
-    date: string;
-    badge?: string;
-  }[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface UpdateProfileData {
-  username?: string;
   name?: string;
-  avatar?: string;
   bio?: string;
-  settings?: {
-    notifications: {
-      email: boolean;
-      push: boolean;
-      inApp: boolean;
-    };
-    privacy: {
-      showEmail: boolean;
-      showActivity: boolean;
-      allowMessages: boolean;
-    };
-    theme: 'light' | 'dark' | 'system';
-    language: string;
-  };
+  avatar?: string;
   social?: {
-    github?: string;
-    linkedin?: string;
     twitter?: string;
+    linkedin?: string;
+    github?: string;
     website?: string;
   };
-  education?: {
-    institution: string;
-    degree: string;
-    field: string;
-    startYear: number;
-    endYear?: number;
-  }[];
-  skills?: string[];
-  interests?: string[];
+  settings?: {
+    notifications?: {
+      email?: boolean;
+      push?: boolean;
+      inApp?: boolean;
+    };
+    privacy?: {
+      showEmail?: boolean;
+      showActivity?: boolean;
+      allowMessages?: boolean;
+    };
+    theme?: 'light' | 'dark';
+    language?: string;
+  };
 }
 
-export interface MediaUpload {
-  _id: string;
-  type: 'media';
-  userId: string;
-  mediaType: 'image' | 'document' | 'video';
-  filename: string;
-  url: string;
-  thumbnailUrl?: string;
-  size: number;
-  mimeType: string;
-  metadata?: {
-    width?: number;
-    height?: number;
-    duration?: number;
-    pages?: number;
-  };
-  uploadedAt: string;
+export interface ProfileResponse {
+  success: boolean;
+  data: UserProfile;
+  message?: string;
 }

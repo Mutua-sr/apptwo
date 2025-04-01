@@ -59,6 +59,13 @@ export interface ChatRoomResponse {
 export interface NewChatMessage {
   content: string;
   type: 'text' | 'image' | 'file';
+  roomId: string;
+  roomType: 'classroom' | 'community';
+  sender: {
+    id: string;
+    name: string;
+  };
+  timestamp: string;
   metadata?: {
     fileName?: string;
     fileSize?: number;

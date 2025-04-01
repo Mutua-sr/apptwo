@@ -5,18 +5,24 @@ import apiService from './apiService';
 // Transform API Post to Feed Post
 const transformApiPost = (apiPost: ApiPost): Partial<Post> => ({
   id: apiPost._id,
-  title: apiPost.title,
   content: apiPost.content,
   author: {
     id: apiPost.createdBy,
-    username: apiPost.createdBy, // Note: You might want to fetch actual username
-    avatar: undefined // Note: Add avatar handling if needed
+    username: apiPost.author.name,
+    avatar: apiPost.author.avatar
   },
   tags: apiPost.tags || [],
-  likes: apiPost.likes || 0,
+  likes: apiPost.likes?.length || 0,
   comments: apiPost.comments?.map(comment => ({
-    ...comment,
-    likes: comment.likes || 0 // Ensure likes is always a number
+    id: comment._id,
+    content: comment.content,
+    author: {
+      id: comment.author.id,
+      username: comment.author.name,
+      avatar: comment.author.avatar
+    },
+    likes: comment.likes || 0,
+    timestamp: comment.createdAt
   })) || [],
   createdAt: apiPost.createdAt,
   updatedAt: apiPost.updatedAt || apiPost.createdAt,
@@ -28,7 +34,6 @@ const normalizePost = (apiPost: ApiPost): Post => {
   const transformedPost = transformApiPost(apiPost);
   return {
     id: transformedPost.id!,
-    title: transformedPost.title!,
     content: transformedPost.content!,
     author: transformedPost.author!,
     tags: transformedPost.tags!,
@@ -37,7 +42,7 @@ const normalizePost = (apiPost: ApiPost): Post => {
     createdAt: transformedPost.createdAt!,
     updatedAt: transformedPost.updatedAt!,
     likedBy: transformedPost.likedBy!,
-    ...(transformedPost.sharedTo && { sharedTo: transformedPost.sharedTo })
+    ...(apiPost.sharedTo && { sharedTo: apiPost.sharedTo })
   };
 };
 

@@ -2,69 +2,61 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  username?: string;
   avatar?: string;
-  role: 'user' | 'admin' | 'moderator';
-  isAdmin?: boolean;
-  createdAt: string;
-  updatedAt: string;
-  lastActive?: string;
+  role: 'user' | 'moderator' | 'admin';
   status: 'active' | 'suspended' | 'banned';
-}
-
-export interface Community {
-  _id: string;
-  name: string;
-  description?: string;
-  avatar?: string;
-  type: 'community';
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-  members: string[];
-  settings?: {
-    isPrivate: boolean;
-    requiresApproval: boolean;
-    allowInvites: boolean;
+  lastActive?: string;
+  profileId: string;
+  bio?: string;
+  settings: {
+    notifications: {
+      email: boolean;
+      push: boolean;
+      inApp: boolean;
+    };
+    privacy: {
+      showEmail: boolean;
+      showActivity: boolean;
+      allowMessages: boolean;
+    };
+    theme: 'light' | 'dark';
+    language: string;
   };
-}
-
-export interface Classroom {
-  _id: string;
-  name: string;
-  description?: string;
-  avatar?: string;
-  type: 'classroom';
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
-  students: string[];
-  teachers: string[];
-  settings?: {
-    allowStudentChat: boolean;
-    allowStudentPosts: boolean;
-    requirePostApproval: boolean;
+  social?: {
+    twitter?: string;
+    linkedin?: string;
+    github?: string;
+    website?: string;
+  };
+  stats?: {
+    posts: number;
+    communities: number;
+    classrooms: number;
+    lastActive: string;
   };
 }
 
 export interface Post {
   _id: string;
   content: string;
+  createdBy: string;
   author: {
     id: string;
     name: string;
     avatar?: string;
   };
-  roomId: string;
-  roomType: 'classroom' | 'community';
-  createdAt: string;
-  updatedAt: string;
+  tags: string[];
   likes: string[];
   comments: Comment[];
-  attachments?: {
-    type: 'image' | 'video' | 'file';
-    url: string;
+  createdAt: string;
+  updatedAt: string;
+  likedBy: string[];
+  sharedTo?: {
+    type: 'classroom' | 'community';
+    id: string;
     name: string;
-  }[];
+  };
 }
 
 export interface Comment {
@@ -77,7 +69,7 @@ export interface Comment {
   };
   createdAt: string;
   updatedAt: string;
-  likes: string[];
+  likes: number;
 }
 
 export interface ApiResponse<T> {
@@ -87,23 +79,31 @@ export interface ApiResponse<T> {
   error?: string;
 }
 
-export interface LoginResponse {
-  token: string;
-  user: User;
-}
-
-export interface CreateClassroomData {
+export interface Classroom {
+  _id: string;
   name: string;
   description?: string;
-  settings?: {
+  teachers: Array<{
+    id: string;
+    name: string;
+    avatar?: string;
+  }>;
+  students: Array<{
+    id: string;
+    name: string;
+    avatar?: string;
+  }>;
+  settings: {
     allowStudentChat: boolean;
     allowStudentPosts: boolean;
     requirePostApproval: boolean;
   };
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface UpdateClassroomData {
-  name?: string;
+export interface CreateRoomData {
+  name: string;
   description?: string;
   settings?: {
     allowStudentChat?: boolean;
@@ -112,20 +112,33 @@ export interface UpdateClassroomData {
   };
 }
 
-export interface CreateCommunityData {
+export interface Community {
+  _id: string;
   name: string;
   description?: string;
-  settings?: {
+  createdBy: string;
+  members: Array<{
+    id: string;
+    name: string;
+    avatar?: string;
+    role: 'member' | 'moderator' | 'admin';
+  }>;
+  settings: {
     isPrivate: boolean;
     requiresApproval: boolean;
     allowInvites: boolean;
   };
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface UpdateCommunityData {
+export interface UpdateRoomData {
   name?: string;
   description?: string;
   settings?: {
+    allowStudentChat?: boolean;
+    allowStudentPosts?: boolean;
+    requirePostApproval?: boolean;
     isPrivate?: boolean;
     requiresApproval?: boolean;
     allowInvites?: boolean;

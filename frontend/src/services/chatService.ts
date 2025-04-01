@@ -55,7 +55,7 @@ class ChatService {
       }
 
       const message: NewChatMessage = {
-        type: 'message',
+        type: 'text',
         content,
         roomId,
         roomType,

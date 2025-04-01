@@ -1,21 +1,18 @@
-export interface User {
-  id: string;
-  username: string;
-  avatar?: string;
-}
-
 export interface Post {
   id: string;
-  title: string;
   content: string;
-  author: User;
+  author: {
+    id: string;
+    username: string;
+    avatar?: string;
+  };
   tags: string[];
   likes: number;
   comments: Comment[];
   createdAt: string;
   updatedAt: string;
-  likedBy: string[];  // Frontend-only field
-  sharedTo?: {        // Frontend-only field
+  likedBy: string[];
+  sharedTo?: {
     type: 'classroom' | 'community';
     id: string;
     name: string;
@@ -24,40 +21,48 @@ export interface Post {
 
 export interface Comment {
   id: string;
-  author: string;
-  avatar?: string;
   content: string;
-  timestamp: string;
+  author: {
+    id: string;
+    username: string;
+    avatar?: string;
+  };
   likes: number;
+  timestamp: string;
 }
 
 export interface PostInput {
-  title: string;
   content: string;
-  tags: string[];
+  tags?: string[];
+  sharedTo?: {
+    type: 'classroom' | 'community';
+    id: string;
+  };
 }
 
 export interface PostUpdate {
-  title?: string;
   content?: string;
   tags?: string[];
   likes?: number;
-  likedBy?: string[];
   comments?: Comment[];
   sharedTo?: {
     type: 'classroom' | 'community';
     id: string;
-    name: string;
   };
 }
 
-export interface QueryOptions {
-  page?: number;
-  limit?: number;
+export interface FeedFilters {
+  type?: 'all' | 'classroom' | 'community';
+  tag?: string;
+  author?: string;
+  timeRange?: 'today' | 'week' | 'month' | 'all';
 }
 
-export interface ShareTarget {
-  id: string;
-  name: string;
-  type: 'classroom' | 'community';
+export interface FeedState {
+  posts: Post[];
+  loading: boolean;
+  error: string | null;
+  filters: FeedFilters;
+  page: number;
+  hasMore: boolean;
 }
