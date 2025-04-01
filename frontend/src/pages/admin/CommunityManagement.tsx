@@ -31,11 +31,19 @@ import {
 import { Community } from '../../types/api';
 import apiService from '../../services/apiService';
 
+import { CreateCommunityData, CommunitySettings } from '../../types/room';
+
+interface CommunityFormData {
+  name: string;
+  description?: string;
+  settings: CommunitySettings;
+}
+
 interface CommunityDialogProps {
   open: boolean;
   community: Community | null;
   onClose: () => void;
-  onSave: (community: Partial<Community>) => Promise<void>;
+  onSave: (data: CommunityFormData) => Promise<void>;
 }
 
 const CommunityDialog: React.FC<CommunityDialogProps> = ({
@@ -44,13 +52,42 @@ const CommunityDialog: React.FC<CommunityDialogProps> = ({
   onClose,
   onSave,
 }) => {
-  const [formData, setFormData] = useState<Partial<Community>>(community || {});
+  const defaultSettings: CommunitySettings = {
+    isPrivate: false,
+    requiresApproval: false,
+    allowInvites: true
+  };
+
+  const [formData, setFormData] = useState<CommunityFormData>({
+    name: '',
+    description: '',
+    settings: defaultSettings
+  });
 
   useEffect(() => {
-    setFormData(community || {});
+    if (community) {
+      setFormData({
+        name: community.name,
+        description: community.description,
+        settings: {
+          isPrivate: community.settings.isPrivate,
+          requiresApproval: community.settings.requiresApproval,
+          allowInvites: community.settings.allowInvites
+        }
+      });
+    } else {
+      setFormData({
+        name: '',
+        description: '',
+        settings: defaultSettings
+      });
+    }
   }, [community]);
 
   const handleSubmit = async () => {
+    if (!formData.name.trim()) {
+      return;
+    }
     await onSave(formData);
     onClose();
   };
@@ -62,14 +99,15 @@ const CommunityDialog: React.FC<CommunityDialogProps> = ({
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
           <TextField
             label="Name"
-            value={formData.name || ''}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            value={formData.name}
+            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
             fullWidth
+            required
           />
           <TextField
             label="Description"
-            value={formData.description || ''}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            value={formData.description}
+            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
             multiline
             rows={3}
             fullWidth
@@ -78,57 +116,59 @@ const CommunityDialog: React.FC<CommunityDialogProps> = ({
             <Typography variant="subtitle1" gutterBottom>
               Settings
             </Typography>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.settings?.isPrivate ?? false}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      settings: {
-                        ...formData.settings,
-                        isPrivate: e.target.checked,
-                      },
-                    })
-                  }
-                />
-              }
-              label="Private Community"
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.settings?.requiresApproval ?? false}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      settings: {
-                        ...formData.settings,
-                        requiresApproval: e.target.checked,
-                      },
-                    })
-                  }
-                />
-              }
-              label="Require Approval"
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.settings?.allowInvites ?? true}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      settings: {
-                        ...formData.settings,
-                        allowInvites: e.target.checked,
-                      },
-                    })
-                  }
-                />
-              }
-              label="Allow Invites"
-            />
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.settings.isPrivate}
+                    onChange={(e) =>
+                      setFormData(prev => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          isPrivate: e.target.checked,
+                        },
+                      }))
+                    }
+                  />
+                }
+                label="Private Community"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.settings.requiresApproval}
+                    onChange={(e) =>
+                      setFormData(prev => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          requiresApproval: e.target.checked,
+                        },
+                      }))
+                    }
+                  />
+                }
+                label="Require Approval"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.settings.allowInvites}
+                    onChange={(e) =>
+                      setFormData(prev => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          allowInvites: e.target.checked,
+                        },
+                      }))
+                    }
+                  />
+                }
+                label="Allow Invites"
+              />
+            </Box>
           </Box>
         </Box>
       </DialogContent>
@@ -202,28 +242,42 @@ const CommunityManagement: React.FC = () => {
     }
   };
 
-  const handleSave = async (communityData: Partial<Community>) => {
+  const handleSave = async (formData: CommunityFormData): Promise<void> => {
+    if (!formData.name.trim()) {
+      return;
+    }
+
     try {
+      const roomData: CreateCommunityData = {
+        name: formData.name.trim(),
+        description: formData.description?.trim(),
+        type: 'community',
+        settings: formData.settings
+      };
+
       if (selectedCommunity) {
-        await apiService.communities.update(selectedCommunity._id, communityData);
+        await apiService.communities.update(selectedCommunity._id, roomData);
       } else {
-        await apiService.communities.create(communityData);
+        await apiService.communities.create(roomData);
       }
       fetchCommunities();
+      setDialogOpen(false);
     } catch (err) {
       console.error('Error saving community:', err);
       setError('Failed to save community');
     }
   };
 
-  const filteredCommunities = communities.filter((community) =>
-    community.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredCommunities = React.useMemo(() => 
+    communities.filter((community) =>
+      community.name.toLowerCase().includes(search.toLowerCase())
+    ), [communities, search]);
 
-  const paginatedCommunities = filteredCommunities.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
+  const paginatedCommunities = React.useMemo(() => 
+    filteredCommunities.slice(
+      page * rowsPerPage,
+      page * rowsPerPage + rowsPerPage
+    ), [filteredCommunities, page, rowsPerPage]);
 
   if (error) {
     return (

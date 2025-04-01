@@ -55,15 +55,17 @@ const ClassroomDialog: React.FC<ClassroomDialogProps> = ({
   onClose,
   onSave,
 }) => {
+  const defaultSettings: ClassroomSettings = {
+    allowStudentChat: true,
+    allowStudentPosts: true,
+    requirePostApproval: false,
+    isPrivate: false
+  };
+
   const [formData, setFormData] = useState<ClassroomFormData>({
     name: '',
     description: '',
-    settings: {
-      allowStudentChat: true,
-      allowStudentPosts: true,
-      requirePostApproval: false,
-      isPrivate: false
-    }
+    settings: defaultSettings
   });
 
   useEffect(() => {
@@ -82,12 +84,7 @@ const ClassroomDialog: React.FC<ClassroomDialogProps> = ({
       setFormData({
         name: '',
         description: '',
-        settings: {
-          allowStudentChat: true,
-          allowStudentPosts: true,
-          requirePostApproval: false,
-          isPrivate: false
-        }
+        settings: defaultSettings
       });
     }
   }, [classroom]);
