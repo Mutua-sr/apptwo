@@ -10,6 +10,13 @@ interface AuthenticatedRequest extends Request {
     email: string;
     password: string;
   };
+  user?: {
+    id: string;
+    profileId: string;
+    email: string;
+    name: string;
+    role: UserRole;
+  };
 }
 
 interface RegisterRequest extends AuthenticatedRequest {
@@ -21,6 +28,42 @@ interface RegisterRequest extends AuthenticatedRequest {
 }
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+export const getMe = async (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    if (!req.user) {
+      const error = new Error('Not authenticated') as ApiError;
+      error.statusCode = 401;
+      throw error;
+    }
+
+    const profile = await DatabaseService.read<UserProfile>(req.user.profileId);
+    
+    if (!profile) {
+      const error = new Error('Profile not found') as ApiError;
+      error.statusCode = 404;
+      throw error;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: req.user.id,
+        profileId: profile._id,
+        email: req.user.email,
+        name: req.user.name,
+        role: req.user.role,
+        avatar: profile.avatar
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const login = async (
   req: AuthenticatedRequest,

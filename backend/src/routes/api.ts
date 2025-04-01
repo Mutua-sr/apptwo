@@ -16,6 +16,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 // Auth routes
 router.post('/auth/login', authController.login);
 router.post('/auth/register', authController.register);
+router.get('/auth/me', auth, authController.getMe);
 
 // Profile routes
 router.get('/profile/:id', auth, profileController.getProfile);
@@ -39,16 +40,16 @@ router.post('/classrooms/:id/schedule', auth, classroomController.addScheduleEve
 router.post('/classrooms/:classroomId/assignments/:assignmentId/submit', auth, classroomController.submitAssignment);
 router.put('/classrooms/:classroomId/assignments/:assignmentId/submissions/:studentId/grade', auth, classroomController.gradeSubmission);
 
-// Feed routes
-router.get('/feed', auth, feedController.getPosts);
-router.post('/feed/posts', auth, feedController.createPost);
-router.get('/feed/posts/:id', auth, feedController.getPost);
-router.put('/feed/posts/:id', auth, feedController.updatePost);
-router.delete('/feed/posts/:id', auth, feedController.deletePost);
-router.post('/feed/posts/:id/like', auth, feedController.likePost);
-router.delete('/feed/posts/:id/like', auth, feedController.unlikePost);
-router.post('/feed/posts/:id/comments', auth, feedController.addComment);
-router.post('/feed/posts/:id/share', auth, feedController.sharePost);
+// Posts routes
+router.get('/posts', auth, feedController.getPosts);
+router.post('/posts', auth, feedController.createPost);
+router.get('/posts/:id', auth, feedController.getPost);
+router.put('/posts/:id', auth, feedController.updatePost);
+router.delete('/posts/:id', auth, feedController.deletePost);
+router.post('/posts/:id/like', auth, feedController.likePost);
+router.delete('/posts/:id/like', auth, feedController.unlikePost);
+router.post('/posts/:id/comments', auth, feedController.addComment);
+router.post('/posts/:id/share', auth, feedController.sharePost);
 
 // Community routes
 router.get('/communities', auth, communityController.getCommunities);
