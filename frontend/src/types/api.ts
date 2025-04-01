@@ -82,6 +82,7 @@ export interface ApiResponse<T> {
 export interface Classroom {
   _id: string;
   name: string;
+  type: 'classroom';
   description?: string;
   teachers: Array<{
     id: string;
@@ -97,24 +98,18 @@ export interface Classroom {
     allowStudentChat: boolean;
     allowStudentPosts: boolean;
     requirePostApproval: boolean;
+    isPrivate?: boolean;
   };
   createdAt: string;
   updatedAt: string;
-}
-
-export interface CreateRoomData {
-  name: string;
-  description?: string;
-  settings?: {
-    allowStudentChat?: boolean;
-    allowStudentPosts?: boolean;
-    requirePostApproval?: boolean;
-  };
+  lastMessage?: string;
+  unreadCount?: number;
 }
 
 export interface Community {
   _id: string;
   name: string;
+  type: 'community';
   description?: string;
   createdBy: string;
   members: Array<{
@@ -127,20 +122,15 @@ export interface Community {
     isPrivate: boolean;
     requiresApproval: boolean;
     allowInvites: boolean;
-  };
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface UpdateRoomData {
-  name?: string;
-  description?: string;
-  settings?: {
     allowStudentChat?: boolean;
     allowStudentPosts?: boolean;
     requirePostApproval?: boolean;
-    isPrivate?: boolean;
-    requiresApproval?: boolean;
-    allowInvites?: boolean;
   };
+  createdAt: string;
+  updatedAt: string;
+  lastMessage?: string;
+  unreadCount?: number;
 }
+
+import { CreateRoomData, UpdateRoomData } from './room';
+export type { CreateRoomData, UpdateRoomData };

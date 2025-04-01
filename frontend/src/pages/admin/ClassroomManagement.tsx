@@ -31,11 +31,22 @@ import {
 import { Classroom } from '../../types/api';
 import apiService from '../../services/apiService';
 
+interface ClassroomFormData {
+  name: string;
+  description?: string;
+  settings: {
+    allowStudentChat: boolean;
+    allowStudentPosts: boolean;
+    requirePostApproval: boolean;
+    isPrivate?: boolean;
+  };
+}
+
 interface ClassroomDialogProps {
   open: boolean;
   classroom: Classroom | null;
   onClose: () => void;
-  onSave: (classroom: Partial<Classroom>) => Promise<void>;
+  onSave: (data: ClassroomFormData) => Promise<void>;
 }
 
 const ClassroomDialog: React.FC<ClassroomDialogProps> = ({
@@ -44,13 +55,47 @@ const ClassroomDialog: React.FC<ClassroomDialogProps> = ({
   onClose,
   onSave,
 }) => {
-  const [formData, setFormData] = useState<Partial<Classroom>>(classroom || {});
+  const [formData, setFormData] = useState<ClassroomFormData>({
+    name: '',
+    description: '',
+    settings: {
+      allowStudentChat: true,
+      allowStudentPosts: true,
+      requirePostApproval: false,
+      isPrivate: false
+    }
+  });
 
   useEffect(() => {
-    setFormData(classroom || {});
+    if (classroom) {
+      setFormData({
+        name: classroom.name,
+        description: classroom.description,
+        settings: {
+          allowStudentChat: classroom.settings.allowStudentChat,
+          allowStudentPosts: classroom.settings.allowStudentPosts,
+          requirePostApproval: classroom.settings.requirePostApproval,
+          isPrivate: classroom.settings.isPrivate
+        }
+      });
+    } else {
+      setFormData({
+        name: '',
+        description: '',
+        settings: {
+          allowStudentChat: true,
+          allowStudentPosts: true,
+          requirePostApproval: false,
+          isPrivate: false
+        }
+      });
+    }
   }, [classroom]);
 
   const handleSubmit = async () => {
+    if (!formData.name.trim()) {
+      return;
+    }
     await onSave(formData);
     onClose();
   };
@@ -62,14 +107,15 @@ const ClassroomDialog: React.FC<ClassroomDialogProps> = ({
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
           <TextField
             label="Name"
-            value={formData.name || ''}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            value={formData.name}
+            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
             fullWidth
+            required
           />
           <TextField
             label="Description"
-            value={formData.description || ''}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            value={formData.description}
+            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
             multiline
             rows={3}
             fullWidth
@@ -78,57 +124,76 @@ const ClassroomDialog: React.FC<ClassroomDialogProps> = ({
             <Typography variant="subtitle1" gutterBottom>
               Settings
             </Typography>
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.settings?.allowStudentChat ?? true}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      settings: {
-                        ...formData.settings,
-                        allowStudentChat: e.target.checked,
-                      },
-                    })
-                  }
-                />
-              }
-              label="Allow Student Chat"
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.settings?.allowStudentPosts ?? true}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      settings: {
-                        ...formData.settings,
-                        allowStudentPosts: e.target.checked,
-                      },
-                    })
-                  }
-                />
-              }
-              label="Allow Student Posts"
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.settings?.requirePostApproval ?? false}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      settings: {
-                        ...formData.settings,
-                        requirePostApproval: e.target.checked,
-                      },
-                    })
-                  }
-                />
-              }
-              label="Require Post Approval"
-            />
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.settings.allowStudentChat}
+                    onChange={(e) =>
+                      setFormData(prev => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          allowStudentChat: e.target.checked,
+                        },
+                      }))
+                    }
+                  />
+                }
+                label="Allow Student Chat"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.settings.allowStudentPosts}
+                    onChange={(e) =>
+                      setFormData(prev => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          allowStudentPosts: e.target.checked,
+                        },
+                      }))
+                    }
+                  />
+                }
+                label="Allow Student Posts"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.settings.requirePostApproval}
+                    onChange={(e) =>
+                      setFormData(prev => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          requirePostApproval: e.target.checked,
+                        },
+                      }))
+                    }
+                  />
+                }
+                label="Require Post Approval"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.settings.isPrivate ?? false}
+                    onChange={(e) =>
+                      setFormData(prev => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          isPrivate: e.target.checked,
+                        },
+                      }))
+                    }
+                  />
+                }
+                label="Private Classroom"
+              />
+            </Box>
           </Box>
         </Box>
       </DialogContent>
@@ -151,14 +216,12 @@ const ClassroomManagement: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedClassroom, setSelectedClassroom] = useState<Classroom | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [totalClassrooms, setTotalClassrooms] = useState(0);
 
   const fetchClassrooms = async () => {
     try {
       setLoading(true);
       const response = await apiService.classrooms.getAll();
       setClassrooms(response.data.data);
-      setTotalClassrooms(response.data.data.length);
     } catch (err) {
       console.error('Error fetching classrooms:', err);
       setError('Failed to load classrooms');
@@ -204,28 +267,47 @@ const ClassroomManagement: React.FC = () => {
     }
   };
 
-  const handleSave = async (classroomData: Partial<Classroom>) => {
+  const handleSave = async (formData: ClassroomFormData): Promise<void> => {
+    if (!formData.name.trim()) {
+      return;
+    }
+
     try {
+      const roomData = {
+        name: formData.name.trim(),
+        description: formData.description?.trim(),
+        type: 'classroom' as const,
+        settings: {
+          allowStudentChat: formData.settings.allowStudentChat,
+          allowStudentPosts: formData.settings.allowStudentPosts,
+          requirePostApproval: formData.settings.requirePostApproval,
+          isPrivate: formData.settings.isPrivate
+        }
+      };
+
       if (selectedClassroom) {
-        await apiService.classrooms.update(selectedClassroom._id, classroomData);
+        await apiService.classrooms.update(selectedClassroom._id, roomData);
       } else {
-        await apiService.classrooms.create(classroomData);
+        await apiService.classrooms.create(roomData);
       }
       fetchClassrooms();
+      setDialogOpen(false);
     } catch (err) {
       console.error('Error saving classroom:', err);
       setError('Failed to save classroom');
     }
   };
 
-  const filteredClassrooms = classrooms.filter((classroom) =>
-    classroom.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredClassrooms = React.useMemo(() => 
+    classrooms.filter((classroom) =>
+      classroom.name.toLowerCase().includes(search.toLowerCase())
+    ), [classrooms, search]);
 
-  const paginatedClassrooms = filteredClassrooms.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
+  const paginatedClassrooms = React.useMemo(() => 
+    filteredClassrooms.slice(
+      page * rowsPerPage,
+      page * rowsPerPage + rowsPerPage
+    ), [filteredClassrooms, page, rowsPerPage]);
 
   if (error) {
     return (
@@ -295,6 +377,9 @@ const ClassroomManagement: React.FC = () => {
                       )}
                       {classroom.settings?.requirePostApproval && (
                         <Chip label="Approval" size="small" color="warning" />
+                      )}
+                      {classroom.settings?.isPrivate && (
+                        <Chip label="Private" size="small" color="error" />
                       )}
                     </Box>
                   </TableCell>

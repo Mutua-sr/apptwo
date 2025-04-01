@@ -10,15 +10,7 @@ interface LoginResponse {
   user: User;
 }
 
-interface CreateRoomData {
-  name: string;
-  description?: string;
-}
-
-interface UpdateRoomData {
-  name?: string;
-  description?: string;
-}
+import { CreateRoomData, UpdateRoomData } from '../types/room';
 
 const createApiService = () => {
   const instance = axios.create({
@@ -70,10 +62,16 @@ const createApiService = () => {
         instance.get<ApiResponse<Community>>(`/communities/${id}`),
 
       create: (data: CreateRoomData) =>
-        instance.post<ApiResponse<Community>>('/communities', data),
+        instance.post<ApiResponse<Community>>('/communities', {
+          ...data,
+          type: 'community'
+        }),
 
       update: (id: string, data: UpdateRoomData) =>
-        instance.put<ApiResponse<Community>>(`/communities/${id}`, data),
+        instance.put<ApiResponse<Community>>(`/communities/${id}`, {
+          ...data,
+          type: 'community'
+        }),
 
       delete: (id: string) =>
         instance.delete<ApiResponse<void>>(`/communities/${id}`),
@@ -187,10 +185,16 @@ const createApiService = () => {
         instance.get<ApiResponse<Classroom>>(`/classrooms/${id}`),
 
       create: (data: CreateRoomData) =>
-        instance.post<ApiResponse<Classroom>>('/classrooms', data),
+        instance.post<ApiResponse<Classroom>>('/classrooms', {
+          ...data,
+          type: 'classroom'
+        }),
 
       update: (id: string, data: UpdateRoomData) =>
-        instance.put<ApiResponse<Classroom>>(`/classrooms/${id}`, data),
+        instance.put<ApiResponse<Classroom>>(`/classrooms/${id}`, {
+          ...data,
+          type: 'classroom'
+        }),
 
       delete: (id: string) =>
         instance.delete<ApiResponse<void>>(`/classrooms/${id}`),
