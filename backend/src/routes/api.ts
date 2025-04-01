@@ -9,6 +9,7 @@ import * as chatController from '../controllers/chat.controller';
 import * as profileController from '../controllers/profile.controller';
 import reportRoutes from './report.routes';
 import multer from 'multer';
+import * as userController from '../controllers/user.controller';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -76,5 +77,8 @@ router.use('/reports', reportRoutes);
 
 // Health check
 router.get('/health', (_, res) => res.json({ status: 'ok' }));
+
+// User routes
+router.post('/users/batch', auth, userController.getBatchUsers);
 
 export default router;
