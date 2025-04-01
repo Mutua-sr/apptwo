@@ -99,10 +99,19 @@ export const getChatRoom = async (
 ) => {
   try {
     const { id } = req.params;
+    
+    if (!req.user?.id) {
+      throw new ApiError('Unauthorized', 401);
+    }
+
     const room = await DatabaseService.read<ChatRoom>(id);
 
     if (!room) {
       throw new ApiError('Chat room not found', 404);
+    }
+
+    if (!room.participants || !Array.isArray(room.participants)) {
+      throw new ApiError('Invalid room structure', 500);
     }
 
     // Check if user is a participant
