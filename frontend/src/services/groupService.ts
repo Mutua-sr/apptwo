@@ -26,7 +26,7 @@ const groupService = {
   createClassroom: async (data: CreateClassroomData): Promise<Classroom> => {
     try {
       const response = await apiService.classrooms.create(data);
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error('Error creating classroom:', error);
       throw error;
@@ -36,7 +36,7 @@ const groupService = {
   getClassroom: async (classroomId: string): Promise<Classroom> => {
     try {
       const response = await apiService.classrooms.getById(classroomId);
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error('Error fetching classroom:', error);
       throw error;
@@ -46,7 +46,7 @@ const groupService = {
   getClassrooms: async (userId?: string): Promise<Classroom[]> => {
     try {
       const response = await apiService.classrooms.getAll();
-      const classrooms = response.data;
+      const classrooms = response.data.data;
       return userId ? classrooms.filter(classroom => classroom.createdBy === userId) : classrooms;
     } catch (error) {
       console.error('Error fetching classrooms:', error);
@@ -57,7 +57,7 @@ const groupService = {
   updateClassroom: async (classroomId: string, data: UpdateClassroomData): Promise<Classroom> => {
     try {
       const response = await apiService.classrooms.update(classroomId, data);
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error('Error updating classroom:', error);
       throw error;
@@ -77,7 +77,7 @@ const groupService = {
   createCommunity: async (data: CreateCommunityData): Promise<Community> => {
     try {
       const response = await apiService.communities.create(data);
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error('Error creating community:', error);
       throw error;
@@ -87,7 +87,7 @@ const groupService = {
   getCommunity: async (communityId: string): Promise<Community> => {
     try {
       const response = await apiService.communities.getById(communityId);
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error('Error fetching community:', error);
       throw error;
@@ -97,7 +97,7 @@ const groupService = {
   getCommunities: async (userId?: string): Promise<Community[]> => {
     try {
       const response = await apiService.communities.getAll();
-      const communities = response.data;
+      const communities = response.data.data;
       return userId ? communities.filter(community => community.createdBy === userId) : communities;
     } catch (error) {
       console.error('Error fetching communities:', error);
@@ -108,7 +108,7 @@ const groupService = {
   updateCommunity: async (communityId: string, data: UpdateCommunityData): Promise<Community> => {
     try {
       const response = await apiService.communities.update(communityId, data);
-      return response.data;
+      return response.data.data;
     } catch (error) {
       console.error('Error updating community:', error);
       throw error;

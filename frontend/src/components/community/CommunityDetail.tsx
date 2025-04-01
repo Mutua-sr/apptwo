@@ -17,31 +17,28 @@ import {
 import { Community, UpdateCommunityData } from '../../types/api';
 import apiService from '../../services/apiService';
 
-const CommunityDetail: React.FC = () => {
+const CommunityDetail: React.FC<{}> = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [community, setCommunity] = useState<Community | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
-  const [editMode, setEditMode] = useState(false);
+  const [editMode, setEditMode] = useState<boolean>(false);
   const [editData, setEditData] = useState<UpdateCommunityData>({
     name: '',
     description: ''
   });
-
-  useEffect(() => {
-    fetchCommunity();
-  }, [id]);
 
   const fetchCommunity = async () => {
     if (!id) return;
     try {
       setLoading(true);
       const response = await apiService.communities.getById(id);
-      setCommunity(response.data);
+      const communityData = response.data.data; // Extract data from ApiResponse
+      setCommunity(communityData);
       setEditData({
-        name: response.data.name,
-        description: response.data.description || ''
+        name: communityData.name,
+        description: communityData.description || ''
       });
     } catch (err) {
       setError('Failed to fetch community details');
@@ -50,6 +47,10 @@ const CommunityDetail: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchCommunity();
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleUpdate = async () => {
     if (!id) return;

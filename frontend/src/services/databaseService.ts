@@ -46,7 +46,7 @@ export const DatabaseService = {
   async find<T>(query: { type: string; [key: string]: any }): Promise<T[]> {
     try {
       const response = await apiService[query.type === 'classroom' ? 'classrooms' : 'communities'].getAll();
-      return response.data as unknown as T[];
+      return response.data.data as unknown as T[];
     } catch (error) {
       console.error(`Error finding ${query.type}:`, error);
       throw new Error(`Failed to fetch ${query.type}s. Please try again later.`);
@@ -57,7 +57,7 @@ export const DatabaseService = {
   async read<T>(id: string): Promise<T | null> {
     try {
       const response = await apiService.auth.getCurrentUser();
-      return response as unknown as T;
+      return response ? response as unknown as T : null;
     } catch (error) {
       console.error('Error reading data:', error);
       throw new Error('Failed to read data. Please try again later.');
@@ -68,7 +68,7 @@ export const DatabaseService = {
   async getPosts(page: number = 1, limit: number = 10): Promise<Post[]> {
     try {
       const response = await apiService.posts.getAll();
-      return response.data.map((post: ApiPost) => normalizePost(post));
+      return response.data.data.map((post: ApiPost) => normalizePost(post));
     } catch (error) {
       console.error('Error fetching posts:', error);
       throw new Error('Failed to fetch posts. Please try again later.');
@@ -79,7 +79,7 @@ export const DatabaseService = {
   async createPost(postInput: PostInput): Promise<Post> {
     try {
       const response = await apiService.posts.create(postInput);
-      return normalizePost(response.data);
+      return normalizePost(response.data.data);
     } catch (error) {
       console.error('Error creating post:', error);
       throw new Error('Failed to create post. Please try again later.');
@@ -90,7 +90,7 @@ export const DatabaseService = {
   async updatePost(id: string, update: PostUpdate): Promise<Post> {
     try {
       const response = await apiService.posts.update(id, update);
-      return normalizePost(response.data);
+      return normalizePost(response.data.data);
     } catch (error) {
       console.error('Error updating post:', error);
       throw new Error('Failed to update post. Please try again later.');
@@ -112,7 +112,7 @@ export const DatabaseService = {
   async likePost(id: string): Promise<Post> {
     try {
       const response = await apiService.posts.update(id, { likes: 1 });
-      return normalizePost(response.data);
+      return normalizePost(response.data.data);
     } catch (error) {
       console.error('Error liking post:', error);
       throw new Error('Failed to like post. Please try again later.');
@@ -123,7 +123,7 @@ export const DatabaseService = {
   async unlikePost(id: string): Promise<Post> {
     try {
       const response = await apiService.posts.update(id, { likes: -1 });
-      return normalizePost(response.data);
+      return normalizePost(response.data.data);
     } catch (error) {
       console.error('Error unliking post:', error);
       throw new Error('Failed to unlike post. Please try again later.');

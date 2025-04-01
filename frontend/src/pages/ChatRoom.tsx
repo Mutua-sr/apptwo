@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
   Paper,
@@ -25,7 +25,6 @@ export interface ChatRoomProps {
 
 const ChatRoom: React.FC<ChatRoomProps> = ({ chatType }) => {
   const { roomId } = useParams<{ roomId: string }>();
-  const location = useLocation();
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
@@ -49,18 +48,26 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ chatType }) => {
         switch (chatType) {
           case 'classroom':
             const classroomResponse = await apiService.classrooms.getById(roomId!);
+            const classroomData = classroomResponse.data.data;
             roomData = {
-              ...classroomResponse.data,
+              _id: classroomData._id,
+              name: classroomData.name,
               type: 'classroom' as const,
-              participants: [] // You would populate this from your actual data
+              participants: classroomData.students || [],
+              createdBy: classroomData.createdBy,
+              createdAt: classroomData.createdAt
             };
             break;
           case 'community':
             const communityResponse = await apiService.communities.getById(roomId!);
+            const communityData = communityResponse.data.data;
             roomData = {
-              ...communityResponse.data,
+              _id: communityData._id,
+              name: communityData.name,
               type: 'community' as const,
-              participants: [] // You would populate this from your actual data
+              participants: communityData.members || [],
+              createdBy: communityData.createdBy,
+              createdAt: communityData.createdAt
             };
             break;
           default:

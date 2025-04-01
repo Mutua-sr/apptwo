@@ -1,11 +1,12 @@
 import axios from 'axios';
-import { Community, Classroom, User } from '../types/api';
+import { Community, Classroom, User, Post, ApiResponse } from '../types/api';
+import { PostInput, PostUpdate } from '../types/feed';
 
 const API_URL = 'http://localhost:8000/api';
 
-interface ApiResponse<T> {
-  data: T;
-  message?: string;
+interface LoginResponse {
+  token: string;
+  user: User;
 }
 
 interface CreateRoomData {
@@ -39,71 +40,97 @@ const createApiService = () => {
         const userStr = localStorage.getItem('user');
         return userStr ? JSON.parse(userStr) : null;
       },
+      login: (credentials: { email: string; password: string }) =>
+        instance.post<ApiResponse<LoginResponse>>('/auth/login', credentials),
+      logout: () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      },
+      handleError: (error: any): string => {
+        if (error.response) {
+          return error.response.data.message || 'An error occurred';
+        }
+        return error.message || 'Network error';
+      }
     },
 
     communities: {
       getAll: () => 
-        instance.get<{ data: Community[] }>('/communities', {
+        instance.get<ApiResponse<Community[]>>('/communities', {
           params: { filter: 'all' }
         }),
 
       getUserCommunities: () =>
-        instance.get<{ data: Community[] }>('/communities', {
+        instance.get<ApiResponse<Community[]>>('/communities', {
           params: { filter: 'member' }
         }),
 
       getById: (id: string) =>
-        instance.get<{ data: Community }>(`/communities/${id}`),
+        instance.get<ApiResponse<Community>>(`/communities/${id}`),
 
       create: (data: CreateRoomData) =>
-        instance.post<{ data: Community }>('/communities', data),
+        instance.post<ApiResponse<Community>>('/communities', data),
 
       update: (id: string, data: UpdateRoomData) =>
-        instance.put<{ data: Community }>(`/communities/${id}`, data),
+        instance.put<ApiResponse<Community>>(`/communities/${id}`, data),
 
       delete: (id: string) =>
-        instance.delete<{ data: void }>(`/communities/${id}`),
+        instance.delete<ApiResponse<void>>(`/communities/${id}`),
 
       join: (id: string) =>
-        instance.post<{ data: void }>(`/communities/${id}/join`),
+        instance.post<ApiResponse<void>>(`/communities/${id}/join`),
 
       leave: (id: string) =>
-        instance.post<{ data: void }>(`/communities/${id}/leave`),
+        instance.post<ApiResponse<void>>(`/communities/${id}/leave`),
+    },
+
+    posts: {
+      getAll: () =>
+        instance.get<ApiResponse<Post[]>>('/posts'),
+      
+      create: (data: PostInput) =>
+        instance.post<ApiResponse<Post>>('/posts', data),
+      
+      update: (id: string, data: PostUpdate) =>
+        instance.put<ApiResponse<Post>>(`/posts/${id}`, data),
+      
+      delete: (id: string) =>
+        instance.delete<ApiResponse<void>>(`/posts/${id}`),
     },
 
     classrooms: {
       getAll: () =>
-        instance.get<{ data: Classroom[] }>('/classrooms', {
+        instance.get<ApiResponse<Classroom[]>>('/classrooms', {
           params: { filter: 'all' }
         }),
 
       getUserClassrooms: () =>
-        instance.get<{ data: Classroom[] }>('/classrooms', {
+        instance.get<ApiResponse<Classroom[]>>('/classrooms', {
           params: { filter: 'student' }
         }),
 
       getTeacherClassrooms: () =>
-        instance.get<{ data: Classroom[] }>('/classrooms', {
+        instance.get<ApiResponse<Classroom[]>>('/classrooms', {
           params: { filter: 'teacher' }
         }),
 
       getById: (id: string) =>
-        instance.get<{ data: Classroom }>(`/classrooms/${id}`),
+        instance.get<ApiResponse<Classroom>>(`/classrooms/${id}`),
 
       create: (data: CreateRoomData) =>
-        instance.post<{ data: Classroom }>('/classrooms', data),
+        instance.post<ApiResponse<Classroom>>('/classrooms', data),
 
       update: (id: string, data: UpdateRoomData) =>
-        instance.put<{ data: Classroom }>(`/classrooms/${id}`, data),
+        instance.put<ApiResponse<Classroom>>(`/classrooms/${id}`, data),
 
       delete: (id: string) =>
-        instance.delete<{ data: void }>(`/classrooms/${id}`),
+        instance.delete<ApiResponse<void>>(`/classrooms/${id}`),
 
       join: (id: string) =>
-        instance.post<{ data: void }>(`/classrooms/join`, { code: id }),
+        instance.post<ApiResponse<void>>(`/classrooms/join`, { code: id }),
 
       leave: (id: string) =>
-        instance.post<{ data: void }>(`/classrooms/${id}/leave`),
+        instance.post<ApiResponse<void>>(`/classrooms/${id}/leave`),
     },
   };
 };

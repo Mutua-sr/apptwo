@@ -51,13 +51,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const credentials: LoginCredentials = { email, password };
       const response = await apiService.auth.login(credentials);
+      const { token, user } = response.data.data;
       
-      if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-    }
-      setCurrentUser(response.data.user);
+      if (token) {
+        localStorage.setItem('token', token);
+      }
+      setCurrentUser(user);
     } catch (err: any) {
-      const errorMessage = apiService.handleError(err);
+      const errorMessage = err.response?.data?.message || 'An error occurred during login';
       setError(errorMessage);
       throw err;
     } finally {
