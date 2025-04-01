@@ -22,6 +22,7 @@ interface CreatePostProps {
 }
 
 const CreatePost: React.FC<CreatePostProps> = ({ open, onClose, onPostCreated }) => {
+  const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -41,6 +42,11 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, onClose, onPostCreated })
   };
 
   const handleSubmit = async () => {
+    if (!title.trim()) {
+      setError('Title is required');
+      return;
+    }
+
     if (!content.trim()) {
       setError('Content is required');
       return;
@@ -51,6 +57,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, onClose, onPostCreated })
 
     try {
       const postInput: PostInput = {
+        title: title.trim(),
         content: content.trim(),
         tags: tags.length > 0 ? tags : undefined
       };
@@ -67,6 +74,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, onClose, onPostCreated })
   };
 
   const handleClose = () => {
+    setTitle('');
     setContent('');
     setTagInput('');
     setTags([]);
@@ -79,6 +87,14 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, onClose, onPostCreated })
       <DialogTitle>Create New Post</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
+          <TextField
+            label="Post Title"
+            fullWidth
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            error={!!error && !title.trim()}
+            helperText={error && !title.trim() ? 'Title is required' : ''}
+          />
           <TextField
             label="What's on your mind?"
             fullWidth

@@ -64,11 +64,11 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onLike, onComment, onS
                 sx={{ bgcolor: 'primary.main' }}
                 alt={post.author.username}
               >
-                {post.author.username?.charAt(0) || '?'}
+                {(post.author.username || post.author.id || 'A').charAt(0)}
               </Avatar>
               <Box>
                 <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                  {post.author.username || 'Unknown User'}
+                  {post.author.username || post.author.id || 'Anonymous'}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   {new Date(post.createdAt).toLocaleString()}
@@ -135,10 +135,12 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onLike, onComment, onS
                 {comments.map((comment: Comment) => (
                   <Stack key={comment.id} direction="row" spacing={1}>
                     <Avatar sx={{ width: 32, height: 32 }}>
-                      {comment.author.avatar || comment.author.username.charAt(0)}
+                      {(comment.author.username || comment.author.id || 'A').charAt(0)}
                     </Avatar>
                     <Box sx={{ flex: 1 }}>
-                      <Typography variant="subtitle2">{comment.author.username}</Typography>
+                      <Typography variant="subtitle2">
+                        {comment.author.username || comment.author.id || 'Anonymous'}
+                      </Typography>
                       <Typography variant="body2">{comment.content}</Typography>
                       <Typography variant="caption" color="text.secondary">
                         {new Date(comment.timestamp).toLocaleString()}
@@ -148,7 +150,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onLike, onComment, onS
                 ))}
                 <Stack direction="row" spacing={1}>
                   <Avatar sx={{ width: 32, height: 32 }}>
-                    {currentUser?.username?.charAt(0)}
+                    {(currentUser?.username || currentUser?.id || 'A').charAt(0)}
                   </Avatar>
                   <TextField
                     fullWidth
