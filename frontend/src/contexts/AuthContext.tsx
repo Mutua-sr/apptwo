@@ -1,97 +1,70 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import apiService from '../services/apiService';
-import { User, LoginCredentials } from '../types/api';
+import { User } from '../types/api';
 
 interface AuthContextType {
   currentUser: User | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  loading: boolean;
-  error: string | null;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
   currentUser: null,
   isAuthenticated: false,
   login: async () => {},
-  logout: async () => {},
-  loading: true,
-  error: null
+  logout: () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+interface AuthProviderProps {
+  children: React.ReactNode;
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    const initAuth = async () => {
-      try {
-        const user = apiService.auth.getCurrentUser();
-        if (user) {
-          setCurrentUser(user);
-        }
-      } catch (err) {
-        console.error('Error initializing auth:', err);
-      } finally {
-        setLoading(false);
+    const token = localStorage.getItem('token');
+    if (token) {
+      const user = apiService.auth.getCurrentUser();
+      if (user) {
+        setCurrentUser(user);
+        setIsAuthenticated(true);
       }
-    };
-
-    initAuth();
+    }
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
-      setLoading(true);
-      setError(null);
-      
-      const credentials: LoginCredentials = { email, password };
-      const response = await apiService.auth.login(credentials);
+      const response = await apiService.auth.login({ email, password });
       const { token, user } = response.data.data;
-      
-      if (token) {
-        localStorage.setItem('token', token);
-      }
+      localStorage.setItem('token', token);
       setCurrentUser(user);
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'An error occurred during login';
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
+      setIsAuthenticated(true);
+    } catch (error) {
+      throw new Error(apiService.auth.handleError(error));
     }
   };
 
-  const logout = async () => {
-    try {
-      setLoading(true);
-      apiService.auth.logout();
-      setCurrentUser(null);
-    } catch (err: any) {
-      console.error('Error during logout:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const value = {
-    currentUser,
-    isAuthenticated: !!currentUser,
-    login,
-    logout,
-    loading,
-    error
+  const logout = () => {
+    localStorage.removeItem('token');
+    setCurrentUser(null);
+    setIsAuthenticated(false);
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        currentUser,
+        isAuthenticated,
+        login,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
-
-export default AuthContext;

@@ -12,6 +12,13 @@ import Profile from './pages/Profile';
 import ChatRoom from './pages/ChatRoom';
 import MainLayout from './components/layout/MainLayout';
 import CommunityDetail from './components/community/CommunityDetail';
+import Dashboard from './pages/admin/Dashboard';
+import UserManagement from './pages/admin/UserManagement';
+import ClassroomManagement from './pages/admin/ClassroomManagement';
+import CommunityManagement from './pages/admin/CommunityManagement';
+import ContentModeration from './pages/admin/ContentModeration';
+import Analytics from './pages/admin/Analytics';
+import Settings from './pages/admin/Settings';
 
 // Create theme instance
 const theme = createTheme({
@@ -35,8 +42,13 @@ const theme = createTheme({
   },
 });
 
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+  noLayout?: boolean;
+}
+
 // Protected Route Component
-const ProtectedRoute: React.FC<{ children: React.ReactNode; noLayout?: boolean }> = ({ children, noLayout }) => {
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, noLayout }) => {
   const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
@@ -46,8 +58,31 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; noLayout?: boolean }
   return noLayout ? <>{children}</> : <MainLayout>{children}</MainLayout>;
 };
 
+interface AdminRouteProps {
+  children: React.ReactNode;
+}
+
+// Admin Route Component
+const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
+  const { isAuthenticated, currentUser } = useAuth();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!currentUser?.role || currentUser.role !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+interface PublicRouteProps {
+  children: React.ReactNode;
+}
+
 // Public Route Component
-const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const PublicRoute: React.FC<PublicRouteProps> = ({ children }) => {
   const { isAuthenticated } = useAuth();
 
   if (isAuthenticated) {
@@ -61,79 +96,132 @@ const AppRoutes = () => {
   return (
     <ErrorBoundary>
       <Routes>
-      <Route
-        path="/login"
-        element={
-          <PublicRoute>
-            <Login />
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Feed />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/classrooms"
-        element={
-          <ProtectedRoute>
-            <Classrooms />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/chat/:roomId"
-        element={
-          <ProtectedRoute noLayout>
-            <ChatRoom chatType="direct" />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/classroom-chat/:roomId"
-        element={
-          <ProtectedRoute noLayout>
-            <ChatRoom chatType="classroom" />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/community-chat/:roomId"
-        element={
-          <ProtectedRoute noLayout>
-            <ChatRoom chatType="community" />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/communities"
-        element={
-          <ProtectedRoute>
-            <Communities />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/communities/:id"
-        element={
-          <ProtectedRoute>
-            <CommunityDetail />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/profile"
-        element={
-          <ProtectedRoute>
-            <Profile />
-          </ProtectedRoute>
-        }
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Public Routes */}
+        <Route
+          path="/login"
+          element={
+            <PublicRoute>
+              <Login />
+            </PublicRoute>
+          }
+        />
+
+        {/* Admin Routes */}
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <Dashboard />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <AdminRoute>
+              <UserManagement />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/classrooms"
+          element={
+            <AdminRoute>
+              <ClassroomManagement />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/communities"
+          element={
+            <AdminRoute>
+              <CommunityManagement />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/moderation"
+          element={
+            <AdminRoute>
+              <ContentModeration />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/analytics"
+          element={
+            <AdminRoute>
+              <Analytics />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/settings"
+          element={
+            <AdminRoute>
+              <Settings />
+            </AdminRoute>
+          }
+        />
+
+        {/* Protected Routes */}
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Feed />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/classrooms"
+          element={
+            <ProtectedRoute>
+              <Classrooms />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/classroom-chat/:roomId"
+          element={
+            <ProtectedRoute noLayout>
+              <ChatRoom chatType="classroom" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/community-chat/:roomId"
+          element={
+            <ProtectedRoute noLayout>
+              <ChatRoom chatType="community" />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/communities"
+          element={
+            <ProtectedRoute>
+              <Communities />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/communities/:id"
+          element={
+            <ProtectedRoute>
+              <CommunityDetail />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </ErrorBoundary>
   );

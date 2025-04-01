@@ -17,7 +17,7 @@ import {
 } from '@mui/icons-material';
 import apiService from '../services/apiService';
 import chatService from '../services/chatService';
-import { ChatRoom as ChatRoomType, ChatMessage } from '../types/chat';
+import { ChatRoom as ChatRoomType, ChatMessage, ChatParticipant } from '../types/chat';
 
 export interface ChatRoomProps {
   chatType: 'classroom' | 'community';
@@ -53,7 +53,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ chatType }) => {
               _id: classroomData._id,
               name: classroomData.name,
               type: 'classroom' as const,
-              participants: classroomData.students || [],
+              participants: classroomData.students.map((student: any) => ({
+                id: student.id,
+                name: student.name,
+                avatar: student.avatar,
+                role: 'student'
+              })) as ChatParticipant[],
               createdBy: classroomData.createdBy,
               createdAt: classroomData.createdAt
             };
@@ -65,7 +70,12 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ chatType }) => {
               _id: communityData._id,
               name: communityData.name,
               type: 'community' as const,
-              participants: communityData.members || [],
+              participants: communityData.members.map((member: any) => ({
+                id: member.id,
+                name: member.name,
+                avatar: member.avatar,
+                role: 'member'
+              })) as ChatParticipant[],
               createdBy: communityData.createdBy,
               createdAt: communityData.createdAt
             };

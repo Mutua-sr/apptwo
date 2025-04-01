@@ -1,178 +1,104 @@
-import axios from 'axios';
-
-export interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  message?: string;
-}
-
 export interface User {
   id: string;
   name: string;
   email: string;
   avatar?: string;
-  profileId?: string;
-}
-
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-export interface Member {
-  id: string;
-  name: string;
-  avatar?: string;
-  role?: string;
-  status?: 'active' | 'inactive';
-}
-
-export interface Student extends Member {
-  grade?: string;
-  enrollmentDate?: string;
-}
-
-export interface Assignment {
-  id: string;
-  title: string;
-  description: string;
-  dueDate: string;
-  points: number;
-  status: 'draft' | 'published' | 'archived';
-}
-
-export interface Material {
-  id: string;
-  title: string;
-  description: string;
-  type: 'document' | 'video' | 'link';
-  url: string;
-  uploadedAt: string;
-}
-
-export interface ScheduleEvent {
-  id: string;
-  title: string;
-  description?: string;
-  startTime: string;
-  endTime: string;
-  type: 'class' | 'assignment' | 'event';
+  role: 'user' | 'admin' | 'moderator';
+  isAdmin?: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastActive?: string;
+  status: 'active' | 'suspended' | 'banned';
 }
 
 export interface Community {
   _id: string;
-  type: 'community';
   name: string;
-  description: string;
+  description?: string;
   avatar?: string;
-  banner?: string;
-  creator: {
-    id: string;
-    name: string;
-    avatar?: string;
-  };
+  type: 'community';
   createdBy: string;
   createdAt: string;
-  unreadCount?: number;
-  lastMessage?: string;
-  members: Member[];
-  settings: {
+  updatedAt: string;
+  members: string[];
+  settings?: {
     isPrivate: boolean;
     requiresApproval: boolean;
-    allowPosts: boolean;
-    allowEvents: boolean;
-    allowPolls: boolean;
+    allowInvites: boolean;
   };
 }
 
 export interface Classroom {
   _id: string;
-  type: 'classroom';
   name: string;
-  description: string;
-  code: string;
+  description?: string;
   avatar?: string;
-  teacher: {
-    id: string;
-    name: string;
-    avatar?: string;
-  };
+  type: 'classroom';
   createdBy: string;
   createdAt: string;
-  unreadCount?: number;
-  lastMessage?: string;
-  students: Student[];
-  assignments: Assignment[];
-  materials: Material[];
-  schedule: ScheduleEvent[];
-  settings: {
-    isPrivate?: boolean;
+  updatedAt: string;
+  students: string[];
+  teachers: string[];
+  settings?: {
+    allowStudentChat: boolean;
     allowStudentPosts: boolean;
-    allowStudentComments: boolean;
-    notifications: {
-      assignments: boolean;
-      materials: boolean;
-      announcements: boolean;
-    };
+    requirePostApproval: boolean;
   };
 }
 
 export interface Post {
   _id: string;
-  title: string;
   content: string;
-  createdBy: string;
   author: {
     id: string;
-    username: string;
+    name: string;
     avatar?: string;
   };
-  likes: number;
-  comments: Comment[];
-  tags: string[];
+  roomId: string;
+  roomType: 'classroom' | 'community';
   createdAt: string;
-  updatedAt?: string;
-  likedBy: string[];
-  sharedTo?: {
-    type: 'classroom' | 'community';
-    id: string;
+  updatedAt: string;
+  likes: string[];
+  comments: Comment[];
+  attachments?: {
+    type: 'image' | 'video' | 'file';
+    url: string;
     name: string;
-  };
+  }[];
 }
 
 export interface Comment {
-  id: string;
-  author: string;
-  avatar?: string;
+  _id: string;
   content: string;
-  timestamp: string;
-  likes: number;
+  author: {
+    id: string;
+    name: string;
+    avatar?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+  likes: string[];
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+  error?: string;
+}
+
+export interface LoginResponse {
+  token: string;
+  user: User;
 }
 
 export interface CreateClassroomData {
   name: string;
-  description: string;
-  code?: string;
+  description?: string;
   settings?: {
-    allowStudentPosts?: boolean;
-    allowStudentComments?: boolean;
-    notifications?: {
-      assignments?: boolean;
-      materials?: boolean;
-      announcements?: boolean;
-    };
-  };
-}
-
-export interface CreateCommunityData {
-  name: string;
-  description: string;
-  settings?: {
-    isPrivate?: boolean;
-    requiresApproval?: boolean;
-    allowPosts?: boolean;
-    allowEvents?: boolean;
-    allowPolls?: boolean;
+    allowStudentChat: boolean;
+    allowStudentPosts: boolean;
+    requirePostApproval: boolean;
   };
 }
 
@@ -180,13 +106,19 @@ export interface UpdateClassroomData {
   name?: string;
   description?: string;
   settings?: {
+    allowStudentChat?: boolean;
     allowStudentPosts?: boolean;
-    allowStudentComments?: boolean;
-    notifications?: {
-      assignments?: boolean;
-      materials?: boolean;
-      announcements?: boolean;
-    };
+    requirePostApproval?: boolean;
+  };
+}
+
+export interface CreateCommunityData {
+  name: string;
+  description?: string;
+  settings?: {
+    isPrivate: boolean;
+    requiresApproval: boolean;
+    allowInvites: boolean;
   };
 }
 
@@ -196,20 +128,6 @@ export interface UpdateCommunityData {
   settings?: {
     isPrivate?: boolean;
     requiresApproval?: boolean;
-    allowPosts?: boolean;
-    allowEvents?: boolean;
-    allowPolls?: boolean;
-  };
-}
-
-export interface UpdateRoomData {
-  name?: string;
-  description?: string;
-  settings?: {
-    isPrivate?: boolean;
-    requiresApproval?: boolean;
-    allowPosts?: boolean;
-    allowEvents?: boolean;
-    allowPolls?: boolean;
+    allowInvites?: boolean;
   };
 }

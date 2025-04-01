@@ -121,6 +121,52 @@ const createApiService = () => {
         instance.get<ApiResponse<ChatRoom>>(`/${roomType}s/${roomId}`),
     },
 
+    admin: {
+      getDashboardStats: () =>
+        instance.get<ApiResponse<{
+          totalUsers: number;
+          totalClassrooms: number;
+          totalCommunities: number;
+          totalMessages: number;
+          activeUsers: number;
+          pendingReports: number;
+        }>>('/admin/dashboard/stats'),
+
+      getUsers: (params?: { page?: number; limit?: number; search?: string }) =>
+        instance.get<ApiResponse<{
+          users: User[];
+          total: number;
+        }>>('/admin/users', { params }),
+
+      updateUser: (userId: string, data: Partial<User>) =>
+        instance.put<ApiResponse<User>>(`/admin/users/${userId}`, data),
+
+      deleteUser: (userId: string) =>
+        instance.delete<ApiResponse<void>>(`/admin/users/${userId}`),
+
+      getReports: (params?: { page?: number; limit?: number; status?: string }) =>
+        instance.get<ApiResponse<{
+          reports: any[];
+          total: number;
+        }>>('/admin/reports', { params }),
+
+      updateReport: (reportId: string, status: string) =>
+        instance.put<ApiResponse<void>>(`/admin/reports/${reportId}`, { status }),
+
+      getAnalytics: (period: 'day' | 'week' | 'month' | 'year') =>
+        instance.get<ApiResponse<{
+          userGrowth: any[];
+          messageActivity: any[];
+          roomActivity: any[];
+        }>>('/admin/analytics', { params: { period } }),
+
+      updateSettings: (settings: any) =>
+        instance.put<ApiResponse<void>>('/admin/settings', settings),
+
+      getSettings: () =>
+        instance.get<ApiResponse<any>>('/admin/settings'),
+    },
+
     classrooms: {
       getAll: () =>
         instance.get<ApiResponse<Classroom[]>>('/classrooms', {
