@@ -1,36 +1,65 @@
 import React from 'react';
-import { Box, CssBaseline, ThemeProvider, useMediaQuery, useTheme } from '@mui/material';
-import Navbar from './Navbar';
-import BottomNav from './BottomNav';
-import mobileTheme from '../../theme/mobileTheme';
+import { Outlet } from 'react-router-dom';
+import { Box, AppBar, Toolbar, Typography, Button, IconButton, Avatar } from '@mui/material';
+import { Menu as MenuIcon } from '@mui/icons-material';
+import { useAuth } from '../../contexts/AuthContext';
+import Sidebar from './Sidebar';
 
 interface MainLayoutProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
-const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+const MainLayout: React.FC<MainLayoutProps> = () => {
+  const { currentUser, logout } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = React.useState(false);
+
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
 
   return (
-    <ThemeProvider theme={mobileTheme}>
-      <CssBaseline />
-      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <Navbar />
-        <Box
-          component="main"
-          sx={{
-            flexGrow: 1,
-            pt: { xs: '56px', sm: '64px' },
-            pb: { xs: '56px', sm: 0 },
-            overflow: 'auto'
-          }}
-        >
-          {children}
-        </Box>
-        {isMobile && <BottomNav />}
+    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+        <Toolbar>
+          <IconButton
+            color="inherit"
+            aria-label="open drawer"
+            edge="start"
+            onClick={toggleSidebar}
+            sx={{ mr: 2 }}
+          >
+            <MenuIcon />
+          </IconButton>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            AppTwo
+          </Typography>
+          {currentUser && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Avatar src={currentUser.avatar} alt={currentUser.name}>
+                {currentUser.name.charAt(0)}
+              </Avatar>
+              <Button color="inherit" onClick={logout}>
+                Logout
+              </Button>
+            </Box>
+          )}
+        </Toolbar>
+      </AppBar>
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          p: 3,
+          width: '100%',
+          minHeight: '100vh',
+          mt: '64px', // AppBar height
+          bgcolor: 'background.default'
+        }}
+      >
+        <Outlet />
       </Box>
-    </ThemeProvider>
+    </Box>
   );
 };
 

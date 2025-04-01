@@ -4,28 +4,16 @@ interface BaseRoom {
   _id: string;
   name: string;
   description: string;
+  type: 'classroom' | 'community';
   avatar?: string;
+  createdById: string;
+  createdBy: User;
   createdAt: string;
   updatedAt: string;
-  lastMessage?: string;
-  unreadCount?: number;
-  createdById: string;
-  createdBy: {
-    id: string;
-    name: string;
-    avatar?: string;
-  };
-}
-
-export interface CommunitySettings {
-  isPrivate: boolean;
-  allowMemberPosts: boolean;
-  allowMemberInvites: boolean;
-  requirePostApproval: boolean;
 }
 
 export interface ClassroomSettings {
-  isPrivate?: boolean;
+  isPrivate: boolean;
   allowStudentPosts: boolean;
   allowStudentComments: boolean;
   allowStudentChat: boolean;
@@ -37,44 +25,30 @@ export interface ClassroomSettings {
   };
 }
 
-export interface Community extends BaseRoom {
-  type: 'community';
-  coverImage?: string;
-  members: User[];
-  admins: User[];
+export interface CommunitySettings {
   isPrivate: boolean;
-  tags: string[];
-  rules?: string[];
-  settings: CommunitySettings;
+  allowMemberPosts: boolean;
+  allowMemberInvites: boolean;
+  requirePostApproval: boolean;
 }
 
 export interface Classroom extends BaseRoom {
   type: 'classroom';
-  code: string;
+  settings: ClassroomSettings;
   teachers: User[];
   students: User[];
-  isArchived: boolean;
-  settings: ClassroomSettings;
+  assignments: string[];
+  materials: string[];
 }
 
-export interface CreateCommunityData {
+export interface Community extends BaseRoom {
   type: 'community';
-  name: string;
-  description: string;
   settings: CommunitySettings;
-  tags?: string[];
-  rules?: string[];
+  members: User[];
+  admins: User[];
 }
 
-export interface UpdateCommunityData {
-  name?: string;
-  description?: string;
-  settings?: Partial<CommunitySettings>;
-  tags?: string[];
-  rules?: string[];
-  avatar?: string;
-  coverImage?: string;
-}
+export type Room = Classroom | Community;
 
 export interface CreateClassroomData {
   type: 'classroom';
@@ -83,26 +57,29 @@ export interface CreateClassroomData {
   settings: ClassroomSettings;
 }
 
+export interface CreateCommunityData {
+  type: 'community';
+  name: string;
+  description: string;
+  settings: CommunitySettings;
+}
+
+export type CreateRoomData = CreateClassroomData | CreateCommunityData;
+
 export interface UpdateClassroomData {
   name?: string;
   description?: string;
-  isArchived?: boolean;
   settings?: Partial<ClassroomSettings>;
+  teachers?: string[];
+  students?: string[];
 }
 
-export type Room = Community | Classroom;
-export type CreateRoomData = CreateCommunityData | CreateClassroomData;
-export type UpdateRoomData = UpdateCommunityData | UpdateClassroomData;
-
-export interface RoomParticipant {
-  id: string;
-  name: string;
-  avatar?: string;
-  role: 'owner' | 'admin' | 'member';
-  joinedAt: string;
+export interface UpdateCommunityData {
+  name?: string;
+  description?: string;
+  settings?: Partial<CommunitySettings>;
+  admins?: string[];
+  members?: string[];
 }
 
-export interface ChatRoom extends BaseRoom {
-  type: 'classroom' | 'community';
-  participants: RoomParticipant[];
-}
+export type UpdateRoomData = UpdateClassroomData | UpdateCommunityData;

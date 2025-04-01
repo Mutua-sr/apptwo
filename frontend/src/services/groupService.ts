@@ -1,15 +1,37 @@
-import { Classroom, Community, ApiResponse } from '../types/api';
-import { 
-  CreateClassroomData, 
-  CreateCommunityData, 
-  UpdateClassroomData, 
-  UpdateCommunityData 
-} from '../types/room';
+import { Classroom, Community, CreateClassroomData, CreateCommunityData, UpdateClassroomData, UpdateCommunityData } from '../types/room';
+import { ApiResponse } from '../types/api';
 import apiService from './apiService';
 
-const groupService = {
-  // Classroom Operations
-  createClassroom: async (data: CreateClassroomData): Promise<Classroom> => {
+class GroupService {
+  async getClassroom(id: string): Promise<Classroom> {
+    try {
+      const response = await apiService.classrooms.getUserClassrooms();
+      const classroom = response.data.data.find(c => c._id === id);
+      if (!classroom) {
+        throw new Error('Classroom not found');
+      }
+      return classroom;
+    } catch (error) {
+      console.error('Error fetching classroom:', error);
+      throw error;
+    }
+  }
+
+  async getClassrooms(userId?: string): Promise<Classroom[]> {
+    try {
+      const response = await apiService.classrooms.getAll();
+      const classrooms: Classroom[] = response.data.data;
+      return userId 
+        ? classrooms.filter(classroom => classroom.createdById === userId || 
+            classroom.teachers.some(teacher => teacher.id === userId))
+        : classrooms;
+    } catch (error) {
+      console.error('Error fetching classrooms:', error);
+      throw error;
+    }
+  }
+
+  async createClassroom(data: CreateClassroomData): Promise<Classroom> {
     try {
       const response = await apiService.classrooms.create(data);
       return response.data.data;
@@ -17,50 +39,56 @@ const groupService = {
       console.error('Error creating classroom:', error);
       throw error;
     }
-  },
+  }
 
-  getClassroom: async (classroomId: string): Promise<Classroom> => {
+  async updateClassroom(id: string, data: UpdateClassroomData): Promise<Classroom> {
     try {
-      const response = await apiService.classrooms.getById(classroomId);
-      return response.data.data;
-    } catch (error) {
-      console.error('Error fetching classroom:', error);
-      throw error;
-    }
-  },
-
-  getClassrooms: async (userId?: string): Promise<Classroom[]> => {
-    try {
-      const response = await apiService.classrooms.getAll();
-      const classrooms: Classroom[] = response.data.data;
-      return userId ? classrooms.filter(classroom => classroom.teachers.some(teacher => teacher.id === userId)) : classrooms;
-    } catch (error) {
-      console.error('Error fetching classrooms:', error);
-      throw error;
-    }
-  },
-
-  updateClassroom: async (classroomId: string, data: UpdateClassroomData): Promise<Classroom> => {
-    try {
-      const response = await apiService.classrooms.update(classroomId, data);
+      const response = await apiService.classrooms.update(id, data);
       return response.data.data;
     } catch (error) {
       console.error('Error updating classroom:', error);
       throw error;
     }
-  },
+  }
 
-  deleteClassroom: async (classroomId: string): Promise<void> => {
+  async deleteClassroom(id: string): Promise<void> {
     try {
-      await apiService.classrooms.delete(classroomId);
+      await apiService.classrooms.delete(id);
     } catch (error) {
       console.error('Error deleting classroom:', error);
       throw error;
     }
-  },
+  }
 
-  // Community Operations
-  createCommunity: async (data: CreateCommunityData): Promise<Community> => {
+  async getCommunity(id: string): Promise<Community> {
+    try {
+      const response = await apiService.communities.getUserCommunities();
+      const community = response.data.data.find(c => c._id === id);
+      if (!community) {
+        throw new Error('Community not found');
+      }
+      return community;
+    } catch (error) {
+      console.error('Error fetching community:', error);
+      throw error;
+    }
+  }
+
+  async getCommunities(userId?: string): Promise<Community[]> {
+    try {
+      const response = await apiService.communities.getAll();
+      const communities: Community[] = response.data.data;
+      return userId 
+        ? communities.filter(community => community.createdById === userId || 
+            community.admins.some(admin => admin.id === userId))
+        : communities;
+    } catch (error) {
+      console.error('Error fetching communities:', error);
+      throw error;
+    }
+  }
+
+  async createCommunity(data: CreateCommunityData): Promise<Community> {
     try {
       const response = await apiService.communities.create(data);
       return response.data.data;
@@ -68,88 +96,52 @@ const groupService = {
       console.error('Error creating community:', error);
       throw error;
     }
-  },
+  }
 
-  getCommunity: async (communityId: string): Promise<Community> => {
+  async updateCommunity(id: string, data: UpdateCommunityData): Promise<Community> {
     try {
-      const response = await apiService.communities.getById(communityId);
-      return response.data.data;
-    } catch (error) {
-      console.error('Error fetching community:', error);
-      throw error;
-    }
-  },
-
-  getCommunities: async (userId?: string): Promise<Community[]> => {
-    try {
-      const response = await apiService.communities.getAll();
-      const communities: Community[] = response.data.data;
-      return userId ? communities.filter(community => community.createdBy === userId) : communities;
-    } catch (error) {
-      console.error('Error fetching communities:', error);
-      throw error;
-    }
-  },
-
-  updateCommunity: async (communityId: string, data: UpdateCommunityData): Promise<Community> => {
-    try {
-      const response = await apiService.communities.update(communityId, data);
+      const response = await apiService.communities.update(id, data);
       return response.data.data;
     } catch (error) {
       console.error('Error updating community:', error);
       throw error;
     }
-  },
+  }
 
-  deleteCommunity: async (communityId: string): Promise<void> => {
+  async deleteCommunity(id: string): Promise<void> {
     try {
-      await apiService.communities.delete(communityId);
+      await apiService.communities.delete(id);
     } catch (error) {
       console.error('Error deleting community:', error);
       throw error;
     }
-  },
+  }
 
-  // Member Operations
-  joinGroup: async (groupId: string, groupType: 'classroom' | 'community'): Promise<void> => {
+  async joinGroup(type: 'classroom' | 'community', id: string): Promise<void> {
     try {
-      if (groupType === 'community') {
-        await apiService.communities.join(groupId);
+      if (type === 'classroom') {
+        await apiService.classrooms.join(id);
       } else {
-        await apiService.classrooms.join(groupId);
+        await apiService.communities.join(id);
       }
     } catch (error) {
-      console.error(`Error joining ${groupType}:`, error);
-      throw error;
-    }
-  },
-
-  leaveGroup: async (groupId: string, groupType: 'classroom' | 'community'): Promise<void> => {
-    try {
-      if (groupType === 'community') {
-        await apiService.communities.leave(groupId);
-      } else {
-        await apiService.classrooms.leave(groupId);
-      }
-    } catch (error) {
-      console.error(`Error leaving ${groupType}:`, error);
-      throw error;
-    }
-  },
-
-  getMembers: async (groupId: string, groupType: 'classroom' | 'community'): Promise<Array<{
-    id: string;
-    name: string;
-    avatar?: string;
-  }>> => {
-    try {
-      const response = await apiService.chat.getRoomMembers(groupId, groupType);
-      return response.data.data.participants;
-    } catch (error) {
-      console.error(`Error fetching ${groupType} members:`, error);
+      console.error('Error joining group:', error);
       throw error;
     }
   }
-};
 
-export { groupService };
+  async leaveGroup(type: 'classroom' | 'community', id: string): Promise<void> {
+    try {
+      if (type === 'classroom') {
+        await apiService.classrooms.leave(id);
+      } else {
+        await apiService.communities.leave(id);
+      }
+    } catch (error) {
+      console.error('Error leaving group:', error);
+      throw error;
+    }
+  }
+}
+
+export const groupService = new GroupService();

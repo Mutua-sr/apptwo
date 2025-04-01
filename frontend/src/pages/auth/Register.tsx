@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -13,32 +13,46 @@ import {
 } from '@mui/material';
 import { useAuth } from '../../contexts/AuthContext';
 
-const Login: React.FC = () => {
+const Register: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { login } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const { register } = useAuth();
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const from = location.state?.from?.pathname || '/';
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
+    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
       setError('Please fill in all fields');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
       return;
     }
 
     try {
       setError(null);
       setLoading(true);
-      await login(email, password);
-      navigate(from, { replace: true });
+      await register(formData.name, formData.email, formData.password);
+      navigate('/', { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to log in');
+      setError(err instanceof Error ? err.message : 'Failed to create account');
     } finally {
       setLoading(false);
     }
@@ -55,7 +69,7 @@ const Login: React.FC = () => {
         }}
       >
         <Typography component="h1" variant="h5">
-          Sign in
+          Sign up
         </Typography>
         <Paper
           component="form"
@@ -77,13 +91,24 @@ const Login: React.FC = () => {
           <TextField
             required
             fullWidth
+            id="name"
+            label="Full Name"
+            name="name"
+            autoComplete="name"
+            autoFocus
+            value={formData.name}
+            onChange={handleChange}
+            disabled={loading}
+          />
+          <TextField
+            required
+            fullWidth
             id="email"
             label="Email Address"
             name="email"
             autoComplete="email"
-            autoFocus
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={formData.email}
+            onChange={handleChange}
             disabled={loading}
           />
           <TextField
@@ -93,9 +118,21 @@ const Login: React.FC = () => {
             label="Password"
             type="password"
             id="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            value={formData.password}
+            onChange={handleChange}
+            disabled={loading}
+          />
+          <TextField
+            required
+            fullWidth
+            name="confirmPassword"
+            label="Confirm Password"
+            type="password"
+            id="confirmPassword"
+            autoComplete="new-password"
+            value={formData.confirmPassword}
+            onChange={handleChange}
             disabled={loading}
           />
           <Button
@@ -105,11 +142,11 @@ const Login: React.FC = () => {
             disabled={loading}
             sx={{ mt: 2 }}
           >
-            {loading ? <CircularProgress size={24} /> : 'Sign In'}
+            {loading ? <CircularProgress size={24} /> : 'Sign Up'}
           </Button>
           <Box sx={{ mt: 2, textAlign: 'center' }}>
-            <Link component={RouterLink} to="/register" variant="body2">
-              {"Don't have an account? Sign Up"}
+            <Link component={RouterLink} to="/login" variant="body2">
+              {"Already have an account? Sign In"}
             </Link>
           </Box>
         </Paper>
@@ -118,4 +155,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default Register;

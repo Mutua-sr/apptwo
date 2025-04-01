@@ -1,27 +1,34 @@
+import { User } from './api';
+
 export interface ChatMessage {
-  _id: string;
-  roomId: string;
+  id: string;
   content: string;
   sender: {
     id: string;
     name: string;
     avatar?: string;
   };
-  timestamp: string;
-  type: 'text' | 'image' | 'file';
-  metadata?: {
-    fileName?: string;
-    fileSize?: number;
-    fileType?: string;
-    imageUrl?: string;
-  };
+  roomId: string;
+  createdAt: string;
+  updatedAt?: string;
+  attachments?: {
+    type: 'image' | 'file';
+    url: string;
+    name: string;
+    size?: number;
+  }[];
+  reactions?: {
+    type: string;
+    users: string[];
+  }[];
 }
 
 export interface ChatParticipant {
   id: string;
   name: string;
   avatar?: string;
-  role?: 'student' | 'teacher' | 'member' | 'admin';
+  role: 'owner' | 'admin' | 'member';
+  joinedAt: string;
   lastSeen?: string;
   isOnline?: boolean;
 }
@@ -29,109 +36,42 @@ export interface ChatParticipant {
 export interface ChatRoom {
   _id: string;
   name: string;
-  type: 'classroom' | 'community';
   description?: string;
-  avatar?: string;
-  participants: ChatParticipant[];
-  createdBy: string;
-  createdAt: string;
-  updatedAt?: string;
-  lastMessage?: ChatMessage;
-  unreadCount?: number;
-  settings?: {
-    allowFiles: boolean;
-    maxFileSize?: number;
-    allowedFileTypes?: string[];
-    isPrivate?: boolean;
-    requiresApproval?: boolean;
-  };
-}
-
-export interface ChatRoomResponse {
-  _id: string;
-  name: string;
   type: 'classroom' | 'community';
-  participants: ChatParticipant[];
-  createdBy: string;
-  createdAt: string;
-}
-
-export interface NewChatMessage {
-  content: string;
-  type: 'text' | 'image' | 'file';
-  roomId: string;
-  roomType: 'classroom' | 'community';
-  sender: {
-    id: string;
-    name: string;
-  };
-  timestamp: string;
-  metadata?: {
-    fileName?: string;
-    fileSize?: number;
-    fileType?: string;
-    imageUrl?: string;
-  };
-}
-
-export interface ChatRoomMember {
-  id: string;
-  name: string;
   avatar?: string;
-  role: 'student' | 'teacher' | 'member' | 'admin';
-  joinedAt: string;
-  lastActive?: string;
-  status: 'active' | 'inactive' | 'banned';
-}
-
-export interface ChatRoomSettings {
-  allowFiles: boolean;
-  maxFileSize?: number;
-  allowedFileTypes?: string[];
-  isPrivate?: boolean;
-  requiresApproval?: boolean;
-  allowAnonymous?: boolean;
-  moderators?: string[];
-}
-
-export interface ChatRoomInvite {
-  _id: string;
-  roomId: string;
-  invitedBy: {
-    id: string;
-    name: string;
-  };
-  invitedUser: {
-    id: string;
-    name: string;
-  };
-  status: 'pending' | 'accepted' | 'rejected';
   createdAt: string;
-  expiresAt?: string;
-}
-
-export interface ChatRoomEvent {
-  _id: string;
-  roomId: string;
-  type: 'member_joined' | 'member_left' | 'room_created' | 'settings_updated';
-  user: {
-    id: string;
-    name: string;
-  };
-  metadata?: any;
-  timestamp: string;
-}
-
-export interface ChatNotification {
-  _id: string;
-  type: 'message' | 'mention' | 'invite' | 'system';
-  roomId: string;
-  message?: string;
-  from?: {
+  updatedAt: string;
+  lastMessage?: string;
+  unreadCount?: number;
+  createdById: string;
+  createdBy: {
     id: string;
     name: string;
     avatar?: string;
   };
-  read: boolean;
-  createdAt: string;
+  participants: ChatParticipant[];
+}
+
+export interface ChatService {
+  connect(): Promise<void>;
+  disconnect(): void;
+  joinRoom(roomId: string): void;
+  leaveRoom(roomId: string): void;
+  sendMessage(roomId: string, content: string): Promise<ChatMessage>;
+  getMessages(roomId: string, limit?: number, before?: string): Promise<ChatMessage[]>;
+  markAsRead(roomId: string): Promise<void>;
+  getRoomParticipants(roomId: string): Promise<ChatParticipant[]>;
+  addReaction(messageId: string, reaction: string): Promise<void>;
+  removeReaction(messageId: string, reaction: string): Promise<void>;
+  updateMessage(messageId: string, content: string): Promise<ChatMessage>;
+  deleteMessage(messageId: string): Promise<void>;
+}
+
+export interface ChatState {
+  connected: boolean;
+  loading: boolean;
+  error: string | null;
+  messages: ChatMessage[];
+  participants: ChatParticipant[];
+  unreadCount: number;
 }
