@@ -29,6 +29,7 @@ import {
   Add as AddIcon,
 } from '@mui/icons-material';
 import { Classroom } from '../../types/api';
+import { CreateClassroomData, ClassroomSettings } from '../../types/room';
 import apiService from '../../services/apiService';
 
 interface ClassroomFormData {
