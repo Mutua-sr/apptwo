@@ -1,29 +1,14 @@
 import axios from 'axios';
-import { UserProfile } from '../types/profile';
+import { Profile, UpdateProfileData, ApiResponse } from '../types/api';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
-// Create axios instance with auth headers
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
-
-// Add token to requests if it exists
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token && config.headers) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
 export const profileService = {
-  getProfile: async (profileId: string): Promise<UserProfile> => {
+  getProfile: async (profileId: string): Promise<Profile> => {
     try {
-      const response = await api.get(`/profile/${profileId}`);
+      const response = await axios.get<ApiResponse<Profile>>(
+        `${API_BASE_URL}/profiles/${profileId}`
+      );
       return response.data.data;
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -31,9 +16,12 @@ export const profileService = {
     }
   },
 
-  updateProfile: async (profileId: string, profileData: Partial<UserProfile>): Promise<UserProfile> => {
+  updateProfile: async (profileId: string, data: UpdateProfileData): Promise<Profile> => {
     try {
-      const response = await api.put(`/profile/${profileId}`, profileData);
+      const response = await axios.put<ApiResponse<Profile>>(
+        `${API_BASE_URL}/profiles/${profileId}`,
+        data
+      );
       return response.data.data;
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -41,21 +29,36 @@ export const profileService = {
     }
   },
 
-  uploadProfileImage: async (profileId: string, imageFile: File): Promise<string> => {
+  uploadProfileImage: async (profileId: string, file: File): Promise<string> => {
     try {
       const formData = new FormData();
-      formData.append('file', imageFile);
+      formData.append('image', file);
 
-      const response = await api.post(`/profile/media`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await axios.post<ApiResponse<{ imageUrl: string }>>(
+        `${API_BASE_URL}/profiles/${profileId}/image`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
 
-      return response.data.data.url;
+      return response.data.data.imageUrl;
     } catch (error) {
       console.error('Error uploading profile image:', error);
       throw error;
     }
+  },
+
+  deleteProfile: async (profileId: string): Promise<void> => {
+    try {
+      await axios.delete(`${API_BASE_URL}/profiles/${profileId}`);
+    } catch (error) {
+      console.error('Error deleting profile:', error);
+      throw error;
+    }
   }
 };
+
+export default profileService;

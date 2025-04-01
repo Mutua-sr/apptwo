@@ -13,7 +13,7 @@ import {
   Add as AddIcon,
 } from '@mui/icons-material';
 import { Post } from '../types/feed';
-import { postService } from '../services/postService';
+import postService from '../services/postService';
 import { PostCard } from '../components/feed/PostCard';
 import CreatePost from '../components/feed/CreatePost';
 import { useAuth } from '../contexts/AuthContext';
@@ -79,10 +79,7 @@ const Feed: React.FC = () => {
     if (!currentUser) return;
 
     try {
-      const updatedPost = await postService.addComment(postId, {
-        content: commentText
-      });
-
+      const updatedPost = await postService.addComment(postId, commentText);
       setPosts(prevPosts =>
         prevPosts.map(p => p.id === postId ? updatedPost : p)
       );

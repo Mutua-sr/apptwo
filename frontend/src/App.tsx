@@ -17,7 +17,6 @@ import UserManagement from './pages/admin/UserManagement';
 import ClassroomManagement from './pages/admin/ClassroomManagement';
 import CommunityManagement from './pages/admin/CommunityManagement';
 import ContentModeration from './pages/admin/ContentModeration';
-import Analytics from './pages/admin/Analytics';
 import Settings from './pages/admin/Settings';
 
 // Create theme instance
@@ -144,14 +143,6 @@ const AppRoutes = () => {
           element={
             <AdminRoute>
               <ContentModeration />
-            </AdminRoute>
-          }
-        />
-        <Route
-          path="/admin/analytics"
-          element={
-            <AdminRoute>
-              <Analytics />
             </AdminRoute>
           }
         />

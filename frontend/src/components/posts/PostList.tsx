@@ -1,48 +1,39 @@
 import React, { useState, useEffect } from 'react';
-import { postService } from '../../services/postService';
+import postService from '../../services/postService';
 import { Post } from '../../types/feed';
 import { EditPost } from './EditPost';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface PostListProps {
-  userId?: string;
   className?: string;
-  onRefresh?: () => void;
+  filter?: {
+    type?: 'classroom' | 'community';
+    id?: string;
+  };
 }
 
-export const PostList: React.FC<PostListProps> = ({ 
-  userId, 
-  className = '',
-  onRefresh 
-}) => {
+export const PostList: React.FC<PostListProps> = ({ className = '', filter }) => {
   const { currentUser } = useAuth();
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const POSTS_PER_PAGE = 10;
+
+  useEffect(() => {
+    loadPosts();
+  }, [filter]);
 
   const loadPosts = async () => {
     try {
       setLoading(true);
-      setError(null);
-      const fetchedPosts = await postService.getPosts({
-        userId,
-        page: currentPage,
-        limit: POSTS_PER_PAGE
-      });
-      setPosts(prevPosts => currentPage === 1 ? fetchedPosts : [...prevPosts, ...fetchedPosts]);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load posts');
+      const fetchedPosts = await postService.getPosts(filter);
+      setPosts(fetchedPosts);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load posts');
     } finally {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    loadPosts();
-  }, [userId, currentPage]);
 
   const handleDelete = async (postId: string) => {
     if (!window.confirm('Are you sure you want to delete this post?')) {
@@ -51,52 +42,41 @@ export const PostList: React.FC<PostListProps> = ({
 
     try {
       await postService.deletePost(postId);
-      setPosts(posts.filter(post => post.id !== postId));
-      onRefresh?.();
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete post');
+      setPosts(posts.filter(p => p.id !== postId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete post');
     }
   };
 
   const handleLike = async (postId: string) => {
-    if (!currentUser) return;
-
     try {
       const post = posts.find(p => p.id === postId);
       if (!post) return;
 
-      const isLiked = post.likedBy?.includes(currentUser.id);
+      const isLiked = post.likedBy.includes(currentUser?.id || '');
       const updatedPost = isLiked
         ? await postService.unlikePost(postId)
         : await postService.likePost(postId);
-      
-      setPosts(posts.map(post => 
-        post.id === postId ? updatedPost : post
-      ));
-    } catch (err: any) {
-      setError(err.message || 'Failed to update like status');
+
+      setPosts(prevPosts =>
+        prevPosts.map(p => p.id === postId ? updatedPost : p)
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update like');
     }
   };
 
-  const handlePostUpdated = (updatedPost: Post) => {
-    setPosts(prevPosts => 
-      prevPosts.map(post => post.id === updatedPost.id ? updatedPost : post)
-    );
-    setEditingPost(null);
-    onRefresh?.();
-  };
-
-  if (loading && posts.length === 0) {
+  if (loading) {
     return (
-      <div className="flex justify-center items-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex justify-center items-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
         {error}
       </div>
     );
@@ -104,93 +84,89 @@ export const PostList: React.FC<PostListProps> = ({
 
   if (posts.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
-        No posts found
+      <div className="text-center text-gray-500 p-8">
+        No posts found.
       </div>
     );
   }
 
   return (
-    <div className={`space-y-6 ${className}`}>
+    <div className={`space-y-4 ${className}`}>
       {posts.map(post => (
-        <div key={post.id} className="bg-white rounded-lg shadow p-6">
+        <div key={post.id} className="bg-white rounded-lg shadow p-4">
           {editingPost?.id === post.id ? (
             <EditPost
               post={post}
-              onPostUpdated={handlePostUpdated}
+              onPostUpdated={() => {
+                setEditingPost(null);
+                loadPosts();
+              }}
               onCancel={() => setEditingPost(null)}
             />
           ) : (
             <>
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-bold text-gray-900">{post.title}</h3>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setEditingPost(post)}
-                    className="text-gray-400 hover:text-blue-500 transition-colors"
-                  >
-                    <i className="fas fa-edit"></i>
-                  </button>
-                  <button
-                    onClick={() => handleDelete(post.id)}
-                    className="text-gray-400 hover:text-red-500 transition-colors"
-                  >
-                    <i className="fas fa-trash"></i>
-                  </button>
+                <div className="flex items-center space-x-2">
+                  <img
+                    src={post.author.avatar || '/default-avatar.png'}
+                    alt={post.author.username}
+                    className="w-10 h-10 rounded-full"
+                  />
+                  <div>
+                    <h4 className="font-semibold">{post.author.username}</h4>
+                    <p className="text-sm text-gray-500">
+                      {new Date(post.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
+                {currentUser?.id === post.author.id && (
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setEditingPost(post)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(post.id)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
               </div>
-              <p className="text-gray-600 whitespace-pre-wrap">{post.content}</p>
-              <div className="mt-4 flex justify-between items-center text-sm text-gray-500">
-                <div>
-                  <button
-                    onClick={() => handleLike(post.id)}
-                    className={`flex items-center space-x-1 ${
-                      post.likedBy?.includes(currentUser?.id || '') 
-                        ? 'text-blue-500' 
-                        : 'text-gray-400 hover:text-blue-500'
-                    } transition-colors`}
-                  >
-                    <i className={`${post.likedBy?.includes(currentUser?.id || '') ? 'fas' : 'far'} fa-heart`}></i>
-                    <span>{post.likes || 0}</span>
-                  </button>
+              <p className="text-gray-800 mb-4">{post.content}</p>
+              {post.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {post.tags.map(tag => (
+                    <span
+                      key={tag}
+                      className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-sm"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
                 </div>
-                <div>
-                  {new Date(post.createdAt).toLocaleDateString()}
-                </div>
+              )}
+              <div className="flex items-center space-x-4 text-gray-500">
+                <button
+                  onClick={() => handleLike(post.id)}
+                  className={`flex items-center space-x-1 ${
+                    post.likedBy.includes(currentUser?.id || '')
+                      ? 'text-blue-500'
+                      : ''
+                  }`}
+                >
+                  <span>{post.likes} likes</span>
+                </button>
               </div>
             </>
           )}
         </div>
       ))}
-
-      {/* Load More */}
-      {posts.length >= POSTS_PER_PAGE && (
-        <div className="flex justify-center mt-4">
-          <button
-            onClick={() => setCurrentPage(prev => prev + 1)}
-            disabled={loading}
-            className={`
-              px-4 py-2 rounded-md text-white font-medium
-              ${loading 
-                ? 'bg-blue-400 cursor-not-allowed' 
-                : 'bg-blue-600 hover:bg-blue-700'}
-              transition-colors duration-200
-            `}
-          >
-            {loading ? (
-              <span className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Loading...
-              </span>
-            ) : (
-              'Load More'
-            )}
-          </button>
-        </div>
-      )}
     </div>
   );
 };
+
+export default PostList;

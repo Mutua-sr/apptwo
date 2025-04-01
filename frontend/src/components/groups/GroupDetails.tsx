@@ -1,198 +1,167 @@
 import React, { useState, useEffect } from 'react';
 import { groupService } from '../../services/groupService';
-import { Classroom, Community, User } from '../../types/api';
-import { GroupForm } from './GroupForm';
+import { Room, Community, Classroom } from '../../types/room';
+import { User } from '../../types/api';
+import { useAuth } from '../../contexts/AuthContext';
+import {
+  Box,
+  Typography,
+  Avatar,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  Button,
+  Chip,
+  CircularProgress
+} from '@mui/material';
 
 interface GroupDetailsProps {
-  group: Classroom | Community;
-  currentUser: User;
-  onGroupUpdated?: (group: Classroom | Community) => void;
-  onClose?: () => void;
-  className?: string;
+  type: 'classroom' | 'community';
+  groupId: string;
+  onClose: () => void;
 }
 
 export const GroupDetails: React.FC<GroupDetailsProps> = ({
-  group,
-  currentUser,
-  onGroupUpdated,
-  onClose,
-  className = ''
+  type,
+  groupId,
+  onClose
 }) => {
-  const [members, setMembers] = useState<Array<{
-    id: string;
-    name: string;
-    avatar?: string;
-  }>>([]);
+  const { currentUser } = useAuth();
+  const [group, setGroup] = useState<Room | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadMembers = async () => {
+  useEffect(() => {
+    loadGroup();
+  }, [groupId, type]);
+
+  const loadGroup = async () => {
     try {
       setLoading(true);
-      setError(null);
-      const membersList = await groupService.getMembers(group._id, group.type);
-      setMembers(membersList);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load members');
+      const fetchedGroup = type === 'classroom'
+        ? await groupService.getClassroom(groupId)
+        : await groupService.getCommunity(groupId);
+      setGroup(fetchedGroup);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load group');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadMembers();
-  }, [group._id]);
-
-  const handleLeaveGroup = async () => {
-    if (!window.confirm('Are you sure you want to leave this group?')) {
-      return;
-    }
-
-    try {
-      await groupService.leaveGroup(group._id, group.type);
-      onClose?.();
-    } catch (err: any) {
-      setError(err.message || 'Failed to leave group');
+  const getMembers = (group: Room): User[] => {
+    if (group.type === 'classroom') {
+      return (group as Classroom).students;
+    } else {
+      return (group as Community).members;
     }
   };
 
-  const handleDeleteGroup = async () => {
-    if (!window.confirm('Are you sure you want to delete this group? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      if (group.type === 'classroom') {
-        await groupService.deleteClassroom(group._id);
-      } else {
-        await groupService.deleteCommunity(group._id);
-      }
-      onClose?.();
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete group');
-    }
-  };
-
-  if (isEditing) {
+  if (loading) {
     return (
-      <GroupForm
-        type={group.type}
-        group={group}
-        onSuccess={(updatedGroup) => {
-          setIsEditing(false);
-          onGroupUpdated?.(updatedGroup);
-        }}
-        onCancel={() => setIsEditing(false)}
-        className={className}
-      />
+      <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
+  if (error || !group) {
+    return (
+      <Box sx={{ p: 4, textAlign: 'center' }}>
+        <Typography color="error">{error || 'Group not found'}</Typography>
+      </Box>
+    );
+  }
+
+  const members = getMembers(group);
+
   return (
-    <div className={`bg-white rounded-lg shadow ${className}`}>
+    <Box sx={{ p: 3 }}>
       {/* Header */}
-      <div className="p-6 border-b">
-        <div className="flex items-center justify-between mb-4">
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <i className="fas fa-times"></i>
-          </button>
-          <h2 className="text-2xl font-bold text-gray-900">Group Info</h2>
-          <div className="w-6"></div> {/* Spacer for alignment */}
-        </div>
-
-        {/* Group Avatar */}
-        <div className="flex justify-center mb-4">
-          <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-            <span className="text-white text-3xl font-semibold">
-              {group.name.charAt(0).toUpperCase()}
-            </span>
-          </div>
-        </div>
-
-        {/* Group Name and Description */}
-        <div className="text-center">
-          <h3 className="text-xl font-semibold text-gray-900">{group.name}</h3>
-          {group.description && (
-            <p className="mt-2 text-gray-600">{group.description}</p>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h5" gutterBottom>
+          {group.name}
+        </Typography>
+        <Typography color="text.secondary" gutterBottom>
+          {group.description}
+        </Typography>
+        <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+          {group.settings.isPrivate && (
+            <Chip label="Private" size="small" color="primary" />
           )}
-          <p className="mt-2 text-sm text-gray-500">
-            Created {new Date(group.createdAt).toLocaleDateString()}
-          </p>
-        </div>
-      </div>
+          {group.type === 'classroom' ? (
+            <>
+              {(group as Classroom).settings.allowStudentPosts && (
+                <Chip label="Student Posts" size="small" color="success" />
+              )}
+              {(group as Classroom).settings.requirePostApproval && (
+                <Chip label="Post Approval" size="small" color="warning" />
+              )}
+            </>
+          ) : (
+            <>
+              {(group as Community).settings.allowMemberPosts && (
+                <Chip label="Member Posts" size="small" color="success" />
+              )}
+              {(group as Community).settings.requirePostApproval && (
+                <Chip label="Post Approval" size="small" color="warning" />
+              )}
+            </>
+          )}
+        </Box>
+      </Box>
 
-      {/* Members Section */}
-      <div className="p-6 border-b">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Members ({members.length})
-        </h3>
-        
-        {loading ? (
-          <div className="flex justify-center py-4">
-            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500"></div>
-          </div>
-        ) : error ? (
-          <div className="text-red-600 text-center py-4">{error}</div>
-        ) : (
-          <div className="space-y-2">
-            {members.map(member => (
-              <div
-                key={member.id}
-                className="flex items-center justify-between py-2"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                    {member.avatar ? (
-                      <img 
-                        src={member.avatar} 
-                        alt={member.name}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <i className="fas fa-user text-gray-500"></i>
-                    )}
-                  </div>
-                  <span className="text-gray-900">{member.name}</span>
-                </div>
-                {member.id === group.createdBy && (
-                  <span className="text-sm text-gray-500">Admin</span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Members List */}
+      <Typography variant="h6" gutterBottom>
+        Members
+      </Typography>
+      <List>
+        {members.map((member) => (
+          <ListItem key={member.id}>
+            <ListItemAvatar>
+              <Avatar src={member.avatar}>{member.name.charAt(0)}</Avatar>
+            </ListItemAvatar>
+            <ListItemText
+              primary={
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <span>{member.name}</span>
+                  {member.id === group.createdById && (
+                    <Chip label="Admin" size="small" color="primary" />
+                  )}
+                </Box>
+              }
+            />
+          </ListItem>
+        ))}
+      </List>
 
       {/* Actions */}
-      <div className="p-6 space-y-3">
-        {group.createdBy === currentUser.id ? (
+      <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+        {currentUser?.id === group.createdById && (
           <>
-            <button
+            <Button
+              variant="outlined"
               onClick={() => setIsEditing(true)}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
             >
-              <i className="fas fa-edit"></i>
-              <span>Edit Group</span>
-            </button>
-            <button
-              onClick={handleDeleteGroup}
-              className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center justify-center space-x-2"
+              Edit {group.type === 'classroom' ? 'Classroom' : 'Community'}
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={onClose}
             >
-              <i className="fas fa-trash"></i>
-              <span>Delete Group</span>
-            </button>
+              Delete
+            </Button>
           </>
-        ) : (
-          <button
-            onClick={handleLeaveGroup}
-            className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center justify-center space-x-2"
-          >
-            <i className="fas fa-sign-out-alt"></i>
-            <span>Leave Group</span>
-          </button>
         )}
-      </div>
-    </div>
+        <Button onClick={onClose}>
+          Close
+        </Button>
+      </Box>
+    </Box>
   );
 };
+
+export default GroupDetails;

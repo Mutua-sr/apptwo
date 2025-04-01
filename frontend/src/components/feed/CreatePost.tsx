@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import { PostInput } from '../../types/feed';
-import { postService } from '../../services/postService';
+import postService from '../../services/postService';
 
 interface CreatePostProps {
   open: boolean;
@@ -22,7 +22,6 @@ interface CreatePostProps {
 }
 
 const CreatePost: React.FC<CreatePostProps> = ({ open, onClose, onPostCreated }) => {
-  const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -42,8 +41,8 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, onClose, onPostCreated })
   };
 
   const handleSubmit = async () => {
-    if (!title.trim() || !content.trim()) {
-      setError('Title and content are required');
+    if (!content.trim()) {
+      setError('Content is required');
       return;
     }
 
@@ -52,9 +51,8 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, onClose, onPostCreated })
 
     try {
       const postInput: PostInput = {
-        title: title.trim(),
         content: content.trim(),
-        tags
+        tags: tags.length > 0 ? tags : undefined
       };
 
       await postService.createPost(postInput);
@@ -69,7 +67,6 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, onClose, onPostCreated })
   };
 
   const handleClose = () => {
-    setTitle('');
     setContent('');
     setTagInput('');
     setTags([]);
@@ -83,16 +80,7 @@ const CreatePost: React.FC<CreatePostProps> = ({ open, onClose, onPostCreated })
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
           <TextField
-            label="Title"
-            fullWidth
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            error={!!error && !title.trim()}
-            helperText={error && !title.trim() ? 'Title is required' : ''}
-          />
-          
-          <TextField
-            label="Content"
+            label="What's on your mind?"
             fullWidth
             multiline
             rows={4}

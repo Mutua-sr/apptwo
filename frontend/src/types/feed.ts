@@ -12,11 +12,7 @@ export interface Post {
   createdAt: string;
   updatedAt: string;
   likedBy: string[];
-  sharedTo?: {
-    type: 'classroom' | 'community';
-    id: string;
-    name: string;
-  };
+  sharedTo?: ShareTarget;
 }
 
 export interface Comment {
@@ -31,24 +27,22 @@ export interface Comment {
   timestamp: string;
 }
 
+export interface ShareTarget {
+  type: 'classroom' | 'community';
+  id: string;
+  name: string;
+}
+
 export interface PostInput {
   content: string;
   tags?: string[];
-  sharedTo?: {
-    type: 'classroom' | 'community';
-    id: string;
-  };
+  sharedTo?: ShareTarget;
 }
 
 export interface PostUpdate {
   content?: string;
   tags?: string[];
-  likes?: number;
-  comments?: Comment[];
-  sharedTo?: {
-    type: 'classroom' | 'community';
-    id: string;
-  };
+  sharedTo?: ShareTarget;
 }
 
 export interface FeedFilters {
@@ -56,6 +50,9 @@ export interface FeedFilters {
   tag?: string;
   author?: string;
   timeRange?: 'today' | 'week' | 'month' | 'all';
+  page?: number;
+  limit?: number;
+  query?: string;
 }
 
 export interface FeedState {

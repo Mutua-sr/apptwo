@@ -1,112 +1,67 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Box, CircularProgress, Snackbar, Alert } from '@mui/material';
-import ChatLayout from '../components/layout/ChatLayout';
+import React, { useState, useEffect } from 'react';
+import { Box, Button, Typography, Snackbar, Alert } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import apiService from '../services/apiService';
-import { Classroom } from '../types/api';
+import { Classroom, CreateClassroomData } from '../types/room';
 
 const Classrooms: React.FC = () => {
   const { currentUser } = useAuth();
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
-  const [availableClassrooms, setAvailableClassrooms] = useState<Classroom[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [snackbar, setSnackbar] = useState<{
-    open: boolean;
-    message: string;
-    severity: 'success' | 'error';
-  }>({
+  const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
-    severity: 'success'
+    severity: 'success' as 'success' | 'error'
   });
 
-  const fetchClassrooms = useCallback(async () => {
+  const fetchClassrooms = async () => {
     try {
       setLoading(true);
-      setError(null);
-      
-      // Get user's classrooms
-      const userClassroomsRes = await apiService.classrooms.getUserClassrooms();
-      const userClassrooms = userClassroomsRes.data.data || [];
-      setClassrooms(userClassrooms.map(classroom => ({
-        ...classroom,
-        type: 'classroom' as const,
-        participants: classroom.students
-      })));
-
-      // Get all public classrooms
-      const allClassroomsRes = await apiService.classrooms.getAll();
-      const allClassrooms = allClassroomsRes.data.data || [];
-
-      // Filter out:
-      // 1. Classrooms the user is already a member of
-      // 2. Private classrooms where user is not a member
-      const userClassroomIds = new Set(userClassrooms.map(c => c._id));
-      const available = allClassrooms.filter(classroom => {
-        if (!currentUser) return false;
-        
-        // Don't show classrooms user is already in
-        if (userClassroomIds.has(classroom._id)) return false;
-        
-        // Show if classroom is not private or if user is in students list
-        return !classroom.settings?.isPrivate || 
-               classroom.students?.some(student => student.id === currentUser.id);
+      const response = await apiService.classrooms.getAll();
+      setClassrooms(response.data.data);
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: 'Failed to load classrooms',
+        severity: 'error'
       });
-
-      // Sort available classrooms by:
-      // 1. Recently created first
-      // 2. Most members
-      const sortedAvailable = available.sort((a, b) => {
-        // First by creation date (newest first)
-        const dateCompare = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        if (dateCompare !== 0) return dateCompare;
-        
-        // Then by number of members (most first)
-        return (b.students?.length || 0) - (a.students?.length || 0);
-      });
-
-      setAvailableClassrooms(sortedAvailable);
-    } catch (err) {
-      console.error('Failed to fetch classrooms:', err);
-      setError('Failed to load classrooms');
-      setClassrooms([]);
-      setAvailableClassrooms([]);
     } finally {
       setLoading(false);
     }
-  }, [currentUser]); // Add currentUser as dependency since it's used inside
-
-  const handleJoinClassroom = async (classroomId: string) => {
-    try {
-      await apiService.classrooms.join(classroomId);
-      await fetchClassrooms();
-      setSnackbar({
-        open: true,
-        message: 'Successfully joined classroom',
-        severity: 'success'
-      });
-    } catch (err) {
-      console.error('Failed to join classroom:', err);
-      setSnackbar({
-        open: true,
-        message: 'Failed to join classroom',
-        severity: 'error'
-      });
-    }
   };
+
+  useEffect(() => {
+    fetchClassrooms();
+  }, []);
 
   const handleCreateClassroom = async (name: string, description: string) => {
     try {
-      await apiService.classrooms.create({ name, description });
+      const newClassroom: CreateClassroomData = {
+        type: 'classroom',
+        name,
+        description,
+        settings: {
+          isPrivate: false,
+          allowStudentPosts: true,
+          allowStudentComments: true,
+          allowStudentChat: true,
+          requirePostApproval: false,
+          notifications: {
+            assignments: true,
+            materials: true,
+            announcements: true
+          }
+        }
+      };
+
+      await apiService.classrooms.create(newClassroom);
       await fetchClassrooms();
       setSnackbar({
         open: true,
-        message: 'Successfully created classroom',
+        message: 'Classroom created successfully',
         severity: 'success'
       });
-    } catch (err) {
-      console.error('Failed to create classroom:', err);
+    } catch (error) {
       setSnackbar({
         open: true,
         message: 'Failed to create classroom',
@@ -117,73 +72,70 @@ const Classrooms: React.FC = () => {
 
   if (!currentUser) {
     return (
-      <Box 
-        display="flex" 
-        alignItems="center" 
-        justifyContent="center" 
-        minHeight="100vh"
-      >
-        <Box textAlign="center">
-          <h2 className="text-2xl font-bold text-gray-900">Please log in</h2>
-          <p className="mt-2 text-gray-600">
-            You need to be logged in to view classrooms
-          </p>
-        </Box>
+      <Box sx={{ p: 4, textAlign: 'center' }}>
+        <Typography>Please log in to view classrooms.</Typography>
       </Box>
     );
   }
 
   if (loading) {
     return (
-      <Box 
-        display="flex" 
-        alignItems="center" 
-        justifyContent="center" 
-        minHeight="100vh"
-      >
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Box 
-        display="flex" 
-        alignItems="center" 
-        justifyContent="center" 
-        minHeight="100vh"
-      >
-        <Box textAlign="center" color="error.main">
-          {error}
-        </Box>
+      <Box sx={{ p: 4, textAlign: 'center' }}>
+        <Typography>Loading classrooms...</Typography>
       </Box>
     );
   }
 
   return (
-    <>
-      <ChatLayout 
-        type="classroom"
-        rooms={classrooms}
-        availableRooms={availableClassrooms}
-        currentUser={currentUser}
-        onJoinRoom={handleJoinClassroom}
-        onCreateRoom={handleCreateClassroom}
-      />
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom>
+        Classrooms
+      </Typography>
+
+      <Box sx={{ mb: 3 }}>
+        <Button
+          variant="contained"
+          onClick={() => handleCreateClassroom('New Classroom', 'A new classroom')}
+        >
+          Create Classroom
+        </Button>
+      </Box>
+
+      {classrooms.length === 0 ? (
+        <Typography>No classrooms found.</Typography>
+      ) : (
+        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+          {classrooms.map(classroom => (
+            <Box
+              key={classroom._id}
+              sx={{
+                p: 2,
+                border: 1,
+                borderColor: 'divider',
+                borderRadius: 1,
+              }}
+            >
+              <Typography variant="h6">{classroom.name}</Typography>
+              <Typography color="text.secondary">{classroom.description}</Typography>
+            </Box>
+          ))}
+        </Box>
+      )}
+
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
       >
-        <Alert 
-          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))} 
+        <Alert
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
           severity={snackbar.severity}
+          sx={{ width: '100%' }}
         >
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </>
+    </Box>
   );
 };
 

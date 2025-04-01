@@ -86,7 +86,6 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onLike, onComment, onS
           </Stack>
 
           {/* Post Content */}
-          <Typography variant="h6">{post.title}</Typography>
           <Typography variant="body1">{post.content}</Typography>
 
           {/* Tags */}
@@ -136,10 +135,10 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onLike, onComment, onS
                 {comments.map((comment: Comment) => (
                   <Stack key={comment.id} direction="row" spacing={1}>
                     <Avatar sx={{ width: 32, height: 32 }}>
-                      {comment.avatar || comment.author[0]}
+                      {comment.author.avatar || comment.author.username.charAt(0)}
                     </Avatar>
                     <Box sx={{ flex: 1 }}>
-                      <Typography variant="subtitle2">{comment.author}</Typography>
+                      <Typography variant="subtitle2">{comment.author.username}</Typography>
                       <Typography variant="body2">{comment.content}</Typography>
                       <Typography variant="caption" color="text.secondary">
                         {new Date(comment.timestamp).toLocaleString()}
@@ -149,7 +148,7 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onLike, onComment, onS
                 ))}
                 <Stack direction="row" spacing={1}>
                   <Avatar sx={{ width: 32, height: 32 }}>
-                    {currentUser?.name[0]}
+                    {currentUser?.username?.charAt(0)}
                   </Avatar>
                   <TextField
                     fullWidth

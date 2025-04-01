@@ -87,18 +87,20 @@ const postService = {
     }
   },
 
-  likePost: async (postId: string): Promise<void> => {
+  likePost: async (postId: string): Promise<Post> => {
     try {
-      await axios.post(`${API_BASE_URL}/posts/${postId}/like`);
+      const response = await axios.post<ApiResponse<ApiPost>>(`${API_BASE_URL}/posts/${postId}/like`);
+      return transformApiPost(response.data.data);
     } catch (error) {
       console.error('Error liking post:', error);
       throw error;
     }
   },
 
-  unlikePost: async (postId: string): Promise<void> => {
+  unlikePost: async (postId: string): Promise<Post> => {
     try {
-      await axios.post(`${API_BASE_URL}/posts/${postId}/unlike`);
+      const response = await axios.post<ApiResponse<ApiPost>>(`${API_BASE_URL}/posts/${postId}/unlike`);
+      return transformApiPost(response.data.data);
     } catch (error) {
       console.error('Error unliking post:', error);
       throw error;
@@ -126,6 +128,31 @@ const postService = {
       return transformApiPost(response.data.data);
     } catch (error) {
       console.error('Error deleting comment:', error);
+      throw error;
+    }
+  },
+
+  sharePost: async (postId: string, destination: NonNullable<Post['sharedTo']>): Promise<Post> => {
+    try {
+      const response = await axios.post<ApiResponse<ApiPost>>(
+        `${API_BASE_URL}/posts/${postId}/share`,
+        destination
+      );
+      return transformApiPost(response.data.data);
+    } catch (error) {
+      console.error('Error sharing post:', error);
+      throw error;
+    }
+  },
+
+  searchPosts: async (query: string, filters?: FeedFilters): Promise<Post[]> => {
+    try {
+      const response = await axios.get<ApiResponse<ApiPost[]>>(`${API_BASE_URL}/posts/search`, {
+        params: { query, ...filters }
+      });
+      return response.data.data.map(transformApiPost);
+    } catch (error) {
+      console.error('Error searching posts:', error);
       throw error;
     }
   }

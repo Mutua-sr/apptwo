@@ -1,144 +1,250 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  Paper,
-  Typography,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  TablePagination,
-  IconButton,
+  Paper,
   Button,
-  TextField,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  FormControlLabel,
+  TextField,
   Switch,
-  CircularProgress,
+  FormControlLabel,
+  IconButton,
   Chip,
+  Typography,
+  Avatar
 } from '@mui/material';
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Search as SearchIcon,
   Add as AddIcon,
 } from '@mui/icons-material';
-import { Classroom } from '../../types/api';
-import { CreateClassroomData, ClassroomSettings } from '../../types/room';
+import { Classroom, ClassroomSettings, CreateClassroomData } from '../../types/room';
 import apiService from '../../services/apiService';
 
-interface ClassroomFormData {
+interface FormData {
   name: string;
-  description?: string;
-  settings: {
-    allowStudentChat: boolean;
-    allowStudentPosts: boolean;
-    requirePostApproval: boolean;
-    isPrivate?: boolean;
-  };
+  description: string;
+  settings: ClassroomSettings;
 }
 
-interface ClassroomDialogProps {
-  open: boolean;
-  classroom: Classroom | null;
-  onClose: () => void;
-  onSave: (data: ClassroomFormData) => Promise<void>;
-}
+const defaultSettings: ClassroomSettings = {
+  allowStudentChat: true,
+  allowStudentPosts: true,
+  allowStudentComments: true,
+  requirePostApproval: false,
+  isPrivate: false,
+  notifications: {
+    assignments: true,
+    materials: true,
+    announcements: true
+  }
+};
 
-const ClassroomDialog: React.FC<ClassroomDialogProps> = ({
-  open,
-  classroom,
-  onClose,
-  onSave,
-}) => {
-  const defaultSettings: ClassroomSettings = {
-    allowStudentChat: true,
-    allowStudentPosts: true,
-    requirePostApproval: false,
-    isPrivate: false
-  };
-
-  const [formData, setFormData] = useState<ClassroomFormData>({
+const ClassroomManagement: React.FC = () => {
+  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedClassroom, setSelectedClassroom] = useState<Classroom | null>(null);
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     description: '',
     settings: defaultSettings
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchClassrooms = async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.classrooms.getAll();
+      setClassrooms(response.data.data);
+    } catch (error) {
+      setError('Failed to fetch classrooms');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (classroom) {
-      setFormData({
-        name: classroom.name,
-        description: classroom.description,
-        settings: {
-          allowStudentChat: classroom.settings.allowStudentChat,
-          allowStudentPosts: classroom.settings.allowStudentPosts,
-          requirePostApproval: classroom.settings.requirePostApproval,
-          isPrivate: classroom.settings.isPrivate
-        }
-      });
-    } else {
-      setFormData({
-        name: '',
-        description: '',
-        settings: defaultSettings
-      });
-    }
-  }, [classroom]);
+    fetchClassrooms();
+  }, []);
 
-  const handleSubmit = async () => {
-    if (!formData.name.trim()) {
+  const handleEdit = (classroom: Classroom) => {
+    setSelectedClassroom(classroom);
+    setFormData({
+      name: classroom.name,
+      description: classroom.description,
+      settings: classroom.settings
+    });
+    setDialogOpen(true);
+  };
+
+  const handleDelete = async (classroom: Classroom) => {
+    if (!window.confirm('Are you sure you want to delete this classroom?')) {
       return;
     }
-    await onSave(formData);
-    onClose();
+
+    try {
+      await apiService.classrooms.delete(classroom._id);
+      fetchClassrooms();
+    } catch (error) {
+      setError('Failed to delete classroom');
+      console.error(error);
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      const roomData: CreateClassroomData = {
+        type: 'classroom',
+        name: formData.name.trim(),
+        description: formData.description || '', // Ensure description is never undefined
+        settings: formData.settings
+      };
+
+      if (selectedClassroom) {
+        await apiService.classrooms.update(selectedClassroom._id, roomData);
+      } else {
+        await apiService.classrooms.create(roomData);
+      }
+      fetchClassrooms();
+      setDialogOpen(false);
+      resetForm();
+    } catch (error) {
+      setError('Failed to save classroom');
+      console.error(error);
+    }
+  };
+
+  const resetForm = () => {
+    setSelectedClassroom(null);
+    setFormData({
+      name: '',
+      description: '',
+      settings: defaultSettings
+    });
+    setError(null);
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{classroom ? 'Edit Classroom' : 'Create Classroom'}</DialogTitle>
-      <DialogContent>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
-          <TextField
-            label="Name"
-            value={formData.name}
-            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-            fullWidth
-            required
-          />
-          <TextField
-            label="Description"
-            value={formData.description}
-            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-            multiline
-            rows={3}
-            fullWidth
-          />
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="subtitle1" gutterBottom>
-              Settings
-            </Typography>
+    <Box sx={{ p: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+        <Typography variant="h5">Classroom Management</Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => {
+            resetForm();
+            setDialogOpen(true);
+          }}
+        >
+          Create Classroom
+        </Button>
+      </Box>
+
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Name</TableCell>
+              <TableCell>Description</TableCell>
+              <TableCell>Settings</TableCell>
+              <TableCell>Created By</TableCell>
+              <TableCell align="right">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {classrooms.map((classroom) => (
+              <TableRow key={classroom._id}>
+                <TableCell>{classroom.name}</TableCell>
+                <TableCell>{classroom.description}</TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    {classroom.settings.isPrivate && (
+                      <Chip label="Private" size="small" color="primary" />
+                    )}
+                    {classroom.settings.requirePostApproval && (
+                      <Chip label="Approval" size="small" color="warning" />
+                    )}
+                    {classroom.settings.allowStudentChat && (
+                      <Chip label="Chat" size="small" color="success" />
+                    )}
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Avatar 
+                      src={classroom.createdBy.avatar} 
+                      alt={classroom.createdBy.name}
+                      sx={{ width: 24, height: 24 }}
+                    >
+                      {classroom.createdBy.name.charAt(0)}
+                    </Avatar>
+                    <Typography>{classroom.createdBy.name}</Typography>
+                  </Box>
+                </TableCell>
+                <TableCell align="right">
+                  <IconButton onClick={() => handleEdit(classroom)} size="small">
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton onClick={() => handleDelete(classroom)} size="small" color="error">
+                    <DeleteIcon />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>
+          {selectedClassroom ? 'Edit Classroom' : 'Create Classroom'}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TextField
+              label="Name"
+              fullWidth
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              error={!formData.name.trim()}
+              helperText={!formData.name.trim() && 'Name is required'}
+            />
+            <TextField
+              label="Description"
+              fullWidth
+              multiline
+              rows={3}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            />
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Typography variant="subtitle2">Settings</Typography>
               <FormControlLabel
                 control={
                   <Switch
-                    checked={formData.settings.allowStudentChat}
+                    checked={formData.settings.isPrivate}
                     onChange={(e) =>
                       setFormData(prev => ({
                         ...prev,
                         settings: {
                           ...prev.settings,
-                          allowStudentChat: e.target.checked,
-                        },
+                          isPrivate: e.target.checked
+                        }
                       }))
                     }
                   />
                 }
-                label="Allow Student Chat"
+                label="Private Classroom"
               />
               <FormControlLabel
                 control={
@@ -149,13 +255,47 @@ const ClassroomDialog: React.FC<ClassroomDialogProps> = ({
                         ...prev,
                         settings: {
                           ...prev.settings,
-                          allowStudentPosts: e.target.checked,
-                        },
+                          allowStudentPosts: e.target.checked
+                        }
                       }))
                     }
                   />
                 }
                 label="Allow Student Posts"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.settings.allowStudentComments}
+                    onChange={(e) =>
+                      setFormData(prev => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          allowStudentComments: e.target.checked
+                        }
+                      }))
+                    }
+                  />
+                }
+                label="Allow Student Comments"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={formData.settings.allowStudentChat}
+                    onChange={(e) =>
+                      setFormData(prev => ({
+                        ...prev,
+                        settings: {
+                          ...prev.settings,
+                          allowStudentChat: e.target.checked
+                        }
+                      }))
+                    }
+                  />
+                }
+                label="Allow Student Chat"
               />
               <FormControlLabel
                 control={
@@ -166,258 +306,28 @@ const ClassroomDialog: React.FC<ClassroomDialogProps> = ({
                         ...prev,
                         settings: {
                           ...prev.settings,
-                          requirePostApproval: e.target.checked,
-                        },
+                          requirePostApproval: e.target.checked
+                        }
                       }))
                     }
                   />
                 }
                 label="Require Post Approval"
               />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={formData.settings.isPrivate ?? false}
-                    onChange={(e) =>
-                      setFormData(prev => ({
-                        ...prev,
-                        settings: {
-                          ...prev.settings,
-                          isPrivate: e.target.checked,
-                        },
-                      }))
-                    }
-                  />
-                }
-                label="Private Classroom"
-              />
             </Box>
           </Box>
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={handleSubmit} variant="contained" color="primary">
-          Save
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-};
-
-const ClassroomManagement: React.FC = () => {
-  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [search, setSearch] = useState('');
-  const [selectedClassroom, setSelectedClassroom] = useState<Classroom | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-
-  const fetchClassrooms = async () => {
-    try {
-      setLoading(true);
-      const response = await apiService.classrooms.getAll();
-      setClassrooms(response.data.data);
-    } catch (err) {
-      console.error('Error fetching classrooms:', err);
-      setError('Failed to load classrooms');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchClassrooms();
-  }, []);
-
-  const handleChangePage = (_: unknown, newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  const handleCreateNew = () => {
-    setSelectedClassroom(null);
-    setDialogOpen(true);
-  };
-
-  const handleEdit = (classroom: Classroom) => {
-    setSelectedClassroom(classroom);
-    setDialogOpen(true);
-  };
-
-  const handleDelete = async (classroomId: string) => {
-    if (!window.confirm('Are you sure you want to delete this classroom?')) {
-      return;
-    }
-
-    try {
-      await apiService.classrooms.delete(classroomId);
-      fetchClassrooms();
-    } catch (err) {
-      console.error('Error deleting classroom:', err);
-      setError('Failed to delete classroom');
-    }
-  };
-
-  const handleSave = async (formData: ClassroomFormData): Promise<void> => {
-    if (!formData.name.trim()) {
-      return;
-    }
-
-    try {
-      const roomData = {
-        name: formData.name.trim(),
-        description: formData.description?.trim(),
-        type: 'classroom' as const,
-        settings: {
-          allowStudentChat: formData.settings.allowStudentChat,
-          allowStudentPosts: formData.settings.allowStudentPosts,
-          requirePostApproval: formData.settings.requirePostApproval,
-          isPrivate: formData.settings.isPrivate
-        }
-      };
-
-      if (selectedClassroom) {
-        await apiService.classrooms.update(selectedClassroom._id, roomData);
-      } else {
-        await apiService.classrooms.create(roomData);
-      }
-      fetchClassrooms();
-      setDialogOpen(false);
-    } catch (err) {
-      console.error('Error saving classroom:', err);
-      setError('Failed to save classroom');
-    }
-  };
-
-  const filteredClassrooms = React.useMemo(() => 
-    classrooms.filter((classroom) =>
-      classroom.name.toLowerCase().includes(search.toLowerCase())
-    ), [classrooms, search]);
-
-  const paginatedClassrooms = React.useMemo(() => 
-    filteredClassrooms.slice(
-      page * rowsPerPage,
-      page * rowsPerPage + rowsPerPage
-    ), [filteredClassrooms, page, rowsPerPage]);
-
-  if (error) {
-    return (
-      <Box sx={{ p: 2 }}>
-        <Typography color="error">{error}</Typography>
-      </Box>
-    );
-  }
-
-  return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4">Classroom Management</Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <TextField
-            size="small"
-            placeholder="Search classrooms..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            InputProps={{
-              startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
-            }}
-          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
           <Button
+            onClick={handleSubmit}
             variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleCreateNew}
+            disabled={!formData.name.trim()}
           >
-            Create New
+            {selectedClassroom ? 'Save Changes' : 'Create'}
           </Button>
-        </Box>
-      </Box>
-
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Description</TableCell>
-              <TableCell>Students</TableCell>
-              <TableCell>Teachers</TableCell>
-              <TableCell>Settings</TableCell>
-              <TableCell align="right">Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center">
-                  <CircularProgress />
-                </TableCell>
-              </TableRow>
-            ) : (
-              paginatedClassrooms.map((classroom) => (
-                <TableRow key={classroom._id}>
-                  <TableCell>{classroom.name}</TableCell>
-                  <TableCell>{classroom.description}</TableCell>
-                  <TableCell>{classroom.students.length}</TableCell>
-                  <TableCell>{classroom.teachers.length}</TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      {classroom.settings?.allowStudentChat && (
-                        <Chip label="Chat" size="small" color="primary" />
-                      )}
-                      {classroom.settings?.allowStudentPosts && (
-                        <Chip label="Posts" size="small" color="primary" />
-                      )}
-                      {classroom.settings?.requirePostApproval && (
-                        <Chip label="Approval" size="small" color="warning" />
-                      )}
-                      {classroom.settings?.isPrivate && (
-                        <Chip label="Private" size="small" color="error" />
-                      )}
-                    </Box>
-                  </TableCell>
-                  <TableCell align="right">
-                    <IconButton onClick={() => handleEdit(classroom)} size="small">
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      onClick={() => handleDelete(classroom._id)}
-                      size="small"
-                      color="error"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={filteredClassrooms.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        />
-      </TableContainer>
-
-      <ClassroomDialog
-        open={dialogOpen}
-        classroom={selectedClassroom}
-        onClose={() => {
-          setDialogOpen(false);
-          setSelectedClassroom(null);
-        }}
-        onSave={handleSave}
-      />
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
