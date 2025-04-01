@@ -14,7 +14,7 @@ import {
   CircularProgress,
   Alert
 } from '@mui/material';
-import { Community, UpdateCommunityData } from '../../types/api';
+import { Community, UpdateCommunityData } from '../../types/room';
 import apiService from '../../services/apiService';
 
 const CommunityDetail: React.FC<{}> = () => {
@@ -34,8 +34,9 @@ const CommunityDetail: React.FC<{}> = () => {
     try {
       setLoading(true);
       const response = await apiService.communities.getById(id);
-      const communityData = response.data.data; // Extract data from ApiResponse
-      setCommunity(communityData);
+      // Keep using the API Community type since that's what the API returns
+        const communityData = response.data.data;
+        setCommunity(() => communityData); // Use function updater form
       setEditData({
         name: communityData.name,
         description: communityData.description || ''

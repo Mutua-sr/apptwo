@@ -31,24 +31,7 @@ import {
 } from '@mui/icons-material';
 import apiService from '../../services/apiService';
 
-interface Report {
-  _id: string;
-  type: 'post' | 'comment' | 'message';
-  content: string;
-  reportedBy: {
-    id: string;
-    name: string;
-  };
-  reportedUser: {
-    id: string;
-    name: string;
-  };
-  reason: string;
-  status: 'pending' | 'approved' | 'rejected';
-  createdAt: string;
-  roomId: string;
-  roomType: 'classroom' | 'community';
-}
+import { Report, PaginatedResponse } from '../../types/api';
 
 interface ViewReportDialogProps {
   open: boolean;
@@ -70,20 +53,31 @@ const ViewReportDialog: React.FC<ViewReportDialogProps> = ({
       <DialogTitle>View Report</DialogTitle>
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
-          <Typography variant="subtitle2">Type</Typography>
-          <Typography>{report.type}</Typography>
+  <Typography variant="subtitle2">Type</Typography>
+  <Typography>{report.type}</Typography>
 
-          <Typography variant="subtitle2">Content</Typography>
-          <Typography>{report.content}</Typography>
+  <Typography variant="subtitle2">Content</Typography>
+  <Typography>{report.metadata?.contentPreview || 'No content preview available'}</Typography>
 
-          <Typography variant="subtitle2">Reported By</Typography>
-          <Typography>{report.reportedBy.name}</Typography>
+  <Typography variant="subtitle2">Reported By</Typography>
+  <Typography>{report.reportedBy}</Typography>
 
-          <Typography variant="subtitle2">Reported User</Typography>
-          <Typography>{report.reportedUser.name}</Typography>
+  <Typography variant="subtitle2">Target Details</Typography>
+  <Typography>
+    {report.type === 'user' ? report.metadata?.reportedUserName :
+     report.type === 'community' ? report.metadata?.communityName :
+     `${report.type} (ID: ${report.targetId})`}
+  </Typography>
 
-          <Typography variant="subtitle2">Reason</Typography>
-          <Typography>{report.reason}</Typography>
+  <Typography variant="subtitle2">Reason</Typography>
+  <Typography>{report.reason}</Typography>
+
+  {report.description && (
+    <>
+      <Typography variant="subtitle2">Description</Typography>
+      <Typography>{report.description}</Typography>
+    </>
+  )}
 
           <Typography variant="subtitle2">Status</Typography>
           <Chip
@@ -145,9 +139,22 @@ const ContentModeration: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  type StatusFilterType = 'all' | 'pending' | 'approved' | 'rejected';
+  const [statusFilter, setStatusFilter] = useState<StatusFilterType>('all');
+
+  // Move interface to top level
+  interface ReportsResponse {
+    data: Report[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+  }
 
   const fetchReports = async () => {
     try {
@@ -155,9 +162,12 @@ const ContentModeration: React.FC = () => {
       const response = await apiService.admin.getReports({
         page: page + 1,
         limit: rowsPerPage,
-        status: statusFilter === 'all' ? undefined : statusFilter,
+        status: statusFilter === 'all' ? undefined : statusFilter as 'pending' | 'approved' | 'rejected',
       });
-      setReports(response.data.data.reports);
+      // The API returns a nested structure
+      const responseData = response.data;
+      setReports(responseData.data.data);
+      setTotalCount(responseData.data.pagination.total);
     } catch (err) {
       console.error('Error fetching reports:', err);
       setError('Failed to load reports');
@@ -223,10 +233,10 @@ const ContentModeration: React.FC = () => {
         <Typography variant="h4">Content Moderation</Typography>
         <FormControl sx={{ minWidth: 200 }} size="small">
           <InputLabel>Status Filter</InputLabel>
-          <Select
+          <Select<StatusFilterType>
             value={statusFilter}
             label="Status Filter"
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => setStatusFilter(e.target.value as StatusFilterType)}
           >
             <MenuItem value="all">All Reports</MenuItem>
             <MenuItem value="pending">Pending</MenuItem>
@@ -241,9 +251,9 @@ const ContentModeration: React.FC = () => {
           <TableHead>
             <TableRow>
               <TableCell>Type</TableCell>
-              <TableCell>Content</TableCell>
+              <TableCell>Target</TableCell>
+              <TableCell>Preview</TableCell>
               <TableCell>Reported By</TableCell>
-              <TableCell>Reported User</TableCell>
               <TableCell>Reason</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Date</TableCell>
@@ -264,12 +274,16 @@ const ContentModeration: React.FC = () => {
                     <Chip label={report.type} size="small" />
                   </TableCell>
                   <TableCell>
-                    {report.content.length > 50
-                      ? `${report.content.substring(0, 50)}...`
-                      : report.content}
+                    {report.type === 'user' ? report.metadata?.reportedUserName :
+                     report.type === 'community' ? report.metadata?.communityName :
+                     report.targetId}
                   </TableCell>
-                  <TableCell>{report.reportedBy.name}</TableCell>
-                  <TableCell>{report.reportedUser.name}</TableCell>
+                  <TableCell>
+                    {report.metadata?.contentPreview && report.metadata.contentPreview.length > 50
+                      ? `${report.metadata.contentPreview.substring(0, 50)}...`
+                      : report.metadata?.contentPreview || 'No preview'}
+                  </TableCell>
+                  <TableCell>{report.reportedBy}</TableCell>
                   <TableCell>
                     {report.reason.length > 30
                       ? `${report.reason.substring(0, 30)}...`
@@ -304,7 +318,7 @@ const ContentModeration: React.FC = () => {
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
-          count={reports.length}
+          count={-1} // Use -1 to indicate server-side pagination
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}

@@ -15,6 +15,7 @@ import {
   Message as MessageIcon,
 } from '@mui/icons-material';
 import apiService from '../../services/apiService';
+import type { AdminDashboardStats } from '../../types/api';
 
 // Create styled components for Grid
 const GridContainer = styled(Box)(({ theme }) => ({
@@ -62,17 +63,8 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, loading }) => (
   </Card>
 );
 
-interface DashboardStats {
-  totalUsers: number;
-  totalClassrooms: number;
-  totalCommunities: number;
-  totalMessages: number;
-  activeUsers: number;
-  pendingReports: number;
-}
-
 const Dashboard: React.FC = () => {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [stats, setStats] = useState<AdminDashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -111,31 +103,31 @@ const Dashboard: React.FC = () => {
         <GridItem xs={12} sm={6} md={3}>
           <StatCard
             title="Total Users"
-            value={stats?.totalUsers || 0}
+            value={stats?.users.total || 0}
             icon={<PeopleIcon />}
             loading={loading}
           />
         </GridItem>
         <GridItem xs={12} sm={6} md={3}>
           <StatCard
-            title="Classrooms"
-            value={stats?.totalClassrooms || 0}
+            title="Active Users"
+            value={stats?.users.active || 0}
             icon={<SchoolIcon />}
             loading={loading}
           />
         </GridItem>
         <GridItem xs={12} sm={6} md={3}>
           <StatCard
-            title="Communities"
-            value={stats?.totalCommunities || 0}
+            title="Total Posts"
+            value={stats?.content.posts || 0}
             icon={<GroupIcon />}
             loading={loading}
           />
         </GridItem>
         <GridItem xs={12} sm={6} md={3}>
           <StatCard
-            title="Messages"
-            value={stats?.totalMessages || 0}
+            title="Total Comments"
+            value={stats?.content.comments || 0}
             icon={<MessageIcon />}
             loading={loading}
           />
@@ -146,20 +138,20 @@ const Dashboard: React.FC = () => {
         <GridItem xs={12} md={6}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
-              Active Users
+              Daily Active Users
             </Typography>
             <Typography variant="h3">
-              {loading ? <CircularProgress size={30} /> : stats?.activeUsers || 0}
+              {loading ? <CircularProgress size={30} /> : stats?.engagement.dailyActiveUsers || 0}
             </Typography>
           </Paper>
         </GridItem>
         <GridItem xs={12} md={6}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
-              Pending Reports
+              Total Reports
             </Typography>
-            <Typography variant="h3" color={stats?.pendingReports ? 'error' : 'inherit'}>
-              {loading ? <CircularProgress size={30} /> : stats?.pendingReports || 0}
+            <Typography variant="h3" color={stats?.content.reports ? 'error' : 'inherit'}>
+              {loading ? <CircularProgress size={30} /> : stats?.content.reports || 0}
             </Typography>
           </Paper>
         </GridItem>

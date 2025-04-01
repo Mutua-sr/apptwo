@@ -53,9 +53,29 @@ export const GroupDetails: React.FC<GroupDetailsProps> = ({
 
   const getMembers = (group: Room): User[] => {
     if (group.type === 'classroom') {
-      return (group as Classroom).students;
+      return (group as Classroom).students.map(student => ({
+        id: student.id,
+        name: student.name,
+        email: '', // These fields are required by User type
+        role: 'student',
+        status: student.status,
+        profileId: student.id,
+        avatar: student.avatar,
+        createdAt: student.joinedAt,
+        updatedAt: student.joinedAt
+      }));
     } else {
-      return (group as Community).members;
+      return (group as Community).members.map(member => ({
+        id: member.id,
+        name: member.name,
+        email: '', // These fields are required by User type
+        role: member.role,
+        status: 'active',
+        profileId: member.id,
+        avatar: member.avatar,
+        createdAt: member.joinedAt,
+        updatedAt: member.joinedAt
+      }));
     }
   };
 

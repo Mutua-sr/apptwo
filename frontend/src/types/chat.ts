@@ -1,34 +1,39 @@
-import { Community, Classroom, User } from './api';
+import { Room } from './room';
 
-export interface ChatParticipant extends User {
-  isOnline?: boolean;
-  lastSeen?: string;
-  typing?: boolean;
+export interface ChatMessage {
+  _id: string;  // Changed back to _id to be consistent with BaseRoom
+  roomId: string;
+  sender: {
+    id: string;
+    name: string;
+    avatar?: string;
+  };
+  content: string;
+  reactions: {
+    [key: string]: string[];  // emoji: userId[]
+  };
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface ChatRoom {
+export interface ChatParticipant {
+  id: string;
+  name: string;
+  avatar?: string;
+  status: 'online' | 'offline';
+  lastSeen?: string;
+}
+
+export type ChatRoom = Room & {
+  participants: ChatParticipant[];
+  lastMessage?: ChatMessage;
+  unreadCount?: number;
+}
+
+export interface ChatRoomInfo {
   unreadCount?: number;
   lastMessage?: string;
 }
-
-export interface ChatMessage {
-  id: string;
-  roomId: string;
-  content: string;
-  sender: User;
-  createdAt: string;
-  readBy: string[];
-  attachments?: {
-    url: string;
-    type: string;
-    name: string;
-  }[];
-}
-
-export type ChatCommunity = Community & ChatRoom;
-export type ChatClassroom = Classroom & ChatRoom;
-
-export type ChatRoomType = ChatCommunity | ChatClassroom;
 
 export interface ChatService {
   connect(): Promise<void>;
@@ -52,3 +57,5 @@ export interface ChatService {
   onUserJoined(callback: (participant: ChatParticipant) => void): void;
   onUserLeft(callback: (participant: ChatParticipant) => void): void;
 }
+
+export type ExtendedRoom = Room & ChatRoomInfo;

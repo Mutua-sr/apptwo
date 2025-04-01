@@ -1,4 +1,9 @@
-import { User } from './api';
+// Basic user type for room members
+export interface RoomUser {
+  id: string;
+  name: string;
+  avatar?: string;
+}
 
 interface BaseRoom {
   _id: string;
@@ -7,7 +12,7 @@ interface BaseRoom {
   type: 'classroom' | 'community';
   avatar?: string;
   createdById: string;
-  createdBy: User;
+  createdBy: RoomUser;
   createdAt: string;
   updatedAt: string;
 }
@@ -35,8 +40,18 @@ export interface CommunitySettings {
 export interface Classroom extends BaseRoom {
   type: 'classroom';
   settings: ClassroomSettings;
-  teachers: User[];
-  students: User[];
+  teachers: {
+    id: string;
+    name: string;
+    avatar?: string;
+  }[];
+  students: {
+    id: string;
+    name: string;
+    avatar?: string;
+    status: 'active' | 'inactive';
+    joinedAt: string;
+  }[];
   assignments: string[];
   materials: string[];
 }
@@ -44,8 +59,14 @@ export interface Classroom extends BaseRoom {
 export interface Community extends BaseRoom {
   type: 'community';
   settings: CommunitySettings;
-  members: User[];
-  admins: User[];
+  members: {
+    id: string;
+    name: string;
+    avatar?: string;
+    role: 'admin' | 'moderator' | 'member';
+    joinedAt: string;
+  }[];
+  admins: RoomUser[];
 }
 
 export type Room = Classroom | Community;

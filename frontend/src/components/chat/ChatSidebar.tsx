@@ -1,4 +1,4 @@
-import React, { FC } from 'react';
+import React, { MouseEvent } from 'react';
 import {
   Box,
   List,
@@ -15,21 +15,8 @@ import {
   Button,
 } from '@mui/material';
 import { Info as InfoIcon, Add as AddIcon } from '@mui/icons-material';
-import { Community, Classroom } from '../../types/api';
+import { ExtendedRoom } from '../../types/chat';
 import EmptyRoomList from './EmptyRoomList';
-
-// Create a union type that combines all required properties
-type RoomBase = {
-  _id: string;
-  name: string;
-  type: 'classroom' | 'community';
-  unreadCount?: number;
-  avatar?: string;
-  lastMessage?: string;
-};
-
-// Extend the base type with API types
-type ExtendedRoom = RoomBase & (Community | Classroom);
 
 interface ChatSidebarProps {
   type: 'classroom' | 'community';
@@ -42,7 +29,7 @@ interface ChatSidebarProps {
   onCreateRoom: (name: string, description: string) => void;
 }
 
-const ChatSidebar: FC<ChatSidebarProps> = ({
+const ChatSidebar: React.FC<ChatSidebarProps> = ({
   type,
   rooms,
   availableRooms,
@@ -103,7 +90,7 @@ const ChatSidebar: FC<ChatSidebarProps> = ({
                 secondaryAction={
                   <IconButton 
                     edge="end" 
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       e.stopPropagation();
                       onInfoClick(room);
                     }}

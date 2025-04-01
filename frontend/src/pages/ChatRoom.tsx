@@ -41,12 +41,12 @@ const ChatRoom: React.FC = () => {
 
         chatService.onMessageUpdated((updatedMessage) => {
           setMessages(prev => prev.map(msg => 
-            msg.id === updatedMessage.id ? updatedMessage : msg
+            msg._id === updatedMessage._id ? updatedMessage : msg
           ));
         });
 
         chatService.onMessageDeleted((messageId) => {
-          setMessages(prev => prev.filter(msg => msg.id !== messageId));
+          setMessages(prev => prev.filter(msg => msg._id !== messageId));
         });
 
         chatService.onUserJoined((participant) => {
@@ -114,7 +114,7 @@ const ChatRoom: React.FC = () => {
       <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
         {messages.map((message) => (
           <Box
-            key={message.id}
+            key={message._id}
             sx={{
               mb: 2,
               display: 'flex',

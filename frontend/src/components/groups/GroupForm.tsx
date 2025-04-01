@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { groupService } from '../../services/groupService';
-import { Classroom, Community } from '../../types/api';
-import { CreateClassroomData, CreateCommunityData } from '../../types/room';
+import { Classroom, Community, CreateClassroomData, CreateCommunityData } from '../../types/room';
 
 interface GroupFormProps {
   type: 'classroom' | 'community';
   group?: Classroom | Community;
-  onSuccess?: (group: Classroom | Community) => void;
+  onSuccess?: (group: Community | Classroom) => void;
   onCancel?: () => void;
   className?: string;
 }
@@ -89,7 +88,8 @@ export const GroupForm: React.FC<GroupFormProps> = ({
         }
       }
 
-      onSuccess?.(result);
+      // Type assertion since we know the result matches our Room types
+      onSuccess?.(result as Community | Classroom);
     } catch (err: any) {
       setError(err.message || `Failed to ${group ? 'update' : 'create'} ${type}`);
     } finally {

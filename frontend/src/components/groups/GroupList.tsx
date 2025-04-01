@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { groupService } from '../../services/groupService';
-import { Classroom as ApiClassroom, Community as ApiCommunity } from '../../types/api';
+import { Classroom, Community } from '../../types/room';
 import { GroupForm } from './GroupForm';
 
 // Define display-specific types that contain only the properties we need
@@ -16,7 +16,7 @@ interface GroupListProps {
   type: 'classroom' | 'community';
   userId?: string;
   className?: string;
-  onGroupSelect?: (group: ApiClassroom | ApiCommunity) => void;
+  onGroupSelect?: (group: Community | Classroom) => void;
 }
 
 export const GroupList: React.FC<GroupListProps> = ({ 
@@ -79,7 +79,7 @@ export const GroupList: React.FC<GroupListProps> = ({
     }
   };
 
-  const handleGroupCreated = (newGroup: ApiClassroom | ApiCommunity) => {
+  const handleGroupCreated = (newGroup: Community | Classroom) => {
     setGroups(prev => [...prev, {
       _id: newGroup._id,
       name: newGroup.name,

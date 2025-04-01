@@ -1,7 +1,14 @@
 import * as ApiTypes from '../types/api';
 import * as RoomTypes from '../types/room';
 
-export const adaptClassroom = (apiClassroom: ApiTypes.Classroom): RoomTypes.Classroom => ({
+import { ExtendedRoom, ChatRoomInfo } from '../types/chat';
+
+const defaultChatInfo: ChatRoomInfo = {
+  unreadCount: 0,
+  lastMessage: undefined
+};
+
+export const adaptClassroom = (apiClassroom: ApiTypes.Classroom): ExtendedRoom => ({
   _id: apiClassroom._id,
   name: apiClassroom.name,
   description: apiClassroom.description,
@@ -11,12 +18,7 @@ export const adaptClassroom = (apiClassroom: ApiTypes.Classroom): RoomTypes.Clas
   createdBy: {
     id: apiClassroom.teacher.id,
     name: apiClassroom.teacher.name,
-    email: '',
-    role: 'teacher',
-    status: 'active',
-    profileId: '',
-    createdAt: '',
-    updatedAt: ''
+    avatar: apiClassroom.teacher.avatar
   },
   createdAt: apiClassroom.createdAt || new Date().toISOString(),
   updatedAt: apiClassroom.updatedAt || new Date().toISOString(),
@@ -31,28 +33,24 @@ export const adaptClassroom = (apiClassroom: ApiTypes.Classroom): RoomTypes.Clas
   teachers: [apiClassroom.teacher].map(t => ({
     id: t.id,
     name: t.name,
-    email: '',
-    role: 'teacher',
-    status: 'active',
-    profileId: '',
-    createdAt: '',
-    updatedAt: ''
+    avatar: t.avatar
   })),
   students: apiClassroom.students.map(s => ({
     id: s.id,
     name: s.name,
-    email: '',
-    role: 'student',
+    avatar: s.avatar,
     status: s.status,
-    profileId: '',
-    createdAt: s.joinedAt,
-    updatedAt: ''
+    joinedAt: s.joinedAt
   })),
   assignments: apiClassroom.assignments.map(a => a.id),
   materials: apiClassroom.materials.map(m => m.id)
 });
 
-export const adaptCommunity = (apiCommunity: ApiTypes.Community): RoomTypes.Community => ({
+export const adaptCommunity = (apiCommunity: ApiTypes.Community): RoomTypes.Community & {
+  creator: ApiTypes.Community['creator'];
+  stats: ApiTypes.Community['stats'];
+  tags: string[];
+} => ({
   _id: apiCommunity._id,
   name: apiCommunity.name,
   description: apiCommunity.description,
@@ -62,12 +60,7 @@ export const adaptCommunity = (apiCommunity: ApiTypes.Community): RoomTypes.Comm
   createdBy: {
     id: apiCommunity.creator.id,
     name: apiCommunity.creator.name,
-    email: '',
-    role: 'admin',
-    status: 'active',
-    profileId: '',
-    createdAt: '',
-    updatedAt: ''
+    avatar: apiCommunity.creator.avatar
   },
   createdAt: apiCommunity.createdAt,
   updatedAt: apiCommunity.updatedAt,
@@ -80,25 +73,20 @@ export const adaptCommunity = (apiCommunity: ApiTypes.Community): RoomTypes.Comm
   members: apiCommunity.members.map(m => ({
     id: m.id,
     name: m.name,
-    email: '',
+    avatar: m.avatar,
     role: m.role,
-    status: 'active',
-    profileId: '',
-    createdAt: m.joinedAt,
-    updatedAt: ''
+    joinedAt: m.joinedAt
   })),
   admins: apiCommunity.members
     .filter(m => m.role === 'admin')
     .map(m => ({
       id: m.id,
       name: m.name,
-      email: '',
-      role: 'admin',
-      status: 'active',
-      profileId: '',
-      createdAt: m.joinedAt,
-      updatedAt: ''
-    }))
+      avatar: m.avatar
+    })),
+  creator: apiCommunity.creator,
+  stats: apiCommunity.stats,
+  tags: apiCommunity.tags
 });
 
 export const adaptCreateClassroomData = (data: RoomTypes.CreateClassroomData): ApiTypes.CreateClassroomData => ({

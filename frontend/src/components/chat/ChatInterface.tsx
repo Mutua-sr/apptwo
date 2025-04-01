@@ -174,7 +174,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           ) : (
             messages.map((msg: ChatMessage) => (
               <Box
-                key={msg.id}
+                key={msg._id}
                 sx={styles.messageWrapper(msg.sender.id === currentUser?.id)}
               >
                 <Paper sx={styles.messageContent(msg.sender.id === currentUser?.id)}>

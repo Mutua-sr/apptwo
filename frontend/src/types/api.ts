@@ -4,7 +4,7 @@ export interface User {
   email: string;
   username?: string;
   avatar?: string;
-  role: 'student' | 'teacher' | 'admin';
+  role: 'student' | 'teacher' | 'admin' | 'moderator' | 'member';
   status: UserStatus;
   profileId: string;
   lastActive?: string;
@@ -118,6 +118,9 @@ export interface Classroom {
   name: string;
   description: string;
   code: string;
+  avatar?: string;
+  createdAt: string;
+  updatedAt: string;
   teacher: {
     id: string;
     name: string;

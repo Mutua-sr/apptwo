@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Box, Grid, Typography } from '@mui/material';
-import { ChatRoomType } from '../../types/chat';
+import { ChatRoom } from '../../types/chat';
 import { useAuth } from '../../contexts/AuthContext';
 import { chatService } from '../../services/chatService';
 
@@ -18,7 +18,7 @@ const ChatLayout: React.FC<ChatLayoutProps> = ({
 }) => {
   const { roomId } = useParams<{ roomId: string }>();
   const { currentUser } = useAuth();
-  const [room, setRoom] = useState<ChatRoomType | null>(null);
+  const [room, setRoom] = useState<ChatRoom | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
