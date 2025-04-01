@@ -107,8 +107,29 @@ const EmptyRoomList: FC<EmptyRoomListProps> = ({
               {availableRooms.map((room) => (
                 <ListItem key={room._id}>
                   <ListItemText
-                    primary={room.name}
-                    secondary={room.description}
+                    primary={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="subtitle1">{room.name}</Typography>
+                        {room.settings?.isPrivate && (
+                          <Typography variant="caption" color="text.secondary">
+                            (Private)
+                          </Typography>
+                        )}
+                      </Box>
+                    }
+                    secondary={
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">
+                          {room.description}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {room.type === 'classroom' 
+                            ? `${room.students?.length || 0} students`
+                            : `${room.members?.length || 0} members`} · 
+                          Created {new Date(room.createdAt).toLocaleDateString()}
+                        </Typography>
+                      </Box>
+                    }
                   />
                   <ListItemSecondaryAction>
                     <IconButton
@@ -118,6 +139,7 @@ const EmptyRoomList: FC<EmptyRoomListProps> = ({
                         onJoin(room._id);
                         setJoinDialogOpen(false);
                       }}
+                      title="Join"
                     >
                       <JoinIcon />
                     </IconButton>

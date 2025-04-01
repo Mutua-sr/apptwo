@@ -106,6 +106,7 @@ export interface Classroom {
   materials: Material[];
   schedule: ScheduleEvent[];
   settings: {
+    isPrivate?: boolean;
     allowStudentPosts: boolean;
     allowStudentComments: boolean;
     notifications: {

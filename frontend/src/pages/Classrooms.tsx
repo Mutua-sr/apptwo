@@ -35,16 +35,38 @@ const Classrooms: React.FC = () => {
         participants: classroom.students
       })));
 
-      // Get all classrooms
+      // Get all public classrooms
       const allClassroomsRes = await apiService.classrooms.getAll();
       const allClassrooms = allClassroomsRes.data.data || [];
 
-      // Filter out classrooms the user is already a member of
+      // Filter out:
+      // 1. Classrooms the user is already a member of
+      // 2. Private classrooms where user is not a member
       const userClassroomIds = new Set(userClassrooms.map(c => c._id));
-      const available = allClassrooms.filter(
-        classroom => !userClassroomIds.has(classroom._id)
-      );
-      setAvailableClassrooms(available);
+      const available = allClassrooms.filter(classroom => {
+        if (!currentUser) return false;
+        
+        // Don't show classrooms user is already in
+        if (userClassroomIds.has(classroom._id)) return false;
+        
+        // Show if classroom is not private or if user is in students list
+        return !classroom.settings?.isPrivate || 
+               classroom.students?.some(student => student.id === currentUser.id);
+      });
+
+      // Sort available classrooms by:
+      // 1. Recently created first
+      // 2. Most members
+      const sortedAvailable = available.sort((a, b) => {
+        // First by creation date (newest first)
+        const dateCompare = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        if (dateCompare !== 0) return dateCompare;
+        
+        // Then by number of members (most first)
+        return (b.students?.length || 0) - (a.students?.length || 0);
+      });
+
+      setAvailableClassrooms(sortedAvailable);
     } catch (err) {
       console.error('Failed to fetch classrooms:', err);
       setError('Failed to load classrooms');
