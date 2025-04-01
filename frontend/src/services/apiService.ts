@@ -1,7 +1,7 @@
-import axios from 'axios';
+import axios, { InternalAxiosRequestConfig } from 'axios';
 import { Community, Classroom, User, Post, ApiResponse } from '../types/api';
 import { PostInput, PostUpdate } from '../types/feed';
-import { ChatMessage } from '../types/chat';
+import { ChatMessage, ChatRoom } from '../types/chat';
 
 const API_URL = 'http://localhost:8000/api';
 
@@ -27,10 +27,10 @@ const createApiService = () => {
   });
 
   // Add token to requests
-  instance.interceptors.request.use((config) => {
+  instance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('token');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.set('Authorization', `Bearer ${token}`);
     }
     return config;
   });
@@ -99,16 +99,26 @@ const createApiService = () => {
         instance.delete<ApiResponse<void>>(`/posts/${id}`),
     },
 
-
     chat: {
       getMessages: (roomId: string) =>
-        instance.get<ApiResponse<ChatMessage[]>>(`/chat/rooms/${roomId}/messages`),
+        instance.get<ApiResponse<ChatMessage[]>>(`/chat/rooms/${roomId}/messages`, {
+          params: { limit: 50, offset: 0 }
+        }),
       
       sendMessage: (roomId: string, content: string) =>
-        instance.post<ApiResponse<ChatMessage>>(`/chat/rooms/${roomId}/messages`, { content }),
+        instance.post<ApiResponse<ChatMessage>>(`/chat/rooms/${roomId}/messages`, { 
+          content,
+          type: 'text'
+        }),
       
       deleteMessage: (messageId: string) =>
         instance.delete<ApiResponse<void>>(`/chat/messages/${messageId}`),
+
+      getRoomInfo: (roomId: string) =>
+        instance.get<ApiResponse<ChatRoom>>(`/chat/rooms/${roomId}`),
+        
+      getRoomMembers: (roomId: string, roomType: 'classroom' | 'community') =>
+        instance.get<ApiResponse<ChatRoom>>(`/${roomType}s/${roomId}/members`),
     },
 
     classrooms: {

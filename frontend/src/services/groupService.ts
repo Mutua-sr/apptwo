@@ -1,25 +1,13 @@
-import axios from 'axios';
+import { 
+  Classroom, 
+  Community, 
+  CreateClassroomData, 
+  CreateCommunityData, 
+  UpdateClassroomData, 
+  UpdateCommunityData,
+  ApiResponse
+} from '../types/api';
 import apiService from './apiService';
-import { Classroom, Community, CreateClassroomData, CreateCommunityData, UpdateClassroomData, UpdateCommunityData } from '../types/api';
-
-const API_BASE_URL = 'http://localhost:8000/api';
-
-// Create axios instance with auth headers from apiService
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
-
-// Add token to requests if it exists
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token && config.headers) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
 
 const groupService = {
   // Classroom Operations
@@ -46,7 +34,7 @@ const groupService = {
   getClassrooms: async (userId?: string): Promise<Classroom[]> => {
     try {
       const response = await apiService.classrooms.getAll();
-      const classrooms = response.data.data;
+      const classrooms: Classroom[] = response.data.data;
       return userId ? classrooms.filter(classroom => classroom.createdBy === userId) : classrooms;
     } catch (error) {
       console.error('Error fetching classrooms:', error);
@@ -97,7 +85,7 @@ const groupService = {
   getCommunities: async (userId?: string): Promise<Community[]> => {
     try {
       const response = await apiService.communities.getAll();
-      const communities = response.data.data;
+      const communities: Community[] = response.data.data;
       return userId ? communities.filter(community => community.createdBy === userId) : communities;
     } catch (error) {
       console.error('Error fetching communities:', error);
@@ -127,7 +115,11 @@ const groupService = {
   // Member Operations
   joinGroup: async (groupId: string, groupType: 'classroom' | 'community'): Promise<void> => {
     try {
-      await api.post(`/${groupType}s/${groupId}/join`);
+      if (groupType === 'community') {
+        await apiService.communities.join(groupId);
+      } else {
+        await apiService.classrooms.join(groupId);
+      }
     } catch (error) {
       console.error(`Error joining ${groupType}:`, error);
       throw error;
@@ -136,17 +128,25 @@ const groupService = {
 
   leaveGroup: async (groupId: string, groupType: 'classroom' | 'community'): Promise<void> => {
     try {
-      await api.post(`/${groupType}s/${groupId}/leave`);
+      if (groupType === 'community') {
+        await apiService.communities.leave(groupId);
+      } else {
+        await apiService.classrooms.leave(groupId);
+      }
     } catch (error) {
       console.error(`Error leaving ${groupType}:`, error);
       throw error;
     }
   },
 
-  getMembers: async (groupId: string, groupType: 'classroom' | 'community'): Promise<string[]> => {
+  getMembers: async (groupId: string, groupType: 'classroom' | 'community'): Promise<Array<{
+    id: string;
+    name: string;
+    avatar?: string;
+  }>> => {
     try {
-      const response = await api.get(`/${groupType}s/${groupId}/members`);
-      return response.data.data;
+      const response = await apiService.chat.getRoomMembers(groupId, groupType);
+      return response.data.data.participants;
     } catch (error) {
       console.error(`Error fetching ${groupType} members:`, error);
       throw error;

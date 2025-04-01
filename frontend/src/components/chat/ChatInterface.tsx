@@ -18,7 +18,7 @@ import {
   EmojiEmotions as EmojiIcon,
 } from '@mui/icons-material';
 import { chatInterfaceStyles as styles } from '../../styles/components/ChatInterface.styles';
-import { ChatMessage } from '../../types/chat';
+import { ChatMessage, ChatRoom } from '../../types/chat';
 import { useAuth } from '../../contexts/AuthContext';
 import chatService from '../../services/chatService';
 import apiService from '../../services/apiService';
@@ -43,28 +43,34 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   onStartVoiceCall,
 }) => {
   const { currentUser } = useAuth();
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState<string>('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [room, setRoom] = useState<ChatRoom | null>(null);
 
-  // Load initial messages
+  // Load initial messages and room info
   useEffect(() => {
-    const loadMessages = async () => {
+    const loadData = async () => {
       try {
         setLoading(true);
-        const response = await apiService.chat.getMessages(roomId);
-        setMessages(response.data.data);
+        const [messagesResponse, roomResponse] = await Promise.all([
+          apiService.chat.getMessages(roomId),
+          apiService.chat.getRoomInfo(roomId)
+        ]);
+        
+        setMessages(messagesResponse.data.data);
+        setRoom(roomResponse.data.data);
       } catch (err) {
-        console.error('Error loading messages:', err);
-        setError('Failed to load messages');
+        console.error('Error loading chat data:', err);
+        setError('Failed to load chat');
       } finally {
         setLoading(false);
       }
     };
 
     if (roomId) {
-      loadMessages();
+      loadData();
     }
   }, [roomId]);
 
@@ -85,7 +91,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     };
   }, [roomId]);
 
-  const messagesEndRef = useRef<null | HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -98,16 +104,18 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const handleSend = async () => {
     if (message.trim() && currentUser) {
       try {
-        await chatService.sendMessage(message.trim(), roomId);
-        setMessage('');
+        const trimmedMessage = message.trim();
+        setMessage(''); // Clear input immediately for better UX
+        await chatService.sendMessage(trimmedMessage, roomId);
       } catch (err) {
         console.error('Error sending message:', err);
         setError('Failed to send message');
+        setMessage(message); // Restore message if failed
       }
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -165,7 +173,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
               <Typography>{error}</Typography>
             </Box>
           ) : (
-            messages.map((msg) => (
+            messages.map((msg: ChatMessage) => (
               <Box
                 key={msg._id}
                 sx={styles.messageWrapper(msg.sender.id === currentUser?.id)}
