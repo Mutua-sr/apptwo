@@ -57,6 +57,11 @@ export interface ExtendedRoom {
   unreadCount?: number;
   lastMessage?: string;
   // Classroom specific properties
+  teachers?: Array<{
+    id: string;
+    name: string;
+    avatar?: string;
+  }>;
   students?: Array<{
     id: string;
     name: string;
@@ -64,6 +69,8 @@ export interface ExtendedRoom {
     status?: string;
     joinedAt?: string;
   }>;
+  assignments?: string[];
+  materials?: string[];
   // Community specific properties
   members?: Array<{
     id: string;
@@ -72,6 +79,22 @@ export interface ExtendedRoom {
     role?: string;
     joinedAt?: string;
   }>;
+  admins?: Array<{
+    id: string;
+    name: string;
+    avatar?: string;
+  }>;
+  creator?: {
+    id: string;
+    name: string;
+    avatar?: string;
+  };
+  stats?: {
+    memberCount: number;
+    postCount: number;
+    activeMembers: number;
+  };
+  tags?: string[];
 }
 
 export interface ChatRoom {

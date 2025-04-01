@@ -30,11 +30,13 @@ export const adaptClassroom = (apiClassroom: ApiTypes.Classroom): ExtendedRoom =
     requirePostApproval: false,
     notifications: apiClassroom.settings.notifications
   },
-  teachers: [apiClassroom.teacher].map(t => ({
-    id: t.id,
-    name: t.name,
-    avatar: t.avatar
-  })),
+  materials: apiClassroom.materials.map(m => m.id),
+  // Optional properties
+  teachers: [{
+    id: apiClassroom.teacher.id,
+    name: apiClassroom.teacher.name,
+    avatar: apiClassroom.teacher.avatar
+  }],
   students: apiClassroom.students.map(s => ({
     id: s.id,
     name: s.name,
@@ -42,8 +44,7 @@ export const adaptClassroom = (apiClassroom: ApiTypes.Classroom): ExtendedRoom =
     status: s.status,
     joinedAt: s.joinedAt
   })),
-  assignments: apiClassroom.assignments.map(a => a.id),
-  materials: apiClassroom.materials.map(m => m.id)
+  assignments: apiClassroom.assignments.map(a => a.id)
 });
 
 export const adaptCommunity = (apiCommunity: ApiTypes.Community): RoomTypes.Community & {
