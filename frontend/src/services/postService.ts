@@ -39,7 +39,10 @@ const postService = {
   getPosts: async (filters?: FeedFilters): Promise<Post[]> => {
     try {
       const response = await axios.get<ApiResponse<ApiPost[]>>(`${API_BASE_URL}/posts`, {
-        params: filters
+        params: filters,
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
       });
       return response.data.data.map(transformApiPost);
     } catch (error) {
@@ -50,7 +53,11 @@ const postService = {
 
   getPost: async (postId: string): Promise<Post> => {
     try {
-      const response = await axios.get<ApiResponse<ApiPost>>(`${API_BASE_URL}/posts/${postId}`);
+      const response = await axios.get<ApiResponse<ApiPost>>(`${API_BASE_URL}/posts/${postId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
       return transformApiPost(response.data.data);
     } catch (error) {
       console.error('Error fetching post:', error);
@@ -60,28 +67,28 @@ const postService = {
 
   createPost: async (data: PostInput): Promise<Post> => {
     try {
-      // Get current user info from localStorage or context
-      const userStr = localStorage.getItem('user');
-      if (!userStr) {
+      const token = localStorage.getItem('token');
+      if (!token) {
         throw new Error('User not authenticated');
       }
-      const user = JSON.parse(userStr);
 
       const postData = {
         type: 'post',
-        title: '', // Using empty string as title since it's not in the UI
         content: data.content,
-        author: {
-          id: user.id,
-          username: user.username,
-          avatar: user.avatar
-        },
-        tags: data.tags || [], // Ensure tags is always an array
+        tags: data.tags || [],
         status: 'published',
         visibility: 'public'
       };
 
-      const response = await axios.post<ApiResponse<ApiPost>>(`${API_BASE_URL}/posts`, postData);
+      const response = await axios.post<ApiResponse<ApiPost>>(
+        `${API_BASE_URL}/posts`, 
+        postData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
       return transformApiPost(response.data.data);
     } catch (error) {
       console.error('Error creating post:', error);
@@ -91,7 +98,15 @@ const postService = {
 
   updatePost: async (postId: string, data: PostUpdate): Promise<Post> => {
     try {
-      const response = await axios.put<ApiResponse<ApiPost>>(`${API_BASE_URL}/posts/${postId}`, data);
+      const response = await axios.put<ApiResponse<ApiPost>>(
+        `${API_BASE_URL}/posts/${postId}`, 
+        data,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
       return transformApiPost(response.data.data);
     } catch (error) {
       console.error('Error updating post:', error);
@@ -101,7 +116,11 @@ const postService = {
 
   deletePost: async (postId: string): Promise<void> => {
     try {
-      await axios.delete(`${API_BASE_URL}/posts/${postId}`);
+      await axios.delete(`${API_BASE_URL}/posts/${postId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
     } catch (error) {
       console.error('Error deleting post:', error);
       throw error;
@@ -110,7 +129,15 @@ const postService = {
 
   likePost: async (postId: string): Promise<Post> => {
     try {
-      const response = await axios.post<ApiResponse<ApiPost>>(`${API_BASE_URL}/posts/${postId}/like`);
+      const response = await axios.post<ApiResponse<ApiPost>>(
+        `${API_BASE_URL}/posts/${postId}/like`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
       return transformApiPost(response.data.data);
     } catch (error) {
       console.error('Error liking post:', error);
@@ -120,7 +147,15 @@ const postService = {
 
   unlikePost: async (postId: string): Promise<Post> => {
     try {
-      const response = await axios.post<ApiResponse<ApiPost>>(`${API_BASE_URL}/posts/${postId}/unlike`);
+      const response = await axios.post<ApiResponse<ApiPost>>(
+        `${API_BASE_URL}/posts/${postId}/unlike`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
       return transformApiPost(response.data.data);
     } catch (error) {
       console.error('Error unliking post:', error);
@@ -132,7 +167,12 @@ const postService = {
     try {
       const response = await axios.post<ApiResponse<ApiPost>>(
         `${API_BASE_URL}/posts/${postId}/comments`,
-        { content }
+        { content },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
       );
       return transformApiPost(response.data.data);
     } catch (error) {
@@ -144,7 +184,12 @@ const postService = {
   deleteComment: async (postId: string, commentId: string): Promise<Post> => {
     try {
       const response = await axios.delete<ApiResponse<ApiPost>>(
-        `${API_BASE_URL}/posts/${postId}/comments/${commentId}`
+        `${API_BASE_URL}/posts/${postId}/comments/${commentId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
       );
       return transformApiPost(response.data.data);
     } catch (error) {
@@ -157,7 +202,12 @@ const postService = {
     try {
       const response = await axios.post<ApiResponse<ApiPost>>(
         `${API_BASE_URL}/posts/${postId}/share`,
-        destination
+        destination,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
       );
       return transformApiPost(response.data.data);
     } catch (error) {
@@ -169,7 +219,10 @@ const postService = {
   searchPosts: async (query: string, filters?: FeedFilters): Promise<Post[]> => {
     try {
       const response = await axios.get<ApiResponse<ApiPost[]>>(`${API_BASE_URL}/posts/search`, {
-        params: { query, ...filters }
+        params: { query, ...filters },
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
       });
       return response.data.data.map(transformApiPost);
     } catch (error) {
