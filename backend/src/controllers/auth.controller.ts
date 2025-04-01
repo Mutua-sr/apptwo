@@ -24,6 +24,7 @@ interface RegisterRequest extends AuthenticatedRequest {
     email: string;
     password: string;
     name: string;
+    role?: UserRole; // Optional role parameter
   };
 }
 
@@ -174,7 +175,7 @@ export const register = async (
   next: NextFunction
 ) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, name, role } = req.body; // Accept role from request
 
     if (!email || !password || !name) {
       const error = new Error('Email, password, and name are required') as ApiError;
@@ -200,7 +201,7 @@ export const register = async (
       email,
       password,
       name,
-      role: UserRole.STUDENT // Default role for new users
+      role: role || UserRole.STUDENT // Default to STUDENT if no role provided
     };
 
     const user = await DatabaseService.create<User>(userData);
@@ -212,7 +213,7 @@ export const register = async (
       username: email.split('@')[0],
       email,
       name,
-      role: UserRole.STUDENT,
+      role: userData.role,
       settings: {
         notifications: {
           email: true,
