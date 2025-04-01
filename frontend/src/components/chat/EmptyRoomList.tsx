@@ -118,17 +118,17 @@ const EmptyRoomList: FC<EmptyRoomListProps> = ({
                       </Box>
                     }
                     secondary={
-                      <Box>
-                        <Typography variant="body2" color="text.secondary">
+                      <>
+                        <Typography variant="body2" color="text.secondary" component="div">
                           {room.description}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" color="text.secondary" component="div">
                           {room.type === 'classroom' 
                             ? `${room.students?.length || 0} students`
                             : `${room.members?.length || 0} members`} · 
                           Created {new Date(room.createdAt).toLocaleDateString()}
                         </Typography>
-                      </Box>
+                      </>
                     }
                   />
                   <ListItemSecondaryAction>
