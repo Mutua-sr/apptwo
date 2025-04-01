@@ -227,7 +227,7 @@ const createRequiredIndexes = async () => {
     // Create index for classrooms by teacher
     await db.createIndex({
       index: {
-        fields: ['type', 'teacher.id', 'settings.isArchived']
+        fields: ['type', 'teacher.id', 'settings.isArchived', 'updatedAt']
       },
       ddoc: 'classrooms-by-teacher-index',
       type: 'json'
