@@ -62,6 +62,7 @@ router.post('/communities/:id/join', auth, communityController.joinCommunity);
 router.post('/communities/:id/leave', auth, communityController.leaveCommunity);
 
 // Chat routes
+router.get('/chat/rooms/:id', auth, chatController.getChatRoom);
 router.get('/chat/rooms/:roomId/messages', auth, chatController.getChatHistory);
 router.post('/chat/rooms/:roomId/messages', auth, chatController.sendMessage);
 router.delete('/chat/messages/:messageId', auth, chatController.deleteMessage);
