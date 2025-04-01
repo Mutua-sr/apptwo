@@ -1,20 +1,22 @@
 import { CouchDBDocument } from './database';
 import { UserRole } from './index';
 
-export interface User extends CouchDBDocument {
+export interface UserData {
   name: string;
   email: string;
   role: UserRole;
   lastActive: string;
 }
 
-export interface Activity extends CouchDBDocument {
-  type: 'activity';
+export interface ActivityData {
   userId: string;
   action: string;
   details: string;
   timestamp: string;
 }
+
+export type UserDocument = CouchDBDocument<UserData> & { type: 'user' };
+export type ActivityDocument = CouchDBDocument<ActivityData> & { type: 'activity' };
 
 export interface ReportDateRange {
   start: Date;

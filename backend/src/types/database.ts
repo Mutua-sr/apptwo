@@ -1,9 +1,13 @@
-export interface CouchDBDocument {
+export interface CouchDBBase {
   _id: string;
-  _rev?: string;  // Making _rev optional since it might not exist for new documents
-  type: string;
+  _rev?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CouchDBDocument<T = any> extends CouchDBBase {
+  type: string;
+  data: T;
 }
 
 export interface DatabaseQuery {
@@ -45,6 +49,6 @@ export interface IDatabaseService {
   read<T extends CouchDBDocument>(id: string): Promise<T | null>;
   update<T extends CouchDBDocument>(id: string, doc: Partial<T>): Promise<T>;
   delete(id: string): Promise<boolean>;
-  find<T extends CouchDBDocument>(query: DatabaseQuery): Promise<T[]>;
+  find<T>(query: DatabaseQuery): Promise<Array<T & CouchDBDocument>>;
   bulkCreate<T extends CouchDBDocument>(docs: Array<Omit<T, '_id' | '_rev'>>): Promise<BulkDocsResponse[]>;
 }

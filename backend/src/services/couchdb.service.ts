@@ -121,10 +121,10 @@ export const DatabaseService = {
   },
 
   // Find documents using Mango query
-  async find<T extends CouchDBDocument>(query: MangoQuery): Promise<T[]> {
+  async find<T extends { type: string }>(query: MangoQuery): Promise<Array<T & { _id: string; _rev?: string; createdAt: string; updatedAt: string }>> {
     try {
       const { docs } = await db.find(query);
-      return docs as T[];
+      return docs as Array<T & { _id: string; _rev?: string; createdAt: string; updatedAt: string }>;
     } catch (error: any) {
       logger.error('Error finding documents:', error);
       if (error.statusCode === 400) {

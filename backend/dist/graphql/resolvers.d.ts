@@ -24,7 +24,12 @@ declare const resolvers: {
         }) => Promise<Post | null>;
         postsByTag: (_: any, { tag }: {
             tag: string;
-        }) => Promise<Post[]>;
+        }) => Promise<(Post & {
+            _id: string;
+            _rev?: string;
+            createdAt: string;
+            updatedAt: string;
+        })[]>;
     };
     Mutation: {
         createClassroom: (_: any, { input }: any) => Promise<Classroom>;

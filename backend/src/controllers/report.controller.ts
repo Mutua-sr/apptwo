@@ -4,8 +4,8 @@ import { CommunityService } from '../services/community.service';
 import { DatabaseService } from '../services/database';
 import logger from '../config/logger';
 import { 
-  User, 
-  Activity, 
+  UserData,
+  ActivityData,
   ReportDateRange,
   UserReportData,
   ClassroomReportData,
@@ -13,10 +13,28 @@ import {
   ActivityReportData
 } from '../types/report';
 
+interface ReportQuery {
+  type: 'users' | 'classrooms' | 'communities' | 'activities';
+  format: 'json' | 'pdf' | 'csv';
+  startDate?: string;
+  endDate?: string;
+}
+
+interface DBUserData extends UserData {
+  type: 'user';
+  _id: string;
+  createdAt: string;
+}
+
+interface DBActivityData extends ActivityData {
+  type: 'activity';
+  _id: string;
+}
+
 class ReportController {
-  async generateReport(req: Request, res: Response) {
+  async generateReport(req: Request<{}, {}, {}, ReportQuery>, res: Response): Promise<Response> {
     try {
-      const { type, format, startDate, endDate } = req.query;
+      const { type, startDate, endDate } = req.query;
       const dateRange: ReportDateRange = {
         start: startDate ? new Date(startDate as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
         end: endDate ? new Date(endDate as string) : new Date()
@@ -40,7 +58,7 @@ class ReportController {
           return res.status(400).json({ error: 'Invalid report type' });
       }
 
-      res.json({
+      return res.json({
         success: true,
         data,
         metadata: {
@@ -51,14 +69,14 @@ class ReportController {
       });
     } catch (error) {
       logger.error('Report generation error:', error);
-      res.status(500).json({ error: 'Failed to generate report' });
+      return res.status(500).json({ error: 'Failed to generate report' });
     }
   }
 
   private async generateUsersReport(dateRange: ReportDateRange): Promise<UserReportData> {
     const query = {
       selector: {
-        type: 'user',
+        type: 'user' as const,
         createdAt: {
           $gte: dateRange.start.toISOString(),
           $lte: dateRange.end.toISOString()
@@ -67,7 +85,7 @@ class ReportController {
       sort: [{ createdAt: 'desc' as const }]
     };
 
-    const users = await DatabaseService.find<User>(query);
+    const users = await DatabaseService.find<DBUserData>(query);
     
     // Calculate statistics
     const totalUsers = users.length;
@@ -179,7 +197,7 @@ class ReportController {
       sort: [{ timestamp: 'desc' as const }]
     };
 
-    const activities = await DatabaseService.find<Activity>(query);
+    const activities = await DatabaseService.find<DBActivityData>(query);
 
     // Calculate statistics
     const activityTypes = activities.reduce((acc, activity) => {
