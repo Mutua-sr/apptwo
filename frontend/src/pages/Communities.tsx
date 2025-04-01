@@ -14,7 +14,7 @@ const transformCommunity = (apiCommunity: ApiCommunity): UICommuntiy => {
     description: apiCommunity.description,
     coverImage: apiCommunity.avatar,
     creator: {
-      id: apiCommunity.createdBy.id,
+      id: apiCommunity.createdById,
       name: apiCommunity.createdBy.name,
       avatar: apiCommunity.createdBy.avatar,
     },
@@ -65,7 +65,7 @@ const Communities: React.FC = () => {
         });
       } catch (error) {
         console.error('Error fetching communities:', error);
-        setError('Failed to load communities');
+        setError(error instanceof Error ? error.message : 'Failed to load communities');
         setLoading(false);
       }
     };

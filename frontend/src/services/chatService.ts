@@ -11,7 +11,7 @@ class ChatServiceImpl implements ChatService {
       try {
         this.socket = io(this.API_URL, {
           withCredentials: true,
-          transports: ['websocket']
+          transports: ['websocket', 'polling']
         });
 
         this.socket.on('connect', () => {
