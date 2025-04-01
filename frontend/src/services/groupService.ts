@@ -1,12 +1,10 @@
+import { Classroom, Community, ApiResponse } from '../types/api';
 import { 
-  Classroom, 
-  Community, 
   CreateClassroomData, 
   CreateCommunityData, 
   UpdateClassroomData, 
-  UpdateCommunityData,
-  ApiResponse
-} from '../types/api';
+  UpdateCommunityData 
+} from '../types/room';
 import apiService from './apiService';
 
 const groupService = {
@@ -35,7 +33,7 @@ const groupService = {
     try {
       const response = await apiService.classrooms.getAll();
       const classrooms: Classroom[] = response.data.data;
-      return userId ? classrooms.filter(classroom => classroom.createdBy === userId) : classrooms;
+      return userId ? classrooms.filter(classroom => classroom.teachers.some(teacher => teacher.id === userId)) : classrooms;
     } catch (error) {
       console.error('Error fetching classrooms:', error);
       throw error;
