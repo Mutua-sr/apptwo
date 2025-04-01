@@ -207,7 +207,11 @@ export const sendMessage = async (
     });
 
     // Broadcast message to room
-    RealtimeService.getInstance().broadcastToRoom(roomId, 'message', message);
+    RealtimeService.getInstance().broadcastToRoom(
+      roomId,
+      'message',
+      message
+    );
 
     res.status(201).json({
       success: true,
@@ -244,10 +248,14 @@ export const deleteMessage = async (
     });
 
     // Notify room about deleted message
-    RealtimeService.getInstance().broadcastToRoom(message.roomId, 'message_deleted', {
-      messageId,
-      roomId: message.roomId
-    });
+    RealtimeService.getInstance().broadcastToRoom(
+      message.roomId,
+      'message_deleted',
+      {
+        messageId: messageId,
+        roomId: message.roomId
+      }
+    );
 
     res.json({
       success: true,

@@ -3,6 +3,7 @@ import { Server as HttpServer } from 'http';
 import jwt from 'jsonwebtoken';
 import logger from '../config/logger';
 import { ChatMessage } from '../types';
+import { ServerToClientEvents, ClientToServerEvents, InterServerEvents } from '../types/socket';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -11,20 +12,6 @@ interface SocketUser {
   name: string;
   email: string;
   avatar?: string;
-}
-
-interface ServerToClientEvents {
-  message: (message: ChatMessage) => void;
-}
-
-interface ClientToServerEvents {
-  join_room: (roomId: string) => void;
-  leave_room: (roomId: string) => void;
-  message: (message: ChatMessage) => void;
-}
-
-interface InterServerEvents {
-  ping: () => void;
 }
 
 interface SocketData {
@@ -80,11 +67,9 @@ export class SocketService {
       socket.on('message', (message: ChatMessage) => {
         this.io.to(message.roomId).emit('message', {
           ...message,
-          sender: {
-            id: socket.data.user.id,
-            name: socket.data.user.name,
-            avatar: socket.data.user.avatar
-          }
+          senderId: socket.data.user.id,
+          senderName: socket.data.user.name,
+          senderAvatar: socket.data.user.avatar
         });
       });
 

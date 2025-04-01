@@ -81,3 +81,21 @@ export interface Classroom extends CouchDBDocument {
     timestamp: string;
   };
 }
+
+export interface CreateClassroom {
+  type?: 'classroom';
+  name: string;
+  description: string;
+  teacher?: {
+    id: string;
+    name: string;
+    avatar?: string;
+  };
+  settings?: Partial<ClassroomSettings>;
+}
+
+export interface UpdateClassroomInput {
+  name?: string;
+  description?: string;
+  settings?: Partial<ClassroomSettings>;
+}
