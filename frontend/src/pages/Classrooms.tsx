@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Box, CircularProgress, Snackbar, Alert } from '@mui/material';
 import ChatLayout from '../components/layout/ChatLayout';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,7 +21,7 @@ const Classrooms: React.FC = () => {
     severity: 'success'
   });
 
-  const fetchClassrooms = async () => {
+  const fetchClassrooms = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -75,13 +75,7 @@ const Classrooms: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    if (currentUser) {
-      fetchClassrooms();
-    }
-  }, [currentUser]);
+  }, [currentUser]); // Add currentUser as dependency since it's used inside
 
   const handleJoinClassroom = async (classroomId: string) => {
     try {
