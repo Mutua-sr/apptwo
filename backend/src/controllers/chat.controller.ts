@@ -13,10 +13,10 @@ export const getChatRooms = async (
   try {
     const rooms = await DatabaseService.find<ChatRoom>({
       selector: {
-        type: 'room',
+        type: 'chatroom',
         participants: {
           $elemMatch: {
-            id: req.user?.id
+            userId: req.user?.id
           }
         }
       }
@@ -43,30 +43,33 @@ export const createChatRoom = async (
 
     const timestamp = new Date().toISOString();
     const roomData: Omit<ChatRoom, '_id' | '_rev' | 'createdAt' | 'updatedAt'> = {
-      type: 'room',
+      type: 'chatroom',
       name: req.body.name,
-      roomType: req.body.roomType,
+      description: req.body.description,
+      avatar: req.body.avatar,
       participants: [
         {
-          id: req.user.id,
+          userId: req.user.id,
           name: req.user.name,
           avatar: req.user.avatar,
           role: 'admin',
           joinedAt: timestamp
         },
         ...req.body.participants.map((p: any) => ({
-          ...p,
+          userId: p.userId,
+          name: p.name,
+          avatar: p.avatar,
           role: 'member',
           joinedAt: timestamp
         }))
       ],
       settings: {
-        isEncrypted: false,
-        allowReactions: true,
-        allowReplies: true,
-        allowEditing: true,
-        allowDeletion: true,
-        ...req.body.settings
+        isPrivate: req.body.settings?.isPrivate ?? false,
+        allowReactions: req.body.settings?.allowReactions ?? true,
+        allowAttachments: req.body.settings?.allowAttachments ?? true,
+        allowReplies: req.body.settings?.allowReplies ?? true,
+        allowEditing: req.body.settings?.allowEditing ?? true,
+        allowDeletion: req.body.settings?.allowDeletion ?? true
       }
     };
 
@@ -74,9 +77,9 @@ export const createChatRoom = async (
 
     // Notify all participants about the new room
     room.participants.forEach(participant => {
-      if (participant.id !== req.user?.id) {
+      if (participant.userId !== req.user?.id) {
         RealtimeService.getInstance().emitToUser(
-          participant.id,
+          participant.userId,
           'room_created',
           { room }
         );
@@ -110,14 +113,8 @@ export const getChatRoom = async (
       throw new ApiError('Chat room not found', 404);
     }
 
-    // Validate room structure according to ChatRoom interface
-    if (!room.type || room.type !== 'room' || !room.name || !room.roomType || 
-        !room.participants || !Array.isArray(room.participants) || room.participants.length === 0) {
-      throw new ApiError('Invalid room structure', 500);
-    }
-
     // Check if user is a participant
-    if (!room.participants.some(p => p.id === req.user?.id)) {
+    if (!room.participants.some(p => p.userId === req.user?.id)) {
       throw new ApiError('Not authorized to access this chat room', 403);
     }
 
@@ -141,7 +138,7 @@ export const getChatHistory = async (
 
     // Check if user is a participant
     const room = await DatabaseService.read<ChatRoom>(roomId);
-    if (!room || !room.participants.some(p => p.id === req.user?.id)) {
+    if (!room || !room.participants.some(p => p.userId === req.user?.id)) {
       throw new ApiError('Not authorized to access this chat room', 403);
     }
 
@@ -181,7 +178,7 @@ export const sendMessage = async (
 
     // Check if user is a participant
     const room = await DatabaseService.read<ChatRoom>(roomId);
-    if (!room || !room.participants.some(p => p.id === req.user?.id)) {
+    if (!room || !room.participants.some(p => p.userId === req.user?.id)) {
       throw new ApiError('Not authorized to send messages in this room', 403);
     }
 
@@ -189,11 +186,10 @@ export const sendMessage = async (
       type: 'message',
       content,
       roomId,
-      sender: {
-        id: req.user.id,
-        name: req.user.name,
-        avatar: req.user.avatar
-      },
+      senderId: req.user.id,
+      senderName: req.user.name,
+      senderAvatar: req.user.avatar,
+      timestamp: new Date().toISOString(),
       ...(replyTo && { replyTo }),
       ...(attachments && { attachments })
     };
@@ -203,10 +199,10 @@ export const sendMessage = async (
     // Update room's last message
     await DatabaseService.update<ChatRoom>(roomId, {
       lastMessage: {
-        id: message._id,
         content: message.content,
-        sender: message.sender,
-        sentAt: message.createdAt
+        senderId: message.senderId,
+        senderName: message.senderName,
+        timestamp: message.timestamp
       }
     });
 
@@ -237,12 +233,13 @@ export const deleteMessage = async (
 
     // Check if user is the sender or an admin
     const room = await DatabaseService.read<ChatRoom>(message.roomId);
-    const isAdmin = room?.participants.some(p => p.id === req.user?.id && p.role === 'admin');
-    if (message.sender.id !== req.user?.id && !isAdmin) {
+    const isAdmin = room?.participants.some(p => p.userId === req.user?.id && p.role === 'admin');
+    if (message.senderId !== req.user?.id && !isAdmin) {
       throw new ApiError('Not authorized to delete this message', 403);
     }
 
     const deletedMessage = await DatabaseService.update<ChatMessage>(messageId, {
+      isDeleted: true,
       deletedAt: new Date().toISOString()
     });
 

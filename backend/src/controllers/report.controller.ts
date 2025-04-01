@@ -116,7 +116,7 @@ class ReportController {
   }
 
   private async generateClassroomsReport(dateRange: ReportDateRange): Promise<ClassroomReportData> {
-    const classrooms = await ClassroomService.list();
+    const classrooms = await ClassroomService.getActiveClassrooms();
     
     // Filter by date range
     const filteredClassrooms = classrooms.filter(classroom => 
@@ -151,7 +151,8 @@ class ReportController {
   }
 
   private async generateCommunitiesReport(dateRange: ReportDateRange): Promise<CommunityReportData> {
-    const communities = await CommunityService.list();
+    // Get all communities by using a large limit
+    const communities = await CommunityService.list(1, 1000);
     
     // Filter by date range
     const filteredCommunities = communities.filter(community => 

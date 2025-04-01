@@ -34,12 +34,9 @@ router.post('/classrooms', auth, classroomController.createClassroom);
 router.get('/classrooms/:id', auth, classroomController.getClassroom);
 router.put('/classrooms/:id', auth, classroomController.updateClassroom);
 router.delete('/classrooms/:id', auth, classroomController.deleteClassroom);
-router.post('/classrooms/join', auth, classroomController.joinClassroom);
+router.post('/classrooms/:code/join', auth, classroomController.joinClassroom);
 router.post('/classrooms/:id/assignments', auth, classroomController.addAssignment);
 router.post('/classrooms/:id/materials', auth, classroomController.addMaterial);
-router.post('/classrooms/:id/schedule', auth, classroomController.addScheduleEvent);
-router.post('/classrooms/:classroomId/assignments/:assignmentId/submit', auth, classroomController.submitAssignment);
-router.put('/classrooms/:classroomId/assignments/:assignmentId/submissions/:studentId/grade', auth, classroomController.gradeSubmission);
 
 // Posts routes
 router.get('/posts', auth, feedController.getPosts);
