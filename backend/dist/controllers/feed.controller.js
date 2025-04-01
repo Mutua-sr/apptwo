@@ -1,20 +1,26 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sharePost = exports.addComment = exports.unlikePost = exports.likePost = exports.deletePost = exports.updatePost = exports.createPost = exports.getPost = exports.getPosts = void 0;
 const database_1 = require("../services/database");
 const realtime_service_1 = require("../services/realtime.service");
 const errorHandler_1 = require("../middleware/errorHandler");
+const logger_1 = __importDefault(require("../config/logger"));
 const getPosts = async (req, res, next) => {
     try {
         const { page = 1, limit = 10 } = req.query;
         const skip = (Number(page) - 1) * Number(limit);
         const posts = await database_1.DatabaseService.find({
             selector: {
-                type: 'post'
+                type: 'post',
+                createdAt: { $gt: null }
             },
             skip,
             limit: Number(limit),
-            sort: [{ createdAt: 'desc' }]
+            sort: [{ createdAt: 'desc' }],
+            use_index: 'posts-by-date-index'
         });
         res.json({
             success: true,
@@ -44,28 +50,42 @@ const getPost = async (req, res, next) => {
 };
 exports.getPost = getPost;
 const createPost = async (req, res, next) => {
-    var _a;
+    var _a, _b, _c;
     try {
         if (!((_a = req.user) === null || _a === void 0 ? void 0 : _a.id)) {
             throw new errorHandler_1.ApiError('Unauthorized', 401);
         }
+        // Validate required fields
+        if (!((_b = req.body.title) === null || _b === void 0 ? void 0 : _b.trim())) {
+            throw new errorHandler_1.ApiError('Title is required', 400);
+        }
+        if (!((_c = req.body.content) === null || _c === void 0 ? void 0 : _c.trim())) {
+            throw new errorHandler_1.ApiError('Content is required', 400);
+        }
+        // Validate status
+        const status = req.body.status === 'draft' ? 'draft' : 'published';
+        const visibility = req.body.visibility || 'public';
         const postData = {
             type: 'post',
-            title: req.body.title,
-            content: req.body.content,
-            tags: req.body.tags || [],
+            title: req.body.title.trim(),
+            content: req.body.content.trim(),
+            tags: Array.isArray(req.body.tags) ? req.body.tags.filter(Boolean) : [],
             author: {
                 id: req.user.id,
                 username: req.user.name,
                 avatar: req.user.avatar
-            }
-        };
-        const post = await database_1.DatabaseService.create({
-            ...postData,
+            },
+            imageUrl: req.body.imageUrl,
+            status,
+            visibility: visibility,
             likes: 0,
             comments: [],
             likedBy: []
-        });
+        };
+        // Create post
+        const post = await database_1.DatabaseService.create(postData);
+        // Log the creation
+        logger_1.default.info(`Post created: ${post._id} by user ${req.user.id}`);
         // Notify followers or relevant users about the new post
         realtime_service_1.RealtimeService.getInstance().broadcastToRoom('feed', 'new_post', post);
         res.status(201).json({
@@ -74,6 +94,7 @@ const createPost = async (req, res, next) => {
         });
     }
     catch (error) {
+        logger_1.default.error('Error creating post:', error);
         next(error);
     }
 };
@@ -89,11 +110,17 @@ const updatePost = async (req, res, next) => {
         if (post.author.id !== ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id)) {
             throw new errorHandler_1.ApiError('Not authorized to update this post', 403);
         }
+        // Validate status if provided
+        const status = req.body.status === 'draft' ? 'draft' : 'published';
+        const visibility = req.body.visibility || post.visibility;
         const updateData = {
-            ...(req.body.title && { title: req.body.title }),
-            ...(req.body.content && { content: req.body.content }),
+            ...(req.body.title && { title: req.body.title.trim() }),
+            ...(req.body.content && { content: req.body.content.trim() }),
             ...(req.body.tags && { tags: req.body.tags }),
-            ...(req.body.sharedTo && { sharedTo: req.body.sharedTo })
+            ...(req.body.sharedTo && { sharedTo: req.body.sharedTo }),
+            ...(req.body.status && { status }),
+            ...(req.body.visibility && { visibility: visibility }),
+            ...(req.body.imageUrl && { imageUrl: req.body.imageUrl })
         };
         const updatedPost = await database_1.DatabaseService.update(id, updateData);
         // Notify about post update

@@ -1,11 +1,16 @@
-import { Response, NextFunction } from 'express';
-import { AuthRequest } from '../types';
-export declare const getPosts: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
-export declare const getPost: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
-export declare const createPost: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
-export declare const updatePost: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
-export declare const deletePost: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
-export declare const likePost: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
-export declare const unlikePost: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
-export declare const addComment: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
-export declare const sharePost: (req: AuthRequest, res: Response, next: NextFunction) => Promise<void>;
+import { Request, Response, NextFunction } from 'express';
+import { AuthRequest, ApiResponse } from '../types';
+import { Post } from '../types/feed';
+type AuthenticatedRequest = Request & AuthRequest;
+export declare const getPosts: (req: AuthenticatedRequest, res: Response<ApiResponse<Post[]>>, next: NextFunction) => Promise<void>;
+export declare const getPost: (req: AuthenticatedRequest, res: Response<ApiResponse<Post>>, next: NextFunction) => Promise<void>;
+export declare const createPost: (req: AuthenticatedRequest, res: Response<ApiResponse<Post>>, next: NextFunction) => Promise<void>;
+export declare const updatePost: (req: AuthenticatedRequest, res: Response<ApiResponse<Post>>, next: NextFunction) => Promise<void>;
+export declare const deletePost: (req: AuthenticatedRequest, res: Response<ApiResponse<{
+    message: string;
+}>>, next: NextFunction) => Promise<void>;
+export declare const likePost: (req: AuthenticatedRequest, res: Response<ApiResponse<Post>>, next: NextFunction) => Promise<void>;
+export declare const unlikePost: (req: AuthenticatedRequest, res: Response<ApiResponse<Post>>, next: NextFunction) => Promise<void>;
+export declare const addComment: (req: AuthenticatedRequest, res: Response<ApiResponse<Post>>, next: NextFunction) => Promise<void>;
+export declare const sharePost: (req: AuthenticatedRequest, res: Response<ApiResponse<Post>>, next: NextFunction) => Promise<void>;
+export {};

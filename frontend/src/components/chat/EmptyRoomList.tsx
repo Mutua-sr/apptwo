@@ -20,9 +20,26 @@ import {
 } from '@mui/icons-material';
 import { Community, Classroom } from '../../types/api';
 
+// Create a union type that combines all required properties
+type RoomBase = {
+  _id: string;
+  name: string;
+  description?: string;
+  type: 'classroom' | 'community';
+  createdAt: string;
+  settings: {
+    isPrivate?: boolean;
+  };
+  students?: string[];
+  members?: string[];
+};
+
+// Extend the base type with API types
+type ExtendedRoom = RoomBase & (Community | Classroom);
+
 interface EmptyRoomListProps {
   type: 'classroom' | 'community';
-  availableRooms: (Community | Classroom)[];
+  availableRooms: ExtendedRoom[];
   onJoin: (roomId: string) => void;
   onCreate: (name: string, description: string) => void;
 }

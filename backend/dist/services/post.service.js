@@ -16,6 +16,8 @@ class PostService {
                 likes: 0,
                 comments: [],
                 likedBy: [],
+                status: input.status || 'published',
+                visibility: input.visibility || 'public',
                 createdAt: now,
                 updatedAt: now
             };

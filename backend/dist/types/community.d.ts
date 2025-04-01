@@ -72,22 +72,20 @@ export interface CommunityMember {
     role: 'admin' | 'moderator' | 'member';
     joinedAt: string;
 }
-export interface CommunityInvite {
-    id: string;
+export interface CommunityInvite extends CouchDBDocument {
+    type: 'invite';
     communityId: string;
     inviterId: string;
     inviteeId: string;
     status: 'pending' | 'accepted' | 'rejected';
-    createdAt: string;
     expiresAt: string;
 }
-export interface JoinRequest {
-    id: string;
+export interface JoinRequest extends CouchDBDocument {
+    type: 'join_request';
     communityId: string;
     userId: string;
     message?: string;
     status: 'pending' | 'approved' | 'rejected';
-    createdAt: string;
     reviewedAt?: string;
     reviewedBy?: string;
 }

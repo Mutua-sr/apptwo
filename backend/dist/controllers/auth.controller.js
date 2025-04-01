@@ -28,8 +28,49 @@ const login = async (req, res, next) => {
             error.statusCode = 401;
             throw error;
         }
+        // Find or create profile
+        const profiles = await database_1.DatabaseService.find({
+            selector: {
+                type: 'profile',
+                userId: user._id
+            }
+        });
+        let profile = profiles[0];
+        if (!profile) {
+            // Create profile if it doesn't exist
+            const newProfileData = {
+                type: 'profile',
+                userId: user._id,
+                username: email.split('@')[0],
+                email: user.email,
+                name: user.name,
+                role: user.role,
+                settings: {
+                    notifications: {
+                        email: true,
+                        push: true,
+                        inApp: true
+                    },
+                    privacy: {
+                        showEmail: false,
+                        showActivity: true,
+                        allowMessages: true
+                    },
+                    theme: 'light',
+                    language: 'en'
+                },
+                stats: {
+                    posts: 0,
+                    communities: 0,
+                    classrooms: 0,
+                    lastActive: new Date().toISOString()
+                }
+            };
+            profile = await database_1.DatabaseService.create(newProfileData);
+        }
         const token = jsonwebtoken_1.default.sign({
             id: user._id,
+            profileId: profile._id,
             email: user.email,
             name: user.name,
             role: user.role
@@ -40,10 +81,11 @@ const login = async (req, res, next) => {
                 token,
                 user: {
                     id: user._id,
+                    profileId: profile._id,
                     email: user.email,
                     name: user.name,
                     role: user.role,
-                    avatar: user.avatar
+                    avatar: profile.avatar
                 }
             }
         });
@@ -80,8 +122,39 @@ const register = async (req, res, next) => {
             role: types_1.UserRole.STUDENT // Default role for new users
         };
         const user = await database_1.DatabaseService.create(userData);
+        // Create associated profile document
+        const newProfileData = {
+            type: 'profile',
+            userId: user._id,
+            username: email.split('@')[0],
+            email,
+            name,
+            role: types_1.UserRole.STUDENT,
+            settings: {
+                notifications: {
+                    email: true,
+                    push: true,
+                    inApp: true
+                },
+                privacy: {
+                    showEmail: false,
+                    showActivity: true,
+                    allowMessages: true
+                },
+                theme: 'light',
+                language: 'en'
+            },
+            stats: {
+                posts: 0,
+                communities: 0,
+                classrooms: 0,
+                lastActive: new Date().toISOString()
+            }
+        };
+        const profile = await database_1.DatabaseService.create(newProfileData);
         const token = jsonwebtoken_1.default.sign({
             id: user._id,
+            profileId: profile._id,
             email: user.email,
             name: user.name,
             role: user.role
@@ -92,10 +165,11 @@ const register = async (req, res, next) => {
                 token,
                 user: {
                     id: user._id,
+                    profileId: profile._id,
                     email: user.email,
                     name: user.name,
                     role: user.role,
-                    avatar: user.avatar
+                    avatar: profile.avatar
                 }
             }
         });

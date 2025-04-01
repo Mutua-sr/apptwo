@@ -45,6 +45,7 @@ const apiService = {
   communities: {
     getAll: () => axios.get<ApiResponse<Community[]>>(`${API_URL}/communities`),
     getUserCommunities: () => axios.get<ApiResponse<Community[]>>(`${API_URL}/communities/me`),
+    getById: (id: string) => axios.get<ApiResponse<Community>>(`${API_URL}/communities/${id}`),
     create: (data: CreateRoomData) => axios.post<ApiResponse<Community>>(`${API_URL}/communities`, data),
     update: (id: string, data: UpdateRoomData) => axios.put<ApiResponse<Community>>(`${API_URL}/communities/${id}`, data),
     delete: (id: string) => axios.delete(`${API_URL}/communities/${id}`),
@@ -79,6 +80,114 @@ const apiService = {
       axios.post(`${API_URL}/chat/messages/${messageId}/reactions`, { reaction }),
     removeReaction: (messageId: string, reaction: string) => 
       axios.delete(`${API_URL}/chat/messages/${messageId}/reactions/${reaction}`)
+  },
+
+  admin: {
+    getDashboardStats: () => 
+      axios.get<ApiResponse<{
+        users: {
+          total: number;
+          active: number;
+          newThisMonth: number;
+        };
+        content: {
+          posts: number;
+          comments: number;
+          reports: number;
+        };
+        engagement: {
+          dailyActiveUsers: number;
+          monthlyActiveUsers: number;
+          averageSessionDuration: number;
+        };
+      }>>(`${API_URL}/admin/dashboard/stats`),
+    
+    getSettings: () => 
+      axios.get<ApiResponse<{
+        general: {
+          siteName: string;
+          maintenanceMode: boolean;
+          allowRegistration: boolean;
+        };
+        security: {
+          maxLoginAttempts: number;
+          sessionTimeout: number;
+          requireEmailVerification: boolean;
+        };
+        content: {
+          allowUserUploads: boolean;
+          maxUploadSize: number;
+          allowedFileTypes: string[];
+        };
+      }>>(`${API_URL}/admin/settings`),
+    
+    updateSettings: (settings: {
+      general: {
+        siteName: string;
+        maintenanceMode: boolean;
+        allowRegistration: boolean;
+      };
+      security: {
+        maxLoginAttempts: number;
+        sessionTimeout: number;
+        requireEmailVerification: boolean;
+      };
+      content: {
+        allowUserUploads: boolean;
+        maxUploadSize: number;
+        allowedFileTypes: string[];
+      };
+    }) => 
+      axios.put<ApiResponse<typeof settings>>(`${API_URL}/admin/settings`, settings),
+    
+    getReports: (filters?: {
+      status?: 'pending' | 'approved' | 'rejected' | 'all';
+      type?: 'post' | 'comment' | 'user' | 'community' | 'all';
+      page?: number;
+      limit?: number;
+      startDate?: string;
+      endDate?: string;
+    }) => 
+      axios.get<ApiResponse<{
+        data: Array<{
+          _id: string;
+          type: 'post' | 'comment' | 'user' | 'community';
+          targetId: string;
+          reportedBy: string;
+          reason: string;
+          description?: string;
+          status: 'pending' | 'approved' | 'rejected';
+          createdAt: string;
+          updatedAt: string;
+          metadata?: {
+            contentPreview?: string;
+            reportedUserName?: string;
+            communityName?: string;
+          };
+        }>;
+        pagination: {
+          page: number;
+          limit: number;
+          total: number;
+          pages: number;
+        };
+      }>>(`${API_URL}/admin/reports`, { params: filters }),
+    
+    updateReport: (reportId: string, status: 'approved' | 'rejected') => 
+      axios.put<ApiResponse<{
+        _id: string;
+        status: 'approved' | 'rejected';
+        updatedAt: string;
+      }>>(`${API_URL}/admin/reports/${reportId}`, { status }),
+    
+    deleteContent: (type: 'post' | 'comment' | 'user' | 'community', id: string) => 
+      axios.delete(`${API_URL}/admin/content/${type}/${id}`),
+    
+    getUserStats: () => 
+      axios.get<ApiResponse<{ total: number; active: number; banned: number }>>(`${API_URL}/admin/users/stats`),
+    
+    getContentStats: () => 
+      axios.get<ApiResponse<{ posts: number; comments: number; communities: number }>>(`${API_URL}/admin/content/stats`)
   }
 };
 

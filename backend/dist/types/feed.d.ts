@@ -17,6 +17,11 @@ export interface Post extends CouchDBDocument {
         id: string;
         name: string;
     };
+    imageUrl?: string;
+    status: 'draft' | 'published';
+    visibility: 'public' | 'private' | 'shared';
+    createdAt: string;
+    updatedAt: string;
 }
 export interface Comment {
     id: string;
@@ -36,6 +41,9 @@ export interface CreatePost {
         avatar?: string;
     };
     tags: string[];
+    imageUrl?: string;
+    status?: 'draft' | 'published';
+    visibility?: 'public' | 'private' | 'shared';
 }
 export interface UpdatePost {
     title?: string;
@@ -49,6 +57,9 @@ export interface UpdatePost {
         id: string;
         name: string;
     };
+    imageUrl?: string;
+    status?: 'draft' | 'published';
+    visibility?: 'public' | 'private' | 'shared';
 }
 export interface CreateComment {
     author: string;

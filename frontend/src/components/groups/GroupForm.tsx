@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { groupService } from '../../services/groupService';
-import { Classroom, Community, CreateClassroomData, CreateCommunityData } from '../../types/api';
+import { Classroom, Community } from '../../types/api';
+import { CreateClassroomData, CreateCommunityData } from '../../types/room';
 
 interface GroupFormProps {
   type: 'classroom' | 'community';
@@ -40,22 +41,52 @@ export const GroupForm: React.FC<GroupFormProps> = ({
       setIsSubmitting(true);
       setError(null);
 
-      const data = {
-        name: name.trim(),
-        description: description.trim() || undefined
-      };
-
       let result;
       if (group) {
         // Update existing group
+        const updateData = {
+          name: name.trim(),
+          description: description.trim() || ''
+        };
+        
         result = type === 'classroom'
-          ? await groupService.updateClassroom(group._id, data)
-          : await groupService.updateCommunity(group._id, data);
+          ? await groupService.updateClassroom(group._id, updateData)
+          : await groupService.updateCommunity(group._id, updateData);
       } else {
-        // Create new group
-        result = type === 'classroom'
-          ? await groupService.createClassroom(data as CreateClassroomData)
-          : await groupService.createCommunity(data as CreateCommunityData);
+        // Create new group with default settings
+        if (type === 'classroom') {
+          const classroomData: CreateClassroomData = {
+            name: name.trim(),
+            description: description.trim() || '',
+            type: 'classroom',
+            settings: {
+              isPrivate: false,
+              allowStudentPosts: true,
+              allowStudentComments: true,
+              allowStudentChat: true,
+              requirePostApproval: false,
+              notifications: {
+                assignments: true,
+                materials: true,
+                announcements: true
+              }
+            }
+          };
+          result = await groupService.createClassroom(classroomData);
+        } else {
+          const communityData: CreateCommunityData = {
+            name: name.trim(),
+            description: description.trim() || '',
+            type: 'community',
+            settings: {
+              isPrivate: false,
+              allowMemberPosts: true,
+              allowMemberInvites: true,
+              requirePostApproval: false
+            }
+          };
+          result = await groupService.createCommunity(communityData);
+        }
       }
 
       onSuccess?.(result);

@@ -7,6 +7,7 @@ import * as feedController from '../controllers/feed.controller';
 import * as communityController from '../controllers/community.controller';
 import * as chatController from '../controllers/chat.controller';
 import * as profileController from '../controllers/profile.controller';
+import reportRoutes from './report.routes';
 import multer from 'multer';
 
 const router = Router();
@@ -68,6 +69,9 @@ router.post('/video/call', auth, videoController.createSession);
 router.get('/video/call/:sessionId', auth, videoController.getSession);
 router.put('/video/call/:sessionId/status', auth, videoController.updateSessionStatus);
 router.put('/video/call/:sessionId/end', auth, videoController.endSession);
+
+// Report routes (admin only)
+router.use('/reports', reportRoutes);
 
 // Health check
 router.get('/health', (_, res) => res.json({ status: 'ok' }));

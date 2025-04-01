@@ -1,56 +1,34 @@
-import { User } from './api';
+import { Community, Classroom, User } from './api';
 
-export interface ChatMessage {
-  id: string;
-  content: string;
-  sender: {
-    id: string;
-    name: string;
-    avatar?: string;
-  };
-  roomId: string;
-  createdAt: string;
-  updatedAt?: string;
-  attachments?: {
-    type: 'image' | 'file';
-    url: string;
-    name: string;
-    size?: number;
-  }[];
-  reactions?: {
-    type: string;
-    users: string[];
-  }[];
-}
-
-export interface ChatParticipant {
-  id: string;
-  name: string;
-  avatar?: string;
-  role: 'owner' | 'admin' | 'member';
-  joinedAt: string;
-  lastSeen?: string;
+export interface ChatParticipant extends User {
   isOnline?: boolean;
+  lastSeen?: string;
+  typing?: boolean;
 }
 
 export interface ChatRoom {
-  _id: string;
-  name: string;
-  description?: string;
-  type: 'classroom' | 'community';
-  avatar?: string;
-  createdAt: string;
-  updatedAt: string;
-  lastMessage?: string;
   unreadCount?: number;
-  createdById: string;
-  createdBy: {
-    id: string;
-    name: string;
-    avatar?: string;
-  };
-  participants: ChatParticipant[];
+  lastMessage?: string;
 }
+
+export interface ChatMessage {
+  id: string;
+  roomId: string;
+  content: string;
+  sender: User;
+  createdAt: string;
+  readBy: string[];
+  attachments?: {
+    url: string;
+    type: string;
+    name: string;
+  }[];
+}
+
+export type ChatCommunity = Community & ChatRoom;
+export type ChatClassroom = Classroom & ChatRoom;
+
+export type ChatRoomType = ChatCommunity | ChatClassroom;
 
 export interface ChatService {
   connect(): Promise<void>;
@@ -65,13 +43,12 @@ export interface ChatService {
   removeReaction(messageId: string, reaction: string): Promise<void>;
   updateMessage(messageId: string, content: string): Promise<ChatMessage>;
   deleteMessage(messageId: string): Promise<void>;
-}
-
-export interface ChatState {
-  connected: boolean;
-  loading: boolean;
-  error: string | null;
-  messages: ChatMessage[];
-  participants: ChatParticipant[];
-  unreadCount: number;
+  getRoom(roomId: string): Promise<ChatRoom>;
+  onMessageReceived(callback: (message: ChatMessage) => void): void;
+  onMessageUpdated(callback: (message: ChatMessage) => void): void;
+  onMessageDeleted(callback: (messageId: string) => void): void;
+  onReactionAdded(callback: (data: { messageId: string; reaction: string; userId: string }) => void): void;
+  onReactionRemoved(callback: (data: { messageId: string; reaction: string; userId: string }) => void): void;
+  onUserJoined(callback: (participant: ChatParticipant) => void): void;
+  onUserLeft(callback: (participant: ChatParticipant) => void): void;
 }

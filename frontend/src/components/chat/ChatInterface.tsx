@@ -20,15 +20,14 @@ import {
 import { chatInterfaceStyles as styles } from '../../styles/components/ChatInterface.styles';
 import { ChatMessage, ChatRoom } from '../../types/chat';
 import { useAuth } from '../../contexts/AuthContext';
-import chatService from '../../services/chatService';
+import { chatService } from '../../services/chatService';
 import apiService from '../../services/apiService';
 
 interface ChatInterfaceProps {
   roomId: string;
-  roomType: 'classroom' | 'community';
   title: string;
   subtitle?: string;
-  avatar: string;
+  avatar?: string;
   isLive?: boolean;
   onStartVideoCall?: () => void;
   onStartVoiceCall?: () => void;
@@ -36,7 +35,6 @@ interface ChatInterfaceProps {
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({
   roomId,
-  roomType,
   title,
   subtitle,
   avatar,
@@ -54,20 +52,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   // Load initial messages and room info
   useEffect(() => {
     const loadData = async () => {
-      if (!roomType) {
-        console.error('Room type is undefined');
-        setError('Invalid room configuration');
-        setLoading(false);
-        return;
-      }
-
       try {
         setLoading(true);
         const [messagesResponse, roomResponse] = await Promise.all([
-          apiService.chat.getMessages(roomId, roomType),
-          apiService.chat.getRoomInfo(roomId, roomType)
+          apiService.chat.getMessages(roomId),
+          apiService.chat.getRoom(roomId)
         ]);
-        
         setMessages(messagesResponse.data.data);
         setRoom(roomResponse.data.data);
       } catch (err) {
@@ -81,7 +71,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
     if (roomId) {
       loadData();
     }
-  }, [roomId, roomType]);
+  }, [roomId]);
 
   // Handle real-time messages
   useEffect(() => {
@@ -91,12 +81,12 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
       }
     };
 
-    chatService.onMessage(handleNewMessage);
+    chatService.onMessageReceived(handleNewMessage);
     chatService.joinRoom(roomId);
 
     return () => {
-      chatService.offMessage(handleNewMessage);
       chatService.leaveRoom(roomId);
+      chatService.disconnect();
     };
   }, [roomId]);
 
@@ -111,11 +101,11 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
   }, [messages]);
 
   const handleSend = async () => {
-    if (message.trim() && currentUser && roomType) {
+    if (message.trim() && currentUser) {
       try {
         const trimmedMessage = message.trim();
         setMessage(''); // Clear input immediately for better UX
-        await chatService.sendMessage(trimmedMessage, roomId, roomType);
+        await apiService.chat.sendMessage(roomId, { content: trimmedMessage });
       } catch (err) {
         console.error('Error sending message:', err);
         setError('Failed to send message');
@@ -184,7 +174,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
           ) : (
             messages.map((msg: ChatMessage) => (
               <Box
-                key={msg._id}
+                key={msg.id}
                 sx={styles.messageWrapper(msg.sender.id === currentUser?.id)}
               >
                 <Paper sx={styles.messageContent(msg.sender.id === currentUser?.id)}>
@@ -195,7 +185,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   )}
                   <Typography variant="body1">{msg.content}</Typography>
                   <Typography sx={styles.timestamp}>
-                    {new Date(msg.timestamp).toLocaleTimeString([], { 
+                    {new Date(msg.createdAt).toLocaleTimeString([], { 
                       hour: '2-digit', 
                       minute: '2-digit' 
                     })}

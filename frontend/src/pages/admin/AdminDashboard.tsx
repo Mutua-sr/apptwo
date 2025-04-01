@@ -1,100 +1,176 @@
-import React from 'react';
-import { Box, Grid, Paper, Typography } from '@mui/material';
+import React, { useState } from 'react';
 import {
-  School as SchoolIcon,
-  Group as GroupIcon,
-  Person as PersonIcon,
-  Message as MessageIcon
+  Box,
+  Grid,
+  Paper,
+  Typography,
+  Button,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  CircularProgress,
+  Alert,
+  Stack
+} from '@mui/material';
+import {
+  Assessment as ReportIcon,
+  Download as DownloadIcon,
+  PictureAsPdf as PdfIcon,
+  TableChart as CsvIcon,
+  Description as ExcelIcon
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import reportService, { ReportOptions } from '../../services/reportService';
 
 const AdminDashboard: React.FC = () => {
-  const navigate = useNavigate();
+  const [openDialog, setOpenDialog] = useState(false);
+  const [reportType, setReportType] = useState<'users' | 'classrooms' | 'communities' | 'activities'>('users');
+  const [reportFormat, setReportFormat] = useState<'pdf' | 'csv' | 'excel'>('pdf');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const dashboardItems = [
-    {
-      title: 'Classrooms',
-      icon: <SchoolIcon sx={{ fontSize: 40 }} />,
-      path: '/admin/classrooms',
-      color: '#4caf50'
-    },
-    {
-      title: 'Communities',
-      icon: <GroupIcon sx={{ fontSize: 40 }} />,
-      path: '/admin/communities',
-      color: '#2196f3'
-    },
-    {
-      title: 'Users',
-      icon: <PersonIcon sx={{ fontSize: 40 }} />,
-      path: '/admin/users',
-      color: '#ff9800'
-    },
-    {
-      title: 'Messages',
-      icon: <MessageIcon sx={{ fontSize: 40 }} />,
-      path: '/admin/messages',
-      color: '#9c27b0'
-    }
+  const reportTypes = [
+    { value: 'users', label: 'Users Report', description: 'User registration and activity statistics' },
+    { value: 'classrooms', label: 'Classrooms Report', description: 'Classroom participation and engagement metrics' },
+    { value: 'communities', label: 'Communities Report', description: 'Community growth and interaction data' },
+    { value: 'activities', label: 'Activities Report', description: 'User actions and system events log' }
   ];
+
+  const handleGenerateReport = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const options: ReportOptions = {
+        type: reportType,
+        format: reportFormat,
+        dateRange: {
+          start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
+          end: new Date()
+        }
+      };
+      
+      const blob = await reportService.generateReport(options);
+      const fileName = `${reportType}-report.${reportFormat}`;
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setOpenDialog(false);
+    } catch (err) {
+      setError('Failed to generate report. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
-        Admin Dashboard
+        Admin Reports Dashboard
       </Typography>
 
       <Grid container spacing={3}>
-        {dashboardItems.map((item) => (
-          <Grid item xs={12} sm={6} md={3} key={item.title}>
+        {reportTypes.map((type) => (
+          <Grid item xs={12} sm={6} md={3} key={type.value}>
             <Paper
               sx={{
                 p: 3,
-                textAlign: 'center',
-                cursor: 'pointer',
-                transition: 'transform 0.2s',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: 4
-                }
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2
               }}
-              onClick={() => navigate(item.path)}
             >
-              <Box sx={{ color: item.color, mb: 2 }}>
-                {item.icon}
+              <Stack spacing={1}>
+                <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <ReportIcon color="primary" />
+                  {type.label}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {type.description}
+                </Typography>
+              </Stack>
+              <Box sx={{ mt: 'auto', pt: 2 }}>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  startIcon={<DownloadIcon />}
+                  onClick={() => {
+                    setReportType(type.value as any);
+                    setOpenDialog(true);
+                  }}
+                >
+                  Generate Report
+                </Button>
               </Box>
-              <Typography variant="h6">
-                {item.title}
-              </Typography>
             </Paper>
           </Grid>
         ))}
       </Grid>
 
-      {/* Stats Section */}
-      <Box sx={{ mt: 4 }}>
-        <Typography variant="h5" gutterBottom>
-          Overview
-        </Typography>
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Recent Activity
-              </Typography>
-              {/* Add activity list here */}
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                System Status
-              </Typography>
-              {/* Add status information here */}
-            </Paper>
-          </Grid>
-        </Grid>
-      </Box>
+      {/* Report Generation Dialog */}
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+        <DialogTitle>Generate {reportTypes.find(t => t.value === reportType)?.label}</DialogTitle>
+        <DialogContent sx={{ minWidth: 400 }}>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+          
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, mt: 1 }}>
+            {reportTypes.find(t => t.value === reportType)?.description}
+          </Typography>
+
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel>Format</InputLabel>
+            <Select
+              value={reportFormat}
+              label="Format"
+              onChange={(e) => setReportFormat(e.target.value as any)}
+            >
+              <MenuItem value="pdf">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <PdfIcon /> PDF Format
+                </Box>
+              </MenuItem>
+              <MenuItem value="csv">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CsvIcon /> CSV Format
+                </Box>
+              </MenuItem>
+              <MenuItem value="excel">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <ExcelIcon /> Excel Format
+                </Box>
+              </MenuItem>
+            </Select>
+          </FormControl>
+
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+            Report will include data from the last 30 days
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+          <Button
+            onClick={handleGenerateReport}
+            variant="contained"
+            disabled={loading}
+            startIcon={loading ? <CircularProgress size={20} /> : <DownloadIcon />}
+          >
+            {loading ? 'Generating...' : 'Generate'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

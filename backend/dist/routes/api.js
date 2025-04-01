@@ -45,7 +45,7 @@ const feedController = __importStar(require("../controllers/feed.controller"));
 const communityController = __importStar(require("../controllers/community.controller"));
 const chatController = __importStar(require("../controllers/chat.controller"));
 const profileController = __importStar(require("../controllers/profile.controller"));
-const postController = __importStar(require("../controllers/post.controller")); // Importing post controller
+const report_routes_1 = __importDefault(require("./report.routes"));
 const multer_1 = __importDefault(require("multer"));
 const router = (0, express_1.Router)();
 const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage() });
@@ -53,10 +53,10 @@ const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage()
 router.post('/auth/login', authController.login);
 router.post('/auth/register', authController.register);
 // Profile routes
-router.get('/profile/:userId', auth_1.auth, profileController.getProfile);
-router.put('/profile/:userId', auth_1.auth, profileController.updateProfile);
+router.get('/profile/:id', auth_1.auth, profileController.getProfile);
+router.put('/profile/:id', auth_1.auth, profileController.updateProfile);
 router.post('/profile/media', auth_1.auth, upload.single('file'), profileController.uploadMedia);
-router.get('/profile/:userId/activities', auth_1.auth, profileController.getActivities);
+router.get('/profile/:id/activities', auth_1.auth, profileController.getActivities);
 router.get('/profile/notifications', auth_1.auth, profileController.getNotifications);
 router.put('/profile/notifications/:notificationId/read', auth_1.auth, profileController.markNotificationRead);
 router.put('/profile/notifications/read-all', auth_1.auth, profileController.markAllNotificationsRead);
@@ -78,7 +78,10 @@ router.post('/feed/posts', auth_1.auth, feedController.createPost);
 router.get('/feed/posts/:id', auth_1.auth, feedController.getPost);
 router.put('/feed/posts/:id', auth_1.auth, feedController.updatePost);
 router.delete('/feed/posts/:id', auth_1.auth, feedController.deletePost);
-router.post('/feed/posts/bulk', auth_1.auth, postController.createPostsForAllUsers); // New route for bulk post creation
+router.post('/feed/posts/:id/like', auth_1.auth, feedController.likePost);
+router.delete('/feed/posts/:id/like', auth_1.auth, feedController.unlikePost);
+router.post('/feed/posts/:id/comments', auth_1.auth, feedController.addComment);
+router.post('/feed/posts/:id/share', auth_1.auth, feedController.sharePost);
 // Community routes
 router.get('/communities', auth_1.auth, communityController.getCommunities);
 router.post('/communities', auth_1.auth, communityController.createCommunity);
@@ -96,6 +99,8 @@ router.post('/video/call', auth_1.auth, videoController.createSession);
 router.get('/video/call/:sessionId', auth_1.auth, videoController.getSession);
 router.put('/video/call/:sessionId/status', auth_1.auth, videoController.updateSessionStatus);
 router.put('/video/call/:sessionId/end', auth_1.auth, videoController.endSession);
+// Report routes (admin only)
+router.use('/reports', report_routes_1.default);
 // Health check
 router.get('/health', (_, res) => res.json({ status: 'ok' }));
 exports.default = router;

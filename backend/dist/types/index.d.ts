@@ -9,6 +9,7 @@ export interface CouchDBDocument {
 }
 export interface AuthUser {
     id: string;
+    profileId: string;
     name: string;
     email: string;
     role: UserRole;
@@ -34,7 +35,8 @@ export interface AuthRequest extends Request {
     user?: AuthUser;
 }
 export interface JWTPayload extends JwtPayload {
-    userId: string;
+    id: string;
+    profileId: string;
     role: UserRole;
 }
 export interface MangoQuery {

@@ -18,13 +18,26 @@ import { Info as InfoIcon, Add as AddIcon } from '@mui/icons-material';
 import { Community, Classroom } from '../../types/api';
 import EmptyRoomList from './EmptyRoomList';
 
+// Create a union type that combines all required properties
+type RoomBase = {
+  _id: string;
+  name: string;
+  type: 'classroom' | 'community';
+  unreadCount?: number;
+  avatar?: string;
+  lastMessage?: string;
+};
+
+// Extend the base type with API types
+type ExtendedRoom = RoomBase & (Community | Classroom);
+
 interface ChatSidebarProps {
   type: 'classroom' | 'community';
-  rooms: (Community | Classroom)[];
-  availableRooms: (Community | Classroom)[];
+  rooms: ExtendedRoom[];
+  availableRooms: ExtendedRoom[];
   selectedRoomId?: string;
-  onRoomSelect: (room: Community | Classroom) => void;
-  onInfoClick: (room: Community | Classroom) => void;
+  onRoomSelect: (room: ExtendedRoom) => void;
+  onInfoClick: (room: ExtendedRoom) => void;
   onJoinRoom: (roomId: string) => void;
   onCreateRoom: (name: string, description: string) => void;
 }
@@ -51,14 +64,15 @@ const ChatSidebar: FC<ChatSidebarProps> = ({
   }
 
   return (
-    <Box sx={{ 
-      width: '100%', 
-      height: '100%',
-      bgcolor: 'background.paper',
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
-      {/* Header */}
+    <Box 
+      sx={{ 
+        width: '100%', 
+        height: '100%',
+        bgcolor: 'background.paper',
+        display: 'flex',
+        flexDirection: 'column'
+      }}
+    >
       <AppBar position="static" color="inherit" elevation={1}>
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
@@ -74,7 +88,6 @@ const ChatSidebar: FC<ChatSidebarProps> = ({
         </Toolbar>
       </AppBar>
 
-      {/* Room List */}
       <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
         <List sx={{ p: 0 }}>
           {rooms.map((room) => (
@@ -88,10 +101,13 @@ const ChatSidebar: FC<ChatSidebarProps> = ({
                   }
                 }}
                 secondaryAction={
-                  <IconButton edge="end" onClick={(e) => {
-                    e.stopPropagation();
-                    onInfoClick(room);
-                  }}>
+                  <IconButton 
+                    edge="end" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onInfoClick(room);
+                    }}
+                  >
                     <InfoIcon />
                   </IconButton>
                 }
@@ -99,11 +115,11 @@ const ChatSidebar: FC<ChatSidebarProps> = ({
               >
                 <ListItemAvatar>
                   <Badge
-                    badgeContent={room.unreadCount}
+                    badgeContent={room.unreadCount || 0}
                     color="primary"
                     anchorOrigin={{
                       vertical: 'bottom',
-                      horizontal: 'right',
+                      horizontal: 'right'
                     }}
                   >
                     <Avatar src={room.avatar}>
@@ -124,7 +140,7 @@ const ChatSidebar: FC<ChatSidebarProps> = ({
                       noWrap
                       sx={{ fontSize: '0.875rem' }}
                     >
-                      {room.lastMessage || `${room.type} chat`}
+                      {room.lastMessage || `${room.type === 'classroom' ? 'Classroom' : 'Community'} chat`}
                     </Typography>
                   }
                 />

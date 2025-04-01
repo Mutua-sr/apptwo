@@ -1,13 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { groupService } from '../../services/groupService';
-import { Classroom, Community } from '../../types/api';
+import { Classroom as ApiClassroom, Community as ApiCommunity } from '../../types/api';
 import { GroupForm } from './GroupForm';
+
+// Define display-specific types that contain only the properties we need
+interface DisplayGroup {
+  _id: string;
+  name: string;
+  description?: string;
+  type: 'classroom' | 'community';
+  displayDate?: string;
+}
 
 interface GroupListProps {
   type: 'classroom' | 'community';
   userId?: string;
   className?: string;
-  onGroupSelect?: (group: Classroom | Community) => void;
+  onGroupSelect?: (group: ApiClassroom | ApiCommunity) => void;
 }
 
 export const GroupList: React.FC<GroupListProps> = ({ 
@@ -16,7 +25,7 @@ export const GroupList: React.FC<GroupListProps> = ({
   className = '',
   onGroupSelect 
 }) => {
-  const [groups, setGroups] = useState<(Classroom | Community)[]>([]);
+  const [groups, setGroups] = useState<DisplayGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
@@ -26,10 +35,25 @@ export const GroupList: React.FC<GroupListProps> = ({
     try {
       setLoading(true);
       setError(null);
-      const fetchedGroups = type === 'classroom'
-        ? await groupService.getClassrooms(userId)
-        : await groupService.getCommunities(userId);
-      setGroups(fetchedGroups);
+      if (type === 'classroom') {
+        const classrooms = await groupService.getClassrooms(userId);
+        setGroups(classrooms.map(classroom => ({
+          _id: classroom._id,
+          name: classroom.name,
+          description: classroom.description,
+          type: 'classroom' as const,
+          displayDate: classroom.createdAt
+        })));
+      } else {
+        const communities = await groupService.getCommunities(userId);
+        setGroups(communities.map(community => ({
+          _id: community._id,
+          name: community.name,
+          description: community.description,
+          type: 'community' as const,
+          displayDate: community.createdAt
+        })));
+      }
     } catch (err: any) {
       setError(err.message || `Failed to load ${type}s`);
     } finally {
@@ -41,13 +65,28 @@ export const GroupList: React.FC<GroupListProps> = ({
     loadGroups();
   }, [type, userId]);
 
-  const handleGroupClick = (group: Classroom | Community) => {
+  const handleGroupClick = async (group: DisplayGroup) => {
     setSelectedGroup(group._id);
-    onGroupSelect?.(group);
+    if (onGroupSelect) {
+      try {
+        const originalGroup = type === 'classroom'
+          ? await groupService.getClassroom(group._id)
+          : await groupService.getCommunity(group._id);
+        onGroupSelect(originalGroup);
+      } catch (error) {
+        console.error('Error fetching group details:', error);
+      }
+    }
   };
 
-  const handleGroupCreated = (newGroup: Classroom | Community) => {
-    setGroups(prev => [...prev, newGroup]);
+  const handleGroupCreated = (newGroup: ApiClassroom | ApiCommunity) => {
+    setGroups(prev => [...prev, {
+      _id: newGroup._id,
+      name: newGroup.name,
+      description: newGroup.description,
+      type: type,
+      displayDate: type === 'community' && 'createdAt' in newGroup ? newGroup.createdAt : undefined
+    }]);
     setShowCreateForm(false);
   };
 
@@ -115,7 +154,7 @@ export const GroupList: React.FC<GroupListProps> = ({
                     {group.name}
                   </h3>
                   <span className="text-xs text-gray-500">
-                    {new Date(group.createdAt).toLocaleDateString()}
+                    {group.displayDate ? new Date(group.displayDate).toLocaleDateString() : ''}
                   </span>
                 </div>
                 {group.description && (

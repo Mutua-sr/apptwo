@@ -1,5 +1,5 @@
-import { Classroom, Community, CreateClassroomData, CreateCommunityData, UpdateClassroomData, UpdateCommunityData } from '../types/room';
 import { ApiResponse } from '../types/api';
+import { Classroom, Community, CreateClassroomData, CreateCommunityData, UpdateClassroomData, UpdateCommunityData, Room } from '../types/room';
 import apiService from './apiService';
 
 class GroupService {
