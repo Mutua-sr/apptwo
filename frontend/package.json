@@ -10,7 +10,7 @@
     "@reduxjs/toolkit": "^1.9.7",
     "@types/file-saver": "^2.0.7",
     "@types/socket.io-client": "^3.0.0",
-    "axios": "^1.6.2",
+    "axios": "^1.8.4",
     "file-saver": "^2.0.5",
     "jspdf": "^3.0.1",
     "jspdf-autotable": "^5.0.2",

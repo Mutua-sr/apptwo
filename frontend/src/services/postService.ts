@@ -60,7 +60,28 @@ const postService = {
 
   createPost: async (data: PostInput): Promise<Post> => {
     try {
-      const response = await axios.post<ApiResponse<ApiPost>>(`${API_BASE_URL}/posts`, data);
+      // Get current user info from localStorage or context
+      const userStr = localStorage.getItem('user');
+      if (!userStr) {
+        throw new Error('User not authenticated');
+      }
+      const user = JSON.parse(userStr);
+
+      const postData = {
+        type: 'post',
+        title: '', // Using empty string as title since it's not in the UI
+        content: data.content,
+        author: {
+          id: user.id,
+          username: user.username,
+          avatar: user.avatar
+        },
+        tags: data.tags || [], // Ensure tags is always an array
+        status: 'published',
+        visibility: 'public'
+      };
+
+      const response = await axios.post<ApiResponse<ApiPost>>(`${API_BASE_URL}/posts`, postData);
       return transformApiPost(response.data.data);
     } catch (error) {
       console.error('Error creating post:', error);
