@@ -223,6 +223,33 @@ const createRequiredIndexes = async () => {
       ddoc: 'posts-by-type-index',
       type: 'json'
     });
+
+    // Create index for classrooms by teacher
+    await db.createIndex({
+      index: {
+        fields: ['type', 'teacher.id', 'settings.isArchived']
+      },
+      ddoc: 'classrooms-by-teacher-index',
+      type: 'json'
+    });
+
+    // Create index for classrooms by student
+    await db.createIndex({
+      index: {
+        fields: ['type', 'students.id', 'settings.isArchived']
+      },
+      ddoc: 'classrooms-by-student-index',
+      type: 'json'
+    });
+
+    // Create index for active classrooms
+    await db.createIndex({
+      index: {
+        fields: ['type', 'settings.isArchived']
+      },
+      ddoc: 'active-classrooms-index',
+      type: 'json'
+    });
     
     logger.info('Created/Updated required database indexes');
   } catch (error: any) {

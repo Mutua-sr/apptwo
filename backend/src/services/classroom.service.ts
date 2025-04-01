@@ -116,41 +116,6 @@ export class ClassroomService {
     }
   }
 
-  static async createIndexes() {
-    try {
-      // Create index for classrooms by teacher
-      await DatabaseService.find({
-        selector: {
-          type: this.TYPE,
-          'teacher.id': { $exists: true }
-        },
-        use_index: 'classrooms-by-teacher-index'
-      });
-
-      // Create index for classrooms by student
-      await DatabaseService.find({
-        selector: {
-          type: this.TYPE,
-          'students.id': { $exists: true }
-        },
-        use_index: 'classrooms-by-student-index'
-      });
-
-      // Create index for active classrooms
-      await DatabaseService.find({
-        selector: {
-          type: this.TYPE,
-          'settings.isArchived': { $exists: true }
-        },
-        use_index: 'active-classrooms-index'
-      });
-
-      logger.info('Created classroom indexes');
-    } catch (error) {
-      logger.error('Error creating classroom indexes:', error);
-    }
-  }
-
   static async getByTeacher(teacherId: string): Promise<Classroom[]> {
     try {
       const query: DatabaseQuery = {
