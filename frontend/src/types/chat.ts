@@ -48,7 +48,11 @@ export interface ExtendedRoom {
     allowMemberPosts?: boolean;
     allowMemberInvites?: boolean;
     requirePostApproval: boolean;
-    notifications?: boolean;
+    notifications?: {
+      assignments: boolean;
+      materials: boolean;
+      announcements: boolean;
+    };
   };
   unreadCount?: number;
   lastMessage?: string;
