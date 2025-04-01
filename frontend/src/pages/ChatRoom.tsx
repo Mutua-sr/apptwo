@@ -20,7 +20,7 @@ import chatService from '../services/chatService';
 import { ChatRoom as ChatRoomType, ChatMessage } from '../types/chat';
 
 export interface ChatRoomProps {
-  chatType: 'direct' | 'classroom' | 'community';
+  chatType: 'classroom' | 'community';
 }
 
 const ChatRoom: React.FC<ChatRoomProps> = ({ chatType }) => {
@@ -71,7 +71,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ chatType }) => {
             };
             break;
           default:
-            throw new Error('Direct chat not implemented yet');
+            throw new Error('Invalid chat type');
         }
 
         if (!roomData) {
@@ -126,7 +126,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({ chatType }) => {
     if (!newMessage.trim() || !currentUser || !roomId) return;
 
     try {
-      chatService.sendMessage(newMessage.trim(), roomId);
+      await chatService.sendMessage(newMessage.trim(), roomId, chatType);
       setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);

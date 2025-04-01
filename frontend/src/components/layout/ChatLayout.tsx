@@ -40,6 +40,10 @@ const ChatLayout: FC<ChatLayoutProps> = ({
     setIsInfoOpen(true);
   };
 
+  const handleStartVideoCall = () => {
+    // Video call implementation
+  };
+
   return (
     <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       {/* Sidebar with chat rooms list */}
@@ -76,7 +80,9 @@ const ChatLayout: FC<ChatLayoutProps> = ({
             title={selectedRoom.name}
             subtitle={`${type} chat`}
             avatar={selectedRoom.avatar || ''}
-            onStartVideoCall={() => {}}
+            onStartVideoCall={handleStartVideoCall}
+            roomId={selectedRoom._id}
+            roomType={type}
           />
         ) : (
           <Box
