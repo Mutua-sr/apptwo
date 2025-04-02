@@ -128,38 +128,6 @@ export interface AdminDashboardStats {
   };
 }
 
-export interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  error?: {
-    message: string;
-    code?: string;
-  };
-  meta?: {
-    page?: number;
-    limit?: number;
-    total?: number;
-    hasMore?: boolean;
-  };
-}
-
-export interface CommunityResponse {
-  id: string;
-  name: string;
-  description: string;
-  avatar?: string;
-  creator: {
-    id: string;
-    name: string;
-    avatar?: string;
-  };
-  members: number;
-  topics: string[];
-  isPrivate: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface Post {
   _id: string;
   content: string;
@@ -192,6 +160,29 @@ export interface Post {
   updatedAt?: string;
 }
 
+// Add the new PaginatedResponse types
+export interface PaginatedMeta {
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: PaginatedMeta;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  error?: {
+    message: string;
+    code?: string;
+  };
+  meta?: PaginatedMeta;
+}
+
+// Keep all other existing types
 export interface PostResponse {
   id: string;
   title: string;
