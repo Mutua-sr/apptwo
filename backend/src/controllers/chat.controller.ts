@@ -5,8 +5,41 @@ import { ApiError } from '../middleware/errorHandler';
 import { AuthRequest } from '../types';
 import { ChatMessage, ChatRoom } from '../types/chat';
 
+interface ExtendedAuthRequest extends AuthRequest {
+  params: {
+    id?: string;
+    roomId?: string;
+    messageId?: string;
+  };
+  query: {
+    before?: string;
+    limit?: string;
+  };
+  body: {
+    name?: string;
+    description?: string;
+    avatar?: string;
+    participants?: Array<{
+      userId: string;
+      name: string;
+      avatar: string;
+    }>;
+    settings?: {
+      isPrivate?: boolean;
+      allowReactions?: boolean;
+      allowAttachments?: boolean;
+      allowReplies?: boolean;
+      allowEditing?: boolean;
+      allowDeletion?: boolean;
+    };
+    content?: string;
+    replyTo?: string;
+    attachments?: any[];
+  };
+}
+
 export const getChatRooms = async (
-  req: AuthRequest,
+  req: ExtendedAuthRequest,
   res: Response,
   next: NextFunction
 ) => {
@@ -22,9 +55,29 @@ export const getChatRooms = async (
       }
     });
 
+    // Transform rooms to match frontend expectations
+    const transformedRooms = rooms.map(room => ({
+      id: room._id,
+      name: room.name,
+      type: room.type || 'community',
+      description: room.description || '',
+      currentUserId: req.user?.id || '',
+      participants: room.participants.map(p => ({
+        id: p.userId,
+        name: p.name,
+        avatar: p.avatar || '',
+        status: 'online',
+        lastSeen: p.lastReadTimestamp
+      })),
+      lastMessage: room.lastMessage,
+      unreadCount: 0,
+      createdAt: room.createdAt,
+      updatedAt: room.updatedAt
+    }));
+
     res.json({
       success: true,
-      data: rooms
+      data: transformedRooms
     });
   } catch (error) {
     next(error);
@@ -32,7 +85,7 @@ export const getChatRooms = async (
 };
 
 export const createChatRoom = async (
-  req: AuthRequest,
+  req: ExtendedAuthRequest,
   res: Response,
   next: NextFunction
 ) => {
@@ -44,24 +97,24 @@ export const createChatRoom = async (
     const timestamp = new Date().toISOString();
     const roomData: Omit<ChatRoom, '_id' | '_rev' | 'createdAt' | 'updatedAt'> = {
       type: 'chatroom',
-      name: req.body.name,
-      description: req.body.description,
-      avatar: req.body.avatar,
+      name: req.body.name || 'New Chat Room',
+      description: req.body.description || '',
+      avatar: req.body.avatar || '',
       participants: [
         {
           userId: req.user.id,
-          name: req.user.name,
-          avatar: req.user.avatar,
-          role: 'admin',
+          name: req.user.name || '',
+          avatar: req.user.avatar || '',
+          role: 'admin' as const,
           joinedAt: timestamp
         },
-        ...req.body.participants.map((p: any) => ({
+        ...(req.body.participants?.map((p: any) => ({
           userId: p.userId,
-          name: p.name,
-          avatar: p.avatar,
-          role: 'member',
+          name: p.name || '',
+          avatar: p.avatar || '',
+          role: 'member' as const,
           joinedAt: timestamp
-        }))
+        })) || [])
       ],
       settings: {
         isPrivate: req.body.settings?.isPrivate ?? false,
@@ -75,20 +128,40 @@ export const createChatRoom = async (
 
     const room = await DatabaseService.create<ChatRoom>(roomData);
 
+    // Transform room to match frontend expectations
+    const transformedRoom = {
+      id: room._id,
+      name: room.name,
+      type: room.type || 'community',
+      description: room.description || '',
+      currentUserId: req.user.id,
+      participants: room.participants.map(p => ({
+        id: p.userId,
+        name: p.name,
+        avatar: p.avatar || '',
+        status: 'online',
+        lastSeen: p.lastReadTimestamp
+      })),
+      lastMessage: room.lastMessage,
+      unreadCount: 0,
+      createdAt: room.createdAt,
+      updatedAt: room.updatedAt
+    };
+
     // Notify all participants about the new room
     room.participants.forEach(participant => {
       if (participant.userId !== req.user?.id) {
         RealtimeService.getInstance().emitToUser(
           participant.userId,
           'room_created',
-          { room }
+          { room: transformedRoom }
         );
       }
     });
 
     res.status(201).json({
       success: true,
-      data: room
+      data: transformedRoom
     });
   } catch (error) {
     next(error);
@@ -96,12 +169,15 @@ export const createChatRoom = async (
 };
 
 export const getChatRoom = async (
-  req: AuthRequest,
+  req: ExtendedAuthRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id;
+    if (!id) {
+      throw new ApiError('Room ID is required', 400);
+    }
     
     if (!req.user?.id) {
       throw new ApiError('Unauthorized', 401);
@@ -109,18 +185,39 @@ export const getChatRoom = async (
 
     const room = await DatabaseService.read<ChatRoom>(id);
 
-    if (!room) {
+    if (!room || !room.participants) {
       throw new ApiError('Chat room not found', 404);
     }
 
     // Check if user is a participant
-    if (!room.participants.some(p => p.userId === req.user?.id)) {
+    const isParticipant = room.participants.some(p => p.userId === req.user?.id);
+    if (!isParticipant) {
       throw new ApiError('Not authorized to access this chat room', 403);
     }
 
+    // Transform the room data to match frontend expectations
+    const transformedRoom = {
+      id: room._id,
+      name: room.name,
+      type: room.type || 'community',
+      description: room.description || '',
+      currentUserId: req.user.id,
+      participants: room.participants.map(p => ({
+        id: p.userId,
+        name: p.name,
+        avatar: p.avatar || '',
+        status: 'online',
+        lastSeen: p.lastReadTimestamp
+      })),
+      lastMessage: room.lastMessage,
+      unreadCount: 0,
+      createdAt: room.createdAt,
+      updatedAt: room.updatedAt
+    };
+
     res.json({
       success: true,
-      data: room
+      data: transformedRoom
     });
   } catch (error) {
     next(error);
@@ -128,35 +225,55 @@ export const getChatRoom = async (
 };
 
 export const getChatHistory = async (
-  req: AuthRequest,
+  req: ExtendedAuthRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const { roomId } = req.params;
-    const { before, limit = 50 } = req.query;
+    const roomId = req.params.roomId;
+    if (!roomId) {
+      throw new ApiError('Room ID is required', 400);
+    }
+
+    const { before } = req.query;
+    const limit = Number(req.query.limit) || 50;
 
     // Check if user is a participant
     const room = await DatabaseService.read<ChatRoom>(roomId);
-    if (!room || !room.participants.some(p => p.userId === req.user?.id)) {
+    if (!room || !room.participants) {
+      throw new ApiError('Chat room not found', 404);
+    }
+    
+    if (!room.participants.some(p => p.userId === req.user?.id)) {
       throw new ApiError('Not authorized to access this chat room', 403);
     }
 
-    const query = {
+    const query: any = {
       selector: {
         type: 'message',
-        roomId,
+        roomId: roomId,
         ...(before ? { createdAt: { $lt: String(before) } } : {})
       },
-      limit: Number(limit),
+      limit: limit,
       sort: [{ createdAt: 'desc' }] as [{ [key: string]: 'desc' | 'asc' }]
     };
 
     const messages = await DatabaseService.find<ChatMessage>(query);
 
+    // Transform messages to match frontend expectations
+    const transformedMessages = messages.map(msg => ({
+      id: msg._id,
+      content: msg.content,
+      senderId: msg.senderId,
+      senderName: msg.senderName,
+      senderAvatar: msg.senderAvatar || '',
+      timestamp: msg.timestamp,
+      reactions: msg.reactions || {}
+    }));
+
     res.json({
       success: true,
-      data: messages.reverse() // Return in chronological order
+      data: transformedMessages.reverse() // Return in chronological order
     });
   } catch (error) {
     next(error);
@@ -164,7 +281,7 @@ export const getChatHistory = async (
 };
 
 export const sendMessage = async (
-  req: AuthRequest,
+  req: ExtendedAuthRequest,
   res: Response,
   next: NextFunction
 ) => {
@@ -173,12 +290,25 @@ export const sendMessage = async (
       throw new ApiError('Unauthorized', 401);
     }
 
-    const { roomId } = req.params;
-    const { content, replyTo, attachments } = req.body;
+    const roomId = req.params.roomId;
+    if (!roomId) {
+      throw new ApiError('Room ID is required', 400);
+    }
+
+    const content = req.body.content;
+    if (!content) {
+      throw new ApiError('Message content is required', 400);
+    }
+
+    const { replyTo, attachments } = req.body;
 
     // Check if user is a participant
     const room = await DatabaseService.read<ChatRoom>(roomId);
-    if (!room || !room.participants.some(p => p.userId === req.user?.id)) {
+    if (!room || !room.participants) {
+      throw new ApiError('Chat room not found', 404);
+    }
+    
+    if (!room.participants.some(p => p.userId === req.user?.id)) {
       throw new ApiError('Not authorized to send messages in this room', 403);
     }
 
@@ -187,14 +317,32 @@ export const sendMessage = async (
       content,
       roomId,
       senderId: req.user.id,
-      senderName: req.user.name,
-      senderAvatar: req.user.avatar,
+      senderName: req.user.name || '',
+      senderAvatar: req.user.avatar || '',
       timestamp: new Date().toISOString(),
-      ...(replyTo && { replyTo }),
+      ...(replyTo && { 
+        replyTo: {
+          messageId: replyTo,
+          content: content,
+          senderId: req.user.id,
+          senderName: req.user.name || ''
+        }
+      }),
       ...(attachments && { attachments })
     };
 
     const message = await DatabaseService.create<ChatMessage>(messageData);
+
+    // Transform message to match frontend expectations
+    const transformedMessage = {
+      id: message._id,
+      content: message.content,
+      senderId: message.senderId,
+      senderName: message.senderName,
+      senderAvatar: message.senderAvatar || '',
+      timestamp: message.timestamp,
+      reactions: message.reactions || {}
+    };
 
     // Update room's last message
     await DatabaseService.update<ChatRoom>(roomId, {
@@ -210,12 +358,12 @@ export const sendMessage = async (
     RealtimeService.getInstance().broadcastToRoom(
       roomId,
       'message',
-      message
+      transformedMessage
     );
 
     res.status(201).json({
       success: true,
-      data: message
+      data: transformedMessage
     });
   } catch (error) {
     next(error);
@@ -223,12 +371,16 @@ export const sendMessage = async (
 };
 
 export const deleteMessage = async (
-  req: AuthRequest,
+  req: ExtendedAuthRequest,
   res: Response,
   next: NextFunction
 ) => {
   try {
-    const { messageId } = req.params;
+    const messageId = req.params.messageId;
+    if (!messageId) {
+      throw new ApiError('Message ID is required', 400);
+    }
+
     const message = await DatabaseService.read<ChatMessage>(messageId);
 
     if (!message) {
@@ -237,7 +389,11 @@ export const deleteMessage = async (
 
     // Check if user is the sender or an admin
     const room = await DatabaseService.read<ChatRoom>(message.roomId);
-    const isAdmin = room?.participants.some(p => p.userId === req.user?.id && p.role === 'admin');
+    if (!room || !room.participants) {
+      throw new ApiError('Chat room not found', 404);
+    }
+    
+    const isAdmin = room.participants.some(p => p.userId === req.user?.id && p.role === 'admin');
     if (message.senderId !== req.user?.id && !isAdmin) {
       throw new ApiError('Not authorized to delete this message', 403);
     }
@@ -246,6 +402,19 @@ export const deleteMessage = async (
       isDeleted: true,
       deletedAt: new Date().toISOString()
     });
+
+    // Transform deleted message to match frontend expectations
+    const transformedMessage = {
+      id: deletedMessage._id,
+      content: deletedMessage.content,
+      senderId: deletedMessage.senderId,
+      senderName: deletedMessage.senderName,
+      senderAvatar: deletedMessage.senderAvatar || '',
+      timestamp: deletedMessage.timestamp,
+      reactions: deletedMessage.reactions || {},
+      isDeleted: deletedMessage.isDeleted,
+      deletedAt: deletedMessage.deletedAt
+    };
 
     // Notify room about deleted message
     RealtimeService.getInstance().broadcastToRoom(
@@ -259,7 +428,7 @@ export const deleteMessage = async (
 
     res.json({
       success: true,
-      data: deletedMessage
+      data: transformedMessage
     });
   } catch (error) {
     next(error);
