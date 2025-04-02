@@ -135,24 +135,61 @@ const ChatRoom: React.FC = () => {
     : participants.length;
 
   return (
-    <Paper sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <Paper 
+      sx={{ 
+        height: '100vh', 
+        display: 'flex', 
+        flexDirection: 'column',
+        background: 'rgba(30, 41, 59, 0.7)',
+        backdropFilter: 'blur(12px)',
+        border: '1px solid rgba(255, 255, 255, 0.05)',
+        boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)'
+      }}
+    >
       {/* Header */}
       <Box sx={{ 
         p: 2, 
-        borderBottom: 1, 
-        borderColor: 'divider',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
         display: 'flex',
         alignItems: 'center',
         gap: 2,
-        bgcolor: 'primary.main',
-        color: 'primary.contrastText'
+        background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.9) 0%, rgba(79, 70, 229, 0.9) 100%)',
+        backdropFilter: 'blur(12px)',
+        color: '#FFFFFF'
       }}>
-        <IconButton onClick={() => navigate(-1)} sx={{ color: 'inherit' }}>
+        <IconButton 
+          onClick={() => navigate(-1)} 
+          sx={{ 
+            color: 'inherit',
+            '&:hover': {
+              background: 'rgba(255, 255, 255, 0.1)',
+              transform: 'translateY(-2px)'
+            }
+          }}
+        >
           <ArrowBackIcon />
         </IconButton>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h6">{room.name}</Typography>
-          <Typography variant="body2">{room.description}</Typography>
+          <Typography 
+            variant="h6" 
+            sx={{
+              fontWeight: 600,
+              background: 'linear-gradient(135deg, #FFFFFF 0%, rgba(255, 255, 255, 0.8) 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}
+          >
+            {room.name}
+          </Typography>
+          <Typography 
+            variant="body2"
+            sx={{ 
+              color: 'rgba(255, 255, 255, 0.8)',
+              fontWeight: 500
+            }}
+          >
+            {room.description}
+          </Typography>
         </Box>
         <Typography variant="body2">
           {memberCount} members • {participants.length} online
@@ -162,12 +199,12 @@ const ChatRoom: React.FC = () => {
       {/* Active Participants */}
       <Box sx={{ 
         p: 1, 
-        borderBottom: 1, 
-        borderColor: 'divider', 
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)', 
         display: 'flex', 
         gap: 1, 
         overflowX: 'auto',
-        bgcolor: 'background.paper'
+        background: 'rgba(30, 41, 59, 0.6)',
+        backdropFilter: 'blur(12px)'
       }}>
         {participants.map((participant) => (
           <Box key={participant.id} sx={{ 
@@ -182,8 +219,9 @@ const ChatRoom: React.FC = () => {
               sx={{ 
                 width: 32, 
                 height: 32,
-                border: '2px solid',
-                borderColor: participant.status === 'online' ? 'success.main' : 'grey.300'
+              border: '2px solid',
+              borderColor: participant.status === 'online' ? '#10B981' : 'rgba(255, 255, 255, 0.2)',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.25)'
               }}
             />
             <Typography variant="caption" sx={{ mt: 0.5 }}>

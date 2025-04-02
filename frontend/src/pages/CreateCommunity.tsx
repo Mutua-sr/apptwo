@@ -92,7 +92,16 @@ const CreateCommunity: React.FC = () => {
           >
             <ArrowBackIcon />
           </IconButton>
-          <Typography variant="h4" component="h1">
+          <Typography 
+            variant="h4" 
+            component="h1"
+            sx={{
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #818CF8 0%, #34D399 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}
+          >
             Create New Community
           </Typography>
         </Box>
@@ -103,7 +112,15 @@ const CreateCommunity: React.FC = () => {
           </Alert>
         )}
 
-        <Paper sx={{ p: 4 }}>
+        <Paper 
+          sx={{ 
+            p: 4,
+            background: 'rgba(30, 41, 59, 0.7)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid rgba(255, 255, 255, 0.05)',
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)'
+          }}
+        >
           <form onSubmit={handleSubmit}>
             <TextField
               fullWidth
@@ -112,7 +129,20 @@ const CreateCommunity: React.FC = () => {
               value={formData.name}
               onChange={handleInputChange}
               required
-              sx={{ mb: 3 }}
+              sx={{
+                mb: 3,
+                '& .MuiOutlinedInput-root': {
+                  background: 'rgba(30, 41, 59, 0.6)',
+                  backdropFilter: 'blur(12px)',
+                  '&:hover': {
+                    background: 'rgba(30, 41, 59, 0.8)'
+                  },
+                  '&.Mui-focused': {
+                    background: 'rgba(30, 41, 59, 0.9)',
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)'
+                  }
+                }
+              }}
               inputProps={{ maxLength: 50 }}
               helperText={`${formData.name.length}/50 characters`}
             />
@@ -125,7 +155,20 @@ const CreateCommunity: React.FC = () => {
               onChange={handleInputChange}
               multiline
               rows={4}
-              sx={{ mb: 3 }}
+              sx={{
+                mb: 3,
+                '& .MuiOutlinedInput-root': {
+                  background: 'rgba(30, 41, 59, 0.6)',
+                  backdropFilter: 'blur(12px)',
+                  '&:hover': {
+                    background: 'rgba(30, 41, 59, 0.8)'
+                  },
+                  '&.Mui-focused': {
+                    background: 'rgba(30, 41, 59, 0.9)',
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)'
+                  }
+                }
+              }}
               inputProps={{ maxLength: 500 }}
               helperText={`${formData.description.length}/500 characters`}
             />
@@ -198,6 +241,15 @@ const CreateCommunity: React.FC = () => {
                 variant="outlined"
                 onClick={() => navigate('/communities')}
                 disabled={loading}
+                sx={{
+                  borderColor: 'rgba(99, 102, 241, 0.5)',
+                  color: '#F8FAFC',
+                  '&:hover': {
+                    borderColor: 'rgba(99, 102, 241, 0.8)',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 4px 15px rgba(99, 102, 241, 0.15)'
+                  }
+                }}
               >
                 Cancel
               </Button>
@@ -205,6 +257,15 @@ const CreateCommunity: React.FC = () => {
                 type="submit"
                 variant="contained"
                 disabled={loading || !formData.name.trim()}
+                sx={{
+                  background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
+                  boxShadow: '0 4px 20px rgba(99, 102, 241, 0.25)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #818CF8 0%, #6366F1 100%)',
+                    boxShadow: '0 8px 25px rgba(99, 102, 241, 0.35)',
+                    transform: 'translateY(-2px)'
+                  }
+                }}
               >
                 {loading ? (
                   <CircularProgress size={24} />

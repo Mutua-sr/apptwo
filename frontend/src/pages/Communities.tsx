@@ -143,7 +143,16 @@ const Communities: React.FC = () => {
           flexDirection: { xs: 'column', sm: 'row' },
           gap: 2
         }}>
-          <Typography variant="h4" component="h1">
+          <Typography 
+            variant="h4" 
+            component="h1"
+            sx={{
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #818CF8 0%, #34D399 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent'
+            }}
+          >
             Communities
           </Typography>
           <Button
@@ -151,31 +160,60 @@ const Communities: React.FC = () => {
             color="primary"
             startIcon={<AddIcon />}
             onClick={handleCreateCommunity}
+            sx={{
+              background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
+              boxShadow: '0 4px 20px rgba(99, 102, 241, 0.25)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #818CF8 0%, #6366F1 100%)',
+                boxShadow: '0 8px 25px rgba(99, 102, 241, 0.35)',
+                transform: 'translateY(-2px)'
+              }
+            }}
           >
             Create New Community
           </Button>
         </Box>
 
         <Box sx={{ mb: 4 }}>
-          <TextField
-            fullWidth
-            variant="outlined"
-            placeholder="Search communities..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-          />
+            <TextField
+              fullWidth
+              variant="outlined"
+              placeholder="Search communities..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: 'rgba(248, 250, 252, 0.75)' }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  background: 'rgba(30, 41, 59, 0.6)',
+                  backdropFilter: 'blur(12px)',
+                  borderRadius: '12px',
+                  '&:hover': {
+                    background: 'rgba(30, 41, 59, 0.8)'
+                  },
+                  '&.Mui-focused': {
+                    background: 'rgba(30, 41, 59, 0.9)',
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)'
+                  }
+                }
+              }}
+            />
         </Box>
         
         {filteredCommunities.length === 0 ? (
           <Box sx={{ textAlign: 'center', mt: 4 }}>
-            <Typography variant="h6" color="text.secondary">
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              color: 'rgba(248, 250, 252, 0.75)',
+              fontWeight: 600
+            }}
+          >
               {searchTerm ? 'No communities found matching your search' : 'No communities available'}
             </Typography>
           </Box>

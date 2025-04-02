@@ -1,6 +1,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Box, CssBaseline } from '@mui/material';
+import { Box, CssBaseline, ThemeProvider, useMediaQuery } from '@mui/material';
+import theme from './theme/theme';
+import mobileTheme from './theme/mobileTheme';
 import { AuthProvider } from './contexts/AuthContext';
 import PrivateRoute from './components/auth/PrivateRoute';
 import AdminRoute from './components/auth/AdminRoute';
@@ -20,8 +22,12 @@ import CommunityManagement from './pages/admin/CommunityManagement';
 import UserManagement from './pages/admin/UserManagement';
 
 const App: React.FC = () => {
+  const isMobile = useMediaQuery('(max-width:600px)');
+  const currentTheme = isMobile ? mobileTheme : theme;
+
   return (
-    <AuthProvider>
+    <ThemeProvider theme={currentTheme}>
+      <AuthProvider>
       <Router>
         <CssBaseline />
         <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -56,6 +62,7 @@ const App: React.FC = () => {
         </Box>
       </Router>
     </AuthProvider>
+    </ThemeProvider>
   );
 };
 
