@@ -106,7 +106,7 @@ export const createClassroom = async (
 
     const chatRoom = await DatabaseService.create(chatRoomData);
 
-    const classroomData: Omit<Classroom, '_id' | '_rev' | 'createdAt' | 'updatedAt'> = {
+    const classroomData: Omit<Classroom, '_id' | '_rev' | 'createdAt' | 'updatedAt'> & { chatRoomId: string } = {
       type: 'classroom',
       name: req.body.name.trim(),
       description: req.body.description.trim(),
