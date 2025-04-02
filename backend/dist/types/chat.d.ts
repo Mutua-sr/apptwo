@@ -24,7 +24,7 @@ export interface ChatMessage extends CouchDBDocument {
     deletedAt?: string;
 }
 export interface ChatRoom extends CouchDBDocument {
-    type: 'chatroom';
+    type: 'chatroom' | 'community' | 'classroom';
     name: string;
     description?: string;
     avatar?: string;

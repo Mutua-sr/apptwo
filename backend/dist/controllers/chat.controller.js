@@ -140,8 +140,103 @@ const getChatRoom = async (req, res, next) => {
         if (!((_a = req.user) === null || _a === void 0 ? void 0 : _a.id)) {
             throw new errorHandler_1.ApiError('Unauthorized', 401);
         }
-        // Get the room by ID
-        const room = await database_1.DatabaseService.read(roomId);
+        // Try to find the room - first check if it's a direct chat room
+        let room = await database_1.DatabaseService.read(roomId);
+        // If not found, try to find a community or classroom with this ID
+        if (!room) {
+            // Try to find as Community
+            const communityResults = await database_1.DatabaseService.find({
+                selector: {
+                    _id: roomId,
+                    type: 'community',
+                    'members': {
+                        $elemMatch: {
+                            id: req.user.id
+                        }
+                    }
+                }
+            });
+            if (communityResults.length > 0) {
+                const community = communityResults[0];
+                room = {
+                    _id: community._id,
+                    _rev: community._rev,
+                    type: 'community',
+                    name: community.name,
+                    description: community.description,
+                    avatar: community.avatar,
+                    participants: community.members.map(member => ({
+                        userId: member.id,
+                        name: member.name,
+                        avatar: member.avatar,
+                        role: member.role,
+                        joinedAt: member.joinedAt
+                    })),
+                    settings: {
+                        isPrivate: community.settings.isPrivate,
+                        allowReactions: true,
+                        allowAttachments: true,
+                        allowReplies: true,
+                        allowEditing: true,
+                        allowDeletion: true
+                    },
+                    createdAt: community.createdAt,
+                    updatedAt: community.updatedAt
+                };
+            }
+            else {
+                // Try to find as Classroom
+                const classroomResults = await database_1.DatabaseService.find({
+                    selector: {
+                        _id: roomId,
+                        type: 'classroom',
+                        $or: [
+                            {
+                                'teacher.id': req.user.id
+                            },
+                            {
+                                'students': {
+                                    $elemMatch: {
+                                        id: req.user.id
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                });
+                if (classroomResults.length > 0) {
+                    const classroom = classroomResults[0];
+                    const allMembers = [
+                        { ...classroom.teacher, role: 'admin' },
+                        ...classroom.students.map(s => ({ ...s, role: 'member' }))
+                    ];
+                    room = {
+                        _id: classroom._id,
+                        _rev: classroom._rev,
+                        type: 'classroom',
+                        name: classroom.name,
+                        description: classroom.description,
+                        participants: allMembers.map(member => ({
+                            userId: member.id,
+                            name: member.name,
+                            avatar: member.avatar,
+                            role: member.role,
+                            joinedAt: 'joinedAt' in member ? member.joinedAt : classroom.createdAt
+                        })),
+                        settings: {
+                            isPrivate: true,
+                            allowReactions: true,
+                            allowAttachments: true,
+                            allowReplies: true,
+                            allowEditing: true,
+                            allowDeletion: true
+                        },
+                        createdAt: classroom.createdAt,
+                        updatedAt: classroom.updatedAt
+                    };
+                }
+            }
+        }
         if (!room) {
             logger_1.default.error(`Chat room not found with ID: ${roomId}`);
             return res.status(404).json({
@@ -151,13 +246,13 @@ const getChatRoom = async (req, res, next) => {
                 }
             });
         }
-        // Verify it's a chat room
-        if (room.type !== 'chatroom') {
+        // Verify it's a valid room type
+        if (!['chatroom', 'community', 'classroom'].includes(room.type)) {
             logger_1.default.error(`Invalid room type for ID ${roomId}: ${room.type}`);
             return res.status(404).json({
                 success: false,
                 error: {
-                    message: 'Invalid chat room'
+                    message: 'Invalid room type'
                 }
             });
         }
@@ -183,7 +278,7 @@ const getChatRoom = async (req, res, next) => {
         const transformedRoom = {
             id: room._id,
             name: room.name,
-            type: room.type || 'community',
+            type: room.type, // Keep the original type (chatroom, community, or classroom)
             description: room.description || '',
             currentUserId: req.user.id,
             participants: room.participants.map(p => ({

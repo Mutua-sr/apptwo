@@ -1,22 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const classroom_resolvers_1 = require("./classroom.resolvers");
 const community_resolvers_1 = require("./community.resolvers");
 const post_resolvers_1 = require("./post.resolvers");
 // Merge resolvers
 const resolvers = {
     Query: {
-        ...classroom_resolvers_1.classroomResolvers.Query,
         ...community_resolvers_1.communityResolvers.Query,
         ...post_resolvers_1.postResolvers.Query,
     },
     Mutation: {
-        ...classroom_resolvers_1.classroomResolvers.Mutation,
         ...community_resolvers_1.communityResolvers.Mutation,
         ...post_resolvers_1.postResolvers.Mutation,
     },
     // Type resolvers
-    Classroom: classroom_resolvers_1.classroomResolvers.Classroom,
     Community: community_resolvers_1.communityResolvers.Community,
     Post: post_resolvers_1.postResolvers.Post,
     // Scalar resolvers for dates

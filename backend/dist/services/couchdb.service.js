@@ -195,23 +195,6 @@ const createRequiredIndexes = async () => {
                 name: 'posts-by-type-index',
                 fields: ['type']
             },
-            {
-                name: 'classrooms-by-teacher-index',
-                fields: ['type', 'teacher.id', 'settings.isArchived', 'updatedAt']
-            },
-            {
-                name: 'classrooms-by-student-index',
-                fields: ['type', 'students.id', 'settings.isArchived']
-            },
-            {
-                name: 'active-classrooms-index',
-                fields: ['type', 'settings.isArchived', 'updatedAt']
-            },
-            // Add index for $or queries
-            {
-                name: 'classrooms-by-user-index',
-                fields: ['type', 'settings.isArchived', 'teacher.id', 'students']
-            },
             // Add index for chat rooms
             {
                 name: 'chatrooms-by-id-index',

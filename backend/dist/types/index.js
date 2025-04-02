@@ -16,7 +16,6 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserRole = void 0;
 // Re-export types from other files
-__exportStar(require("./classroom"), exports);
 __exportStar(require("./community"), exports);
 __exportStar(require("./feed"), exports);
 __exportStar(require("./chat"), exports);
@@ -26,7 +25,6 @@ __exportStar(require("./webrtc"), exports);
 // Role enum
 exports.UserRole = {
     STUDENT: 'student',
-    TEACHER: 'teacher',
     ADMIN: 'admin'
 };
 //# sourceMappingURL=index.js.map

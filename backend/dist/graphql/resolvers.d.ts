@@ -1,4 +1,4 @@
-import { Classroom, Community, Post } from '../types';
+import { Community, Post } from '../types';
 declare const resolvers: {
     Query: {
         classrooms: (_: any, { page, limit }: {
@@ -7,7 +7,7 @@ declare const resolvers: {
         }) => Promise<Classroom[]>;
         classroom: (_: any, { id }: {
             id: string;
-        }) => Promise<Classroom | null>;
+        }) => Promise<any>;
         communities: (_: any, { page, limit }: {
             page: number;
             limit: number;

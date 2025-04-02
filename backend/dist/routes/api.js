@@ -40,7 +40,6 @@ const express_1 = require("express");
 const auth_1 = require("../middleware/auth");
 const videoController = __importStar(require("../controllers/video.controller"));
 const authController = __importStar(require("../controllers/auth.controller"));
-const classroomController = __importStar(require("../controllers/classroom.controller"));
 const feedController = __importStar(require("../controllers/feed.controller"));
 const communityController = __importStar(require("../controllers/community.controller"));
 const chatController = __importStar(require("../controllers/chat.controller"));
@@ -62,15 +61,6 @@ router.get('/profile/:id/activities', auth_1.auth, profileController.getActiviti
 router.get('/profile/notifications', auth_1.auth, profileController.getNotifications);
 router.put('/profile/notifications/:notificationId/read', auth_1.auth, profileController.markNotificationRead);
 router.put('/profile/notifications/read-all', auth_1.auth, profileController.markAllNotificationsRead);
-// Classroom routes
-router.get('/classrooms', auth_1.auth, classroomController.getClassrooms);
-router.post('/classrooms', auth_1.auth, classroomController.createClassroom);
-router.get('/classrooms/:id', auth_1.auth, classroomController.getClassroom);
-router.put('/classrooms/:id', auth_1.auth, classroomController.updateClassroom);
-router.delete('/classrooms/:id', auth_1.auth, classroomController.deleteClassroom);
-router.post('/classrooms/:code/join', auth_1.auth, classroomController.joinClassroom);
-router.post('/classrooms/:id/assignments', auth_1.auth, classroomController.addAssignment);
-router.post('/classrooms/:id/materials', auth_1.auth, classroomController.addMaterial);
 // Posts routes
 router.get('/posts', auth_1.auth, feedController.getPosts);
 router.post('/posts', auth_1.auth, feedController.createPost);

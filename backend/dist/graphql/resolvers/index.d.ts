@@ -25,14 +25,6 @@ declare const resolvers: {
             page?: number;
             limit?: number;
         }, context: import("../../types").Context) => Promise<import("../../types").Community[]>;
-        classroom: (_: any, { id }: {
-            id: string;
-        }, context: import("../../types").Context) => Promise<import("../../types").Classroom | null>;
-        classrooms: (_: any, { page, limit }: {
-            page?: number;
-            limit?: number;
-        }, context: import("../../types").Context) => Promise<import("../../types").Classroom[]>;
-        myClassrooms: (_: any, __: any, context: import("../../types").Context) => Promise<import("../../types").Classroom[]>;
     };
     Mutation: {
         createPost: (_: any, { input }: {
@@ -69,27 +61,6 @@ declare const resolvers: {
             id: string;
             topic: string;
         }, context: import("../../types").Context) => Promise<import("../../types").Community>;
-        createClassroom: (_: any, { input }: {
-            input: import("../../types").CreateClassroom;
-        }, context: import("../../types").Context) => Promise<import("../../types").Classroom>;
-        updateClassroom: (_: any, { id, input }: {
-            id: string;
-            input: import("../../types").UpdateClassroomInput;
-        }, context: import("../../types").Context) => Promise<import("../../types").Classroom>;
-        deleteClassroom: (_: any, { id }: {
-            id: string;
-        }, context: import("../../types").Context) => Promise<boolean>;
-    };
-    Classroom: {
-        teacher: (parent: import("../../types").Classroom) => {
-            id: string;
-            name: string;
-            avatar?: string;
-        };
-        students: (parent: import("../../types").Classroom) => import("../../types").ClassroomStudent[];
-        assignments: (parent: import("../../types").Classroom) => import("../../types").Assignment[];
-        materials: (parent: import("../../types").Classroom) => import("../../types").Material[];
-        schedule: (parent: import("../../types").Classroom) => import("../../types").ScheduleEvent[];
     };
     Community: {
         topics: (parent: any) => any;

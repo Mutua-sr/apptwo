@@ -13,22 +13,7 @@ const typeDefs = `
 
   enum UserRole {
     STUDENT
-    INSTRUCTOR
     ADMIN
-  }
-
-  type Classroom {
-    id: ID!
-    name: String!
-    instructor: User!
-    description: String!
-    students: Int!
-    progress: Float!
-    nextClass: String
-    assignments: Int!
-    topics: [String!]!
-    createdAt: String!
-    updatedAt: String!
   }
 
   type Community {
@@ -58,7 +43,6 @@ const typeDefs = `
     sender: User!
     content: String!
     communityId: ID
-    classroomId: ID
     createdAt: String!
   }
 
@@ -67,11 +51,6 @@ const typeDefs = `
     me: User
     user(id: ID!): User
     users: [User!]!
-
-    # Classroom queries
-    classroom(id: ID!): Classroom
-    classrooms(page: Int, limit: Int): [Classroom!]!
-    myClassrooms: [Classroom!]!
 
     # Community queries
     community(id: ID!): Community
@@ -84,19 +63,7 @@ const typeDefs = `
     postsByTag(tag: String!, page: Int, limit: Int): [Post!]!
 
     # Chat queries
-    messages(communityId: ID, classroomId: ID, limit: Int): [ChatMessage!]!
-  }
-
-  input CreateClassroomInput {
-    name: String!
-    description: String!
-    topics: [String!]!
-  }
-
-  input UpdateClassroomInput {
-    name: String
-    description: String
-    topics: [String!]
+    messages(communityId: ID, limit: Int): [ChatMessage!]!
   }
 
   input CreateCommunityInput {
@@ -124,11 +91,6 @@ const typeDefs = `
   }
 
   type Mutation {
-    # Classroom mutations
-    createClassroom(input: CreateClassroomInput!): Classroom!
-    updateClassroom(id: ID!, input: UpdateClassroomInput!): Classroom!
-    deleteClassroom(id: ID!): Boolean!
-
     # Community mutations
     createCommunity(input: CreateCommunityInput!): Community!
     updateCommunity(id: ID!, input: UpdateCommunityInput!): Community!
@@ -142,11 +104,11 @@ const typeDefs = `
     unlikePost(id: ID!): Post!
 
     # Chat mutations
-    sendMessage(content: String!, communityId: ID, classroomId: ID): ChatMessage!
+    sendMessage(content: String!, communityId: ID): ChatMessage!
   }
 
   type Subscription {
-    messageReceived(communityId: ID, classroomId: ID): ChatMessage!
+    messageReceived(communityId: ID): ChatMessage!
     postCreated: Post!
     postLiked: Post!
   }

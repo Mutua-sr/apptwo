@@ -60,7 +60,6 @@ export interface QueryOptions {
 export interface Context {
     user?: AuthUser;
 }
-export * from './classroom';
 export * from './community';
 export * from './feed';
 export * from './chat';
@@ -88,9 +87,8 @@ export interface ValidationError {
     message: string;
     code: string;
 }
-export type UserRole = 'student' | 'teacher' | 'admin';
+export type UserRole = 'student' | 'admin';
 export declare const UserRole: {
     STUDENT: UserRole;
-    TEACHER: UserRole;
     ADMIN: UserRole;
 };
