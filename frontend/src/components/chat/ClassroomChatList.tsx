@@ -1,56 +1,147 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ExtendedRoom } from '../../types/chat';
+import { Classroom } from '../../types/api';
 import { chatService } from '../../services/chatService';
 import EmptyRoomList from './EmptyRoomList';
+import { useAuth } from '../../contexts/AuthContext';
 
 const ClassroomChatList: React.FC = () => {
   const [rooms, setRooms] = useState<ExtendedRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { currentUser } = useAuth();
+
+  const mapClassroomToExtendedRoom = (classroom: Classroom): ExtendedRoom => ({
+    _id: classroom._id,
+    name: classroom.name,
+    description: classroom.description,
+    type: 'classroom',
+    avatar: classroom.avatar,
+    createdById: classroom.teacher.id,
+    createdBy: {
+      id: classroom.teacher.id,
+      name: classroom.teacher.name,
+      avatar: classroom.teacher.avatar
+    },
+    createdAt: classroom.createdAt,
+    updatedAt: classroom.updatedAt,
+    settings: {
+      isPrivate: false,
+      allowStudentPosts: classroom.settings.allowStudentPosts,
+      allowStudentComments: classroom.settings.allowStudentComments,
+      allowStudentChat: true,
+      requirePostApproval: false,
+      notifications: classroom.settings.notifications
+    },
+    teachers: [{
+      id: classroom.teacher.id,
+      name: classroom.teacher.name,
+      avatar: classroom.teacher.avatar
+    }],
+    students: classroom.students,
+    unreadCount: 0,
+    lastMessage: undefined
+  });
 
   useEffect(() => {
     const fetchRooms = async () => {
       try {
-        // Get classroom type rooms
-        const response = await chatService.getRoom('classroom');
-        const chatRooms = Array.isArray(response) ? response : [response];
-        setRooms(chatRooms as ExtendedRoom[]);
+        const endpoint = currentUser?.role === 'teacher' 
+          ? '/api/classrooms/teaching'
+          : '/api/classrooms/enrolled';
+        
+        const response = await fetch(endpoint, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch classrooms');
+        }
+
+        const data = await response.json();
+        const extendedRooms = (data.data || []).map(mapClassroomToExtendedRoom);
+        setRooms(extendedRooms);
       } catch (err) {
-        setError('Failed to load chat rooms');
-        console.error('Error fetching classroom chat rooms:', err);
+        setError('Failed to load classrooms');
+        console.error('Error fetching classrooms:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchRooms();
-  }, []);
+    if (currentUser) {
+      fetchRooms();
+    }
+  }, [currentUser]);
 
   const handleJoinRoom = async (roomId: string) => {
     try {
-      await chatService.joinRoom(roomId);
-      // Refresh rooms list after joining
-      const response = await chatService.getRoom('classroom');
-      const chatRooms = Array.isArray(response) ? response : [response];
-      setRooms(chatRooms as ExtendedRoom[]);
+      const response = await fetch(`/api/classrooms/${roomId}/join`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to join classroom');
+      }
+
+      const updatedResponse = await fetch(
+        currentUser?.role === 'teacher' ? '/api/classrooms/teaching' : '/api/classrooms/enrolled',
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (updatedResponse.ok) {
+        const data = await updatedResponse.json();
+        const extendedRooms = data.data.map(mapClassroomToExtendedRoom);
+        setRooms(extendedRooms);
+      }
     } catch (err) {
-      console.error('Error joining room:', err);
-      setError('Failed to join room');
+      console.error('Error joining classroom:', err);
+      setError('Failed to join classroom');
     }
   };
 
   const handleCreateRoom = async (name: string, description: string) => {
     try {
-      // Implementation would depend on your API
-      console.log('Creating room:', { name, description });
-      // Refresh rooms list after creation
-      const response = await chatService.getRoom('classroom');
-      const chatRooms = Array.isArray(response) ? response : [response];
-      setRooms(chatRooms as ExtendedRoom[]);
+      const response = await fetch('/api/classrooms', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name,
+          description,
+          settings: {
+            allowStudentChat: true,
+            allowStudentPosts: true,
+            allowStudentComments: true
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create classroom');
+      }
+
+      const newClassroom = await response.json();
+      const newExtendedRoom = mapClassroomToExtendedRoom(newClassroom.data);
+      setRooms([...rooms, newExtendedRoom]);
     } catch (err) {
-      console.error('Error creating room:', err);
-      setError('Failed to create room');
+      console.error('Error creating classroom:', err);
+      setError('Failed to create classroom');
     }
   };
 
@@ -83,7 +174,9 @@ const ClassroomChatList: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Classroom Chats</h2>
+      <h2 className="text-2xl font-bold text-gray-800 mb-6">
+        {currentUser?.role === 'teacher' ? 'Your Teaching Classrooms' : 'Your Enrolled Classrooms'}
+      </h2>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {rooms.map((room) => (
           <Link
