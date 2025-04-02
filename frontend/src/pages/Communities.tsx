@@ -1,41 +1,47 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Button, Container, Grid, Typography, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { 
+  Box, 
+  Button, 
+  Container, 
+  Grid, 
+  Typography, 
+  CircularProgress,
+  Alert,
+  TextField,
+  InputAdornment
+} from '@mui/material';
+import { Add as AddIcon, Search as SearchIcon } from '@mui/icons-material';
 import { CommunityDetail } from '../components/community/CommunityDetail';
 import { Community } from '../types/community';
 import { Community as ApiCommunity } from '../types/room';
-import { ApiResponse } from '../types/api';
 import { chatService } from '../services/chatService';
 import apiService from '../services/apiService';
 
 const transformCommunity = (apiCommunity: ApiCommunity): Community => {
-  if (!apiCommunity) {
-    throw new Error('Invalid community data received');
-  }
-
   return {
-    _id: apiCommunity._id || '',
-    name: apiCommunity.name || '',
+    _id: apiCommunity._id,
+    name: apiCommunity.name,
     description: apiCommunity.description || '',
     coverImage: apiCommunity.avatar,
     creator: {
-      id: apiCommunity.createdById || '',
-      name: apiCommunity.createdBy?.name || '',
-      avatar: apiCommunity.createdBy?.avatar,
+      id: apiCommunity.createdBy.id,
+      name: apiCommunity.createdBy.name,
+      avatar: apiCommunity.createdBy.avatar
     },
-    members: (apiCommunity.members || []).map(member => ({
-      id: member?.id || '',
-      name: member?.name || '',
-      avatar: member?.avatar,
-      role: member?.role || 'member',
+    members: apiCommunity.members.map(member => ({
+      id: member.id,
+      name: member.name,
+      avatar: member.avatar,
+      role: member.role
     })),
     settings: {
-      isPrivate: apiCommunity.settings?.isPrivate || false,
-      requiresApproval: apiCommunity.settings?.requirePostApproval || false,
-      allowInvites: apiCommunity.settings?.allowMemberInvites || false,
+      isPrivate: apiCommunity.settings.isPrivate,
+      requiresApproval: apiCommunity.settings.requirePostApproval,
+      allowInvites: apiCommunity.settings.allowMemberInvites
     },
-    createdAt: apiCommunity.createdAt || new Date().toISOString(),
-    updatedAt: apiCommunity.updatedAt || new Date().toISOString(),
+    createdAt: apiCommunity.createdAt,
+    updatedAt: apiCommunity.updatedAt
   };
 };
 
@@ -43,6 +49,7 @@ const Communities: React.FC = () => {
   const [communities, setCommunities] = useState<Community[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -57,16 +64,7 @@ const Communities: React.FC = () => {
           throw new Error(response.data.message || 'Failed to fetch communities');
         }
         
-        const communityData = response.data.data;
-        if (!Array.isArray(communityData)) {
-          throw new Error('Invalid community data received');
-        }
-        
-        // Transform API response to match UI Community type
-        const transformedCommunities = communityData
-          .filter(community => community !== null && community !== undefined)
-          .map(transformCommunity);
-        
+        const transformedCommunities = response.data.data.map(transformCommunity);
         setCommunities(transformedCommunities);
         setLoading(false);
 
@@ -74,12 +72,9 @@ const Communities: React.FC = () => {
         chatService.onMessageReceived(() => {
           // Refresh communities to get updated unread counts
           apiService.communities.getAll().then(response => {
-            if (response.data.success && Array.isArray(response.data.data)) {
-              const updatedData = response.data.data;
-              setCommunities(updatedData
-                .filter(community => community !== null && community !== undefined)
-                .map(transformCommunity)
-              );
+            if (response.data.success) {
+              const updatedCommunities = response.data.data.map(transformCommunity);
+              setCommunities(updatedCommunities);
             }
           }).catch(error => {
             console.error('Error refreshing communities:', error);
@@ -114,6 +109,11 @@ const Communities: React.FC = () => {
     navigate('/create-community');
   };
 
+  const filteredCommunities = communities.filter(community => 
+    community.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (community.description?.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -125,8 +125,8 @@ const Communities: React.FC = () => {
   if (error) {
     return (
       <Container maxWidth="lg">
-        <Box sx={{ mt: 4, textAlign: 'center' }}>
-          <Typography color="error">{error}</Typography>
+        <Box sx={{ mt: 4 }}>
+          <Alert severity="error">{error}</Alert>
         </Box>
       </Container>
     );
@@ -135,29 +135,62 @@ const Communities: React.FC = () => {
   return (
     <Container maxWidth="lg">
       <Box sx={{ mt: 4, mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 3,
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 2
+        }}>
           <Typography variant="h4" component="h1">
             Communities
           </Typography>
           <Button
             variant="contained"
             color="primary"
+            startIcon={<AddIcon />}
             onClick={handleCreateCommunity}
           >
             Create New Community
           </Button>
         </Box>
+
+        <Box sx={{ mb: 4 }}>
+          <TextField
+            fullWidth
+            variant="outlined"
+            placeholder="Search communities..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+        </Box>
         
-        <Grid container spacing={3}>
-          {communities.map((community) => (
-            <Grid item xs={12} sm={6} md={4} key={community._id}>
-              <CommunityDetail
-                community={community}
-                onClick={() => handleCommunityClick(community)}
-              />
-            </Grid>
-          ))}
-        </Grid>
+        {filteredCommunities.length === 0 ? (
+          <Box sx={{ textAlign: 'center', mt: 4 }}>
+            <Typography variant="h6" color="text.secondary">
+              {searchTerm ? 'No communities found matching your search' : 'No communities available'}
+            </Typography>
+          </Box>
+        ) : (
+          <Grid container spacing={3}>
+            {filteredCommunities.map((community) => (
+              <Grid item xs={12} sm={6} md={4} key={community._id}>
+                <CommunityDetail
+                  community={community}
+                  onClick={() => handleCommunityClick(community)}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        )}
       </Box>
     </Container>
   );
