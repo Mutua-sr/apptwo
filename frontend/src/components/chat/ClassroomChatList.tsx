@@ -1,241 +1,142 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { 
-  Box, 
-  Typography, 
-  Grid, 
-  Paper, 
-  CircularProgress,
-  Chip,
-  Button
-} from '@mui/material';
-import {
-  People as PeopleIcon,
-  Chat as ChatIcon,
-  Refresh as RefreshIcon
-} from '@mui/icons-material';
-import { ExtendedRoom } from '../../types/chat';
-import { Classroom } from '../../types/room';
-import apiService from '../../services/apiService';
-import EmptyRoomList from './EmptyRoomList';
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useState, useEffect } from 'react';
+import { List, ListItem, ListItemText, Typography, Box, ListItemAvatar, Avatar } from '@mui/material';
+import { School as SchoolIcon } from '@mui/icons-material';
+import { chatService } from '../../services/chatService';
+import { ChatRoom } from '../../types/chat';
 
-const ClassroomChatList: React.FC = () => {
-  const [rooms, setRooms] = useState<ExtendedRoom[]>([]);
+interface ClassroomChatListProps {
+  onSelectClassroom: (id: string) => void;
+  selectedClassroom: string | null;
+}
+
+const ClassroomChatList: React.FC<ClassroomChatListProps> = ({
+  onSelectClassroom,
+  selectedClassroom
+}) => {
+  const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { currentUser } = useAuth();
-
-  const mapClassroomToExtendedRoom = (classroom: Classroom): ExtendedRoom => ({
-    _id: classroom._id,
-    name: classroom.name,
-    description: classroom.description,
-    type: classroom.type,
-    chatRoomId: classroom.chatRoomId,
-    avatar: classroom.avatar,
-    createdById: classroom.createdById,
-    createdBy: classroom.createdBy,
-    createdAt: classroom.createdAt,
-    updatedAt: classroom.updatedAt,
-    settings: classroom.settings,
-    teachers: classroom.teachers,
-    students: classroom.students,
-    assignments: classroom.assignments,
-    materials: classroom.materials,
-    unreadCount: 0,
-    lastMessage: undefined
-  });
-
-  const fetchRooms = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await apiService.classrooms.getUserClassrooms();
-      if (response.data.success) {
-        const extendedRooms = response.data.data.map(mapClassroomToExtendedRoom);
-        setRooms(extendedRooms);
-      } else {
-        throw new Error(response.data.error?.message || 'Failed to fetch classrooms');
-      }
-    } catch (err: any) {
-      console.error('Error fetching classrooms:', err);
-      const errorMessage = err.response?.data?.error?.message || err.message || 'Failed to load classrooms';
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
-    if (currentUser) {
-      fetchRooms();
-    }
-  }, [currentUser]);
-
-  const handleJoinRoom = async (roomId: string) => {
-    try {
-      await apiService.classrooms.join(roomId);
-      const response = await apiService.classrooms.getUserClassrooms();
-      if (response.data.success) {
-        const extendedRooms = response.data.data.map(mapClassroomToExtendedRoom);
-        setRooms(extendedRooms);
+    const fetchRooms = async () => {
+      try {
+        const fetchedRooms = await chatService.getRoom('classroom');
+        setRooms(Array.isArray(fetchedRooms) ? fetchedRooms : [fetchedRooms]);
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to fetch classrooms');
+        setLoading(false);
+        console.error(err);
       }
-    } catch (err) {
-      console.error('Error joining classroom:', err);
-      setError('Failed to join classroom. Please try again.');
-    }
-  };
+    };
 
-  const handleCreateRoom = async (name: string, description: string) => {
-    try {
-      const response = await apiService.classrooms.create({
-        type: 'classroom',
-        name,
-        description,
-        settings: {
-          allowStudentChat: true,
-          allowStudentPosts: true,
-          allowStudentComments: true,
-          isPrivate: false,
-          requirePostApproval: false,
-          notifications: {
-            assignments: true,
-            materials: true,
-            announcements: true
-          }
-        }
-      });
-      
-      if (response.data.success) {
-        const newExtendedRoom = mapClassroomToExtendedRoom(response.data.data);
-        setRooms([...rooms, newExtendedRoom]);
-      }
-    } catch (err) {
-      console.error('Error creating classroom:', err);
-      setError('Failed to create classroom. Please try again.');
-    }
-  };
+    fetchRooms();
+  }, []);
 
   if (loading) {
     return (
-      <Box sx={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        minHeight: 200 
-      }}>
-        <CircularProgress />
+      <Box sx={{ p: 2 }}>
+        <Typography>Loading classrooms...</Typography>
       </Box>
     );
   }
 
   if (error) {
     return (
-      <Box sx={{ 
-        p: 4, 
-        textAlign: 'center',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 2,
-        alignItems: 'center'
-      }}>
-        <Typography color="error">
-          {error}
-        </Typography>
-        <Button 
-          variant="contained" 
-          onClick={fetchRooms}
-          startIcon={<RefreshIcon />}
-        >
-          Retry
-        </Button>
+      <Box sx={{ p: 2 }}>
+        <Typography color="error">{error}</Typography>
       </Box>
     );
   }
 
   if (rooms.length === 0) {
     return (
-      <EmptyRoomList
-        type="classroom"
-        availableRooms={[]}
-        onJoin={handleJoinRoom}
-        onCreate={handleCreateRoom}
-      />
+      <Box sx={{ 
+        p: 4, 
+        textAlign: 'center',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center' 
+      }}>
+        <SchoolIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+        <Typography variant="h6" sx={{ color: 'text.secondary' }}>
+          No Classrooms Available
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Join a classroom to start chatting
+        </Typography>
+      </Box>
     );
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" sx={{ mb: 4, fontWeight: 'bold' }}>
-        {currentUser?.role === 'teacher' ? 'Your Teaching Classrooms' : 'Your Enrolled Classrooms'}
-      </Typography>
-      
-      <Grid container spacing={3}>
-        {rooms.map((room) => (
-          <Grid item xs={12} md={6} lg={4} key={room._id}>
-            <Paper
-              component={Link}
-              to={`/chat/${room.chatRoomId || room._id}`}
-              sx={{
-                p: 3,
-                display: 'block',
-                textDecoration: 'none',
-                transition: 'box-shadow 0.2s',
-                '&:hover': {
-                  boxShadow: 6
-                }
+    <List>
+      {rooms.map((room) => (
+        <ListItem
+          key={room.id}
+          button
+          selected={selectedClassroom === room.id}
+          onClick={() => onSelectClassroom(room.id)}
+          sx={{
+            borderRadius: 1,
+            mb: 0.5,
+            '&.Mui-selected': {
+              backgroundColor: 'primary.main',
+              color: 'primary.contrastText',
+              '&:hover': {
+                backgroundColor: 'primary.dark',
+              }
+            }
+          }}
+        >
+          <ListItemAvatar>
+            <Avatar 
+              src={room.avatar} 
+              alt={room.name}
+              sx={{ 
+                bgcolor: selectedClassroom === room.id ? 'primary.contrastText' : 'primary.main'
               }}
             >
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <Box>
-                  <Typography variant="h6" sx={{ color: 'text.primary' }}>
-                    {room.name}
-                  </Typography>
-                  {room.description && (
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                      {room.description}
-                    </Typography>
-                  )}
-                </Box>
-                {room.unreadCount && room.unreadCount > 0 && (
-                  <Chip 
-                    label={room.unreadCount}
-                    color="primary"
-                    size="small"
-                  />
-                )}
-              </Box>
-
-              <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                  <PeopleIcon sx={{ fontSize: 'small', mr: 0.5 }} />
-                  <Typography variant="body2">
-                    {room.students?.length || 0} students
-                  </Typography>
-                </Box>
-
-                {room.settings?.allowStudentChat && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', color: 'success.main' }}>
-                    <ChatIcon sx={{ fontSize: 'small', mr: 0.5 }} />
-                    <Typography variant="body2">
-                      Chat enabled
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-
-              {room.lastMessage && (
-                <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
-                  <Typography variant="body2" color="text.secondary" noWrap>
-                    {room.lastMessage}
-                  </Typography>
-                </Box>
-              )}
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
-    </Box>
+              <SchoolIcon />
+            </Avatar>
+          </ListItemAvatar>
+          <ListItemText
+            primary={room.name}
+            secondary={
+              <Typography
+                variant="body2"
+                sx={{
+                  color: selectedClassroom === room.id ? 'primary.contrastText' : 'text.secondary',
+                  opacity: 0.8
+                }}
+              >
+                {room.participants?.length || 0} participants
+              </Typography>
+            }
+          />
+          {room.unreadCount > 0 && (
+            <Box
+              sx={{
+                bgcolor: 'error.main',
+                color: 'error.contrastText',
+                borderRadius: '50%',
+                minWidth: 24,
+                height: 24,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '0.75rem',
+                fontWeight: 'bold'
+              }}
+            >
+              {room.unreadCount}
+            </Box>
+          )}
+        </ListItem>
+      ))}
+    </List>
   );
 };
 

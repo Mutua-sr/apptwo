@@ -1,125 +1,47 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Box, 
-  Button, 
-  Container, 
-  Grid, 
-  Typography, 
-  CircularProgress,
-  Alert,
-  TextField,
-  InputAdornment
-} from '@mui/material';
-import { Add as AddIcon, Search as SearchIcon } from '@mui/icons-material';
-import { CommunityDetail } from '../components/community/CommunityDetail';
-import { Community } from '../types/community';
-import { Community as ApiCommunity } from '../types/room';
-import { chatService } from '../services/chatService';
-import apiService from '../services/apiService';
-
-const transformCommunity = (apiCommunity: ApiCommunity): Community => {
-  if (!apiCommunity) {
-    throw new Error('Invalid community data received');
-  }
-
-  return {
-    _id: apiCommunity._id,
-    name: apiCommunity.name,
-    description: apiCommunity.description || '',
-    coverImage: apiCommunity.avatar,
-    creator: {
-      id: apiCommunity.createdById || apiCommunity.createdBy?.id || '',
-      name: apiCommunity.createdBy?.name || 'Unknown',
-      avatar: apiCommunity.createdBy?.avatar
-    },
-    members: (apiCommunity.members || []).map(member => ({
-      id: member.id || '',
-      name: member.name || 'Unknown Member',
-      avatar: member.avatar,
-      role: member.role || 'member'
-    })),
-    settings: {
-      isPrivate: apiCommunity.settings?.isPrivate || false,
-      requiresApproval: apiCommunity.settings?.requirePostApproval || false,
-      allowInvites: apiCommunity.settings?.allowMemberInvites || false
-    },
-    createdAt: apiCommunity.createdAt || new Date().toISOString(),
-    updatedAt: apiCommunity.updatedAt || new Date().toISOString()
-  };
-};
+import React, { useState, useEffect } from 'react';
+import { Box, Typography, Grid, Paper, CircularProgress, Alert } from '@mui/material';
+import { useAuth } from '../contexts/AuthContext';
+import UnifiedChatRoom from '../components/chat/UnifiedChatRoom';
+import { ChatProvider } from '../contexts/ChatContext';
+import { unifiedChatService } from '../services/unifiedChatService';
+import { UnifiedChatRoom as UnifiedChatRoomType } from '../types/unifiedChat';
 
 const Communities: React.FC = () => {
-  const [communities, setCommunities] = useState<Community[]>([]);
+  const { currentUser } = useAuth();
+  const [selectedCommunity, setSelectedCommunity] = useState<string | null>(null);
+  const [communities, setCommunities] = useState<UnifiedChatRoomType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchCommunities = async () => {
       try {
-        // Connect to chat service for real-time updates
-        await chatService.connect();
-        
-        // Fetch communities
-        const response = await apiService.communities.getAll();
-        if (!response?.data?.success) {
-          throw new Error(response?.data?.message || 'Failed to fetch communities');
-        }
-        
-        const communities = response.data.data || [];
-        const transformedCommunities = communities.map(transformCommunity);
-        setCommunities(transformedCommunities);
+        await unifiedChatService.connect();
+        const fetchedCommunities = await unifiedChatService.getRooms('community');
+        setCommunities(fetchedCommunities);
         setLoading(false);
-
-        // Subscribe to community updates
-        chatService.onMessageReceived(() => {
-          // Refresh communities to get updated unread counts
-          apiService.communities.getAll().then(response => {
-            if (response?.data?.success) {
-              const communities = response.data.data || [];
-              const updatedCommunities = communities.map(transformCommunity);
-              setCommunities(updatedCommunities);
-            }
-          }).catch(error => {
-            console.error('Error refreshing communities:', error);
-            setError(error instanceof Error ? error.message : 'Failed to refresh communities');
-          });
-        });
       } catch (error) {
-        console.error('Error fetching communities:', error);
-        setError(
-          error instanceof Error 
-            ? error.message 
-            : typeof error === 'string'
-              ? error
-              : 'Failed to load communities'
-        );
+        setError(error instanceof Error ? error.message : 'Failed to fetch communities');
         setLoading(false);
       }
     };
 
-    fetchCommunities();
+    if (currentUser) {
+      fetchCommunities();
+    }
 
-    // Cleanup chat connection
     return () => {
-      chatService.disconnect();
+      unifiedChatService.disconnect();
     };
-  }, []);
+  }, [currentUser]);
 
-  const handleCommunityClick = (community: Community) => {
-    navigate(`/chat/community/${community._id}`);
-  };
-
-  const handleCreateCommunity = () => {
-    navigate('/create-community');
-  };
-
-  const filteredCommunities = communities.filter(community => 
-    community.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (community.description?.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  if (!currentUser) {
+    return (
+      <Box sx={{ p: 2 }}>
+        <Typography>Please log in to access communities</Typography>
+      </Box>
+    );
+  }
 
   if (loading) {
     return (
@@ -131,113 +53,84 @@ const Communities: React.FC = () => {
 
   if (error) {
     return (
-      <Container maxWidth="lg">
-        <Box sx={{ mt: 4 }}>
-          <Alert severity="error">{error}</Alert>
-        </Box>
-      </Container>
+      <Box sx={{ p: 2 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
     );
   }
 
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ mt: 4, mb: 4 }}>
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          mb: 3,
-          flexDirection: { xs: 'column', sm: 'row' },
-          gap: 2
-        }}>
-          <Typography 
-            variant="h4" 
-            component="h1"
-            sx={{
-              fontWeight: 700,
-              background: 'linear-gradient(135deg, #818CF8 0%, #34D399 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent'
-            }}
-          >
-            Communities
-          </Typography>
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<AddIcon />}
-            onClick={handleCreateCommunity}
-            sx={{
-              background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
-              boxShadow: '0 4px 20px rgba(99, 102, 241, 0.25)',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #818CF8 0%, #6366F1 100%)',
-                boxShadow: '0 8px 25px rgba(99, 102, 241, 0.35)',
-                transform: 'translateY(-2px)'
-              }
-            }}
-          >
-            Create New Community
-          </Button>
-        </Box>
-
-        <Box sx={{ mb: 4 }}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              placeholder="Search communities..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon sx={{ color: 'rgba(248, 250, 252, 0.75)' }} />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  background: 'rgba(30, 41, 59, 0.6)',
-                  backdropFilter: 'blur(12px)',
-                  borderRadius: '12px',
-                  '&:hover': {
-                    background: 'rgba(30, 41, 59, 0.8)'
-                  },
-                  '&.Mui-focused': {
-                    background: 'rgba(30, 41, 59, 0.9)',
-                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)'
-                  }
-                }
-              }}
-            />
-        </Box>
-        
-        {filteredCommunities.length === 0 ? (
-          <Box sx={{ textAlign: 'center', mt: 4 }}>
-          <Typography 
-            variant="h6" 
-            sx={{ 
-              color: 'rgba(248, 250, 252, 0.75)',
-              fontWeight: 600
-            }}
-          >
-              {searchTerm ? 'No communities found matching your search' : 'No communities available'}
-            </Typography>
-          </Box>
-        ) : (
-          <Grid container spacing={3}>
-            {filteredCommunities.map((community) => (
-              <Grid item xs={12} sm={6} md={4} key={community._id}>
-                <CommunityDetail
-                  community={community}
-                  onClick={() => handleCommunityClick(community)}
-                />
-              </Grid>
-            ))}
-          </Grid>
-        )}
-      </Box>
-    </Container>
+    <ChatProvider>
+      <Grid container spacing={2} sx={{ height: '100vh', p: 2 }}>
+        <Grid item xs={12} md={3}>
+          <Paper sx={{ height: '100%', overflow: 'auto' }}>
+            <Box sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Communities
+              </Typography>
+              {communities.length === 0 ? (
+                <Typography color="text.secondary">
+                  No communities available
+                </Typography>
+              ) : (
+                communities.map((community) => (
+                  <Box
+                    key={community.id}
+                    onClick={() => setSelectedCommunity(community.id)}
+                    sx={{
+                      p: 2,
+                      mb: 1,
+                      cursor: 'pointer',
+                      borderRadius: 1,
+                      bgcolor: selectedCommunity === community.id ? 'primary.main' : 'background.paper',
+                      color: selectedCommunity === community.id ? 'primary.contrastText' : 'text.primary',
+                      '&:hover': {
+                        bgcolor: selectedCommunity === community.id ? 'primary.dark' : 'action.hover',
+                      },
+                    }}
+                  >
+                    <Typography variant="subtitle1">
+                      {community.name}
+                    </Typography>
+                    <Typography variant="body2" color="inherit" sx={{ opacity: 0.8 }}>
+                      {community.participants.length} members
+                    </Typography>
+                  </Box>
+                ))
+              )}
+            </Box>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={9}>
+          <Paper sx={{ height: '100%' }}>
+            {selectedCommunity ? (
+              <UnifiedChatRoom
+                roomId={selectedCommunity}
+                type="community"
+              />
+            ) : (
+              <Box sx={{ 
+                p: 4, 
+                textAlign: 'center',
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                bgcolor: 'background.default'
+              }}>
+                <Typography variant="h6" sx={{ mb: 2, color: 'text.secondary' }}>
+                  Select a community to start chatting
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Choose a community from the list to view and participate in discussions
+                </Typography>
+              </Box>
+            )}
+          </Paper>
+        </Grid>
+      </Grid>
+    </ChatProvider>
   );
 };
 
