@@ -15,7 +15,7 @@ import Classrooms from './pages/Classrooms';
 import ClassroomChats from './pages/ClassroomChats';
 import Communities from './pages/Communities';
 import CreateCommunity from './pages/CreateCommunity';
-import ChatRoom from './pages/ChatRoom';
+import ChatRoomComponent from './pages/ChatRoom';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ClassroomManagement from './pages/admin/ClassroomManagement';
 import CommunityManagement from './pages/admin/CommunityManagement';
@@ -28,40 +28,40 @@ const App: React.FC = () => {
   return (
     <ThemeProvider theme={currentTheme}>
       <AuthProvider>
-      <Router>
-        <CssBaseline />
-        <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
-          <Routes>
-            {/* Auth Routes */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+        <Router>
+          <CssBaseline />
+          <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+            <Routes>
+              {/* Auth Routes */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
 
-            {/* Protected Routes */}
-            <Route element={<PrivateRoute><MainLayout /></PrivateRoute>}>
-              <Route path="/" element={<Feed />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/classrooms" element={<Classrooms />} />
-              <Route path="/classrooms/chat" element={<ClassroomChats />} />
-              <Route path="/communities" element={<Communities />} />
-              <Route path="/create-community" element={<CreateCommunity />} />
-              <Route path="/chat/classroom/:roomId" element={<ChatRoom />} />
-              <Route path="/chat/community/:roomId" element={<ChatRoom />} />
+              {/* Protected Routes */}
+              <Route element={<PrivateRoute><MainLayout /></PrivateRoute>}>
+                <Route path="/" element={<Feed />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/classrooms" element={<Classrooms />} />
+                <Route path="/classrooms/chat" element={<ClassroomChats />} />
+                <Route path="/communities" element={<Communities />} />
+                <Route path="/create-community" element={<CreateCommunity />} />
+                <Route path="/chat/classroom/:roomId" element={<ChatRoomComponent />} />
+                <Route path="/chat/community/:roomId" element={<ChatRoomComponent />} />
 
-              {/* Admin Routes */}
-              <Route element={<AdminRoute />}>
-                <Route path="/admin" element={<AdminDashboard />} />
-                <Route path="/admin/classrooms" element={<ClassroomManagement />} />
-                <Route path="/admin/communities" element={<CommunityManagement />} />
-                <Route path="/admin/users" element={<UserManagement />} />
+                {/* Admin Routes */}
+                <Route element={<AdminRoute />}>
+                  <Route path="/admin" element={<AdminDashboard />} />
+                  <Route path="/admin/classrooms" element={<ClassroomManagement />} />
+                  <Route path="/admin/communities" element={<CommunityManagement />} />
+                  <Route path="/admin/users" element={<UserManagement />} />
+                </Route>
               </Route>
-            </Route>
 
-            {/* Fallback Route */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Box>
-      </Router>
-    </AuthProvider>
+              {/* Fallback Route */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Box>
+        </Router>
+      </AuthProvider>
     </ThemeProvider>
   );
 };

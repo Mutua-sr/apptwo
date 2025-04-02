@@ -4,15 +4,14 @@ import { Box, Typography, Paper, IconButton, Avatar, CircularProgress, Tooltip }
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import ChatInterface from '../components/chat/ChatInterface';
 import { chatService } from '../services/chatService';
-import { ChatParticipant, type ChatRoom } from '../types/chat';
+import { ChatParticipant, ChatRoom as ChatRoomType } from '../types/chat';
 import { useAuth } from '../contexts/AuthContext';
-import apiService from '../services/apiService';
 
-const ChatRoom: React.FC = () => {
+const ChatRoomComponent: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  const [room, setRoom] = useState<ChatRoom | null>(null);
+  const [room, setRoom] = useState<ChatRoomType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [participants, setParticipants] = useState<ChatParticipant[]>([]);
@@ -20,12 +19,10 @@ const ChatRoom: React.FC = () => {
     handleUserJoined?: (participant: ChatParticipant) => void;
     handleUserLeft?: (participant: ChatParticipant) => void;
   }>({});
-  
 
   useEffect(() => {
     const initializeChat = async () => {
       try {
-        // Validate required data
         if (!roomId) {
           throw new Error('Chat room ID is required');
         }
@@ -33,26 +30,19 @@ const ChatRoom: React.FC = () => {
           throw new Error('You must be logged in to join a chat room');
         }
 
-        // Connect to chat service
         await chatService.connect();
-        
-        // Get chat room details
         const roomResponse = await chatService.getRoom(roomId);
         setRoom(roomResponse);
         
-        // Join the chat room and get participants
         chatService.joinRoom(roomId);
         const participantsData = await chatService.getRoomParticipants(roomId);
         setParticipants(participantsData);
         
-        // Mark messages as read
         await chatService.markAsRead(roomId);
 
-        // Setup event handlers with stable references
         const handlers = {
           handleUserJoined: (participant: ChatParticipant) => {
             setParticipants(prev => {
-              // Avoid duplicate participants
               if (prev.some(p => p.id === participant.id)) {
                 return prev;
               }
@@ -64,7 +54,6 @@ const ChatRoom: React.FC = () => {
           }
         };
 
-        // Set up event listeners
         chatService.onUserJoined(handlers.handleUserJoined);
         chatService.onUserLeft(handlers.handleUserLeft);
         eventHandlersRef.current = handlers;
@@ -74,7 +63,6 @@ const ChatRoom: React.FC = () => {
           ? 'Unable to connect to chat service. Please try again later.'
           : err.response?.data?.message || err.message || 'Failed to load chat room';
         
-        // Cleanup on any error
         chatService.disconnect();
         setError(errorMessage);
       } finally {
@@ -84,20 +72,16 @@ const ChatRoom: React.FC = () => {
 
     initializeChat();
 
-    // Cleanup function
     return () => {
       if (roomId) {
         try {
-          // First remove event listeners if they were set up
           const handlers = eventHandlersRef.current;
           if (handlers.handleUserJoined && handlers.handleUserLeft) {
-            // Remove event listeners by using a shared no-op function
             const noop = () => {};
             chatService.onUserJoined(noop);
             chatService.onUserLeft(noop);
           }
           
-          // Then leave the room
           chatService.leaveRoom(roomId);
         } catch (err) {
           console.error('Error during cleanup:', err);
@@ -108,95 +92,82 @@ const ChatRoom: React.FC = () => {
     };
   }, [roomId, currentUser]);
 
-  const renderContent = () => {
-    if (loading) {
-      return (
-        <Box sx={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          height: '100vh',
-          background: 'rgba(30, 41, 59, 0.7)',
-          backdropFilter: 'blur(12px)' 
-        }}>
-          <CircularProgress sx={{ color: 'primary.main' }} />
-        </Box>
-      );
-    }
-
-    if (error || !currentUser) {
-      return (
-        <Box sx={{ 
-          p: 4, 
-          display: 'flex', 
-          flexDirection: 'column', 
-          alignItems: 'center',
-          gap: 3,
-          background: 'rgba(30, 41, 59, 0.7)',
-          backdropFilter: 'blur(12px)',
-          borderRadius: 2
-        }}>
-          <Typography 
-            variant="h6" 
-            color="error"
-            sx={{ 
-              textAlign: 'center',
-              fontWeight: 500,
-              textShadow: '0 2px 4px rgba(0,0,0,0.2)'
-            }}
-          >
-            {error || 'Please log in to access this chat room'}
-          </Typography>
-          <IconButton 
-            onClick={() => navigate(-1)}
-            sx={{ 
-              bgcolor: 'primary.main',
-              color: 'primary.contrastText',
-              padding: 2,
-              transition: 'all 0.2s ease-in-out',
-              '&:hover': {
-                bgcolor: 'primary.dark',
-                transform: 'scale(1.05)',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-              }
-            }}
-          >
-            <ArrowBackIcon />
-          </IconButton>
-        </Box>
-      );
-    }
-
-    if (!room) {
-      return (
-        <Box sx={{ 
-          p: 4, 
-          display: 'flex', 
-          justifyContent: 'center',
-          background: 'rgba(30, 41, 59, 0.7)',
-          backdropFilter: 'blur(12px)',
-          borderRadius: 2
-        }}>
-          <Typography sx={{ 
-            color: 'text.secondary',
-            fontWeight: 500
-          }}>
-            Loading chat room...
-          </Typography>
-        </Box>
-      );
-    }
-
-    return null;
-  };
-
-  // Render loading, error, or empty states
-  const content = renderContent();
-  if (content || !room) {
-    return content ?? null;
+  if (loading) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        background: 'rgba(30, 41, 59, 0.7)',
+        backdropFilter: 'blur(12px)' 
+      }}>
+        <CircularProgress sx={{ color: 'primary.main' }} />
+      </Box>
+    );
   }
 
-  const memberCount = participants.length;
+  if (error || !currentUser) {
+    return (
+      <Box sx={{ 
+        p: 4, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center',
+        gap: 3,
+        background: 'rgba(30, 41, 59, 0.7)',
+        backdropFilter: 'blur(12px)',
+        borderRadius: 2
+      }}>
+        <Typography 
+          variant="h6" 
+          color="error"
+          sx={{ 
+            textAlign: 'center',
+            fontWeight: 500,
+            textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+          }}
+        >
+          {error || 'Please log in to access this chat room'}
+        </Typography>
+        <IconButton 
+          onClick={() => navigate(-1)}
+          sx={{ 
+            bgcolor: 'primary.main',
+            color: 'primary.contrastText',
+            padding: 2,
+            '&:hover': {
+              bgcolor: 'primary.dark',
+              transform: 'scale(1.05)',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+            }
+          }}
+        >
+          <ArrowBackIcon />
+        </IconButton>
+      </Box>
+    );
+  }
+
+  if (!room) {
+    return (
+      <Box sx={{ 
+        p: 4, 
+        display: 'flex', 
+        justifyContent: 'center',
+        background: 'rgba(30, 41, 59, 0.7)',
+        backdropFilter: 'blur(12px)',
+        borderRadius: 2
+      }}>
+        <Typography sx={{ 
+          color: 'text.secondary',
+          fontWeight: 500
+        }}>
+          Loading chat room...
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <Paper 
@@ -210,7 +181,6 @@ const ChatRoom: React.FC = () => {
         boxShadow: '0 10px 40px rgba(0, 0, 0, 0.2)'
       }}
     >
-      {/* Header */}
       <Box sx={{ 
         p: 2, 
         borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
@@ -256,11 +226,10 @@ const ChatRoom: React.FC = () => {
           </Typography>
         </Box>
         <Typography variant="body2">
-          {memberCount} members • {participants.length} online
+          {participants.length} online
         </Typography>
       </Box>
 
-      {/* Active Participants */}
       <Box sx={{ 
         p: 1, 
         borderBottom: '1px solid rgba(255, 255, 255, 0.1)', 
@@ -332,7 +301,6 @@ const ChatRoom: React.FC = () => {
         ))}
       </Box>
 
-      {/* Chat Interface */}
       <Box sx={{ flex: 1, overflow: 'hidden' }}>
         {roomId && currentUser?.id && (
           <ChatInterface roomId={roomId} userId={currentUser.id} />
@@ -342,4 +310,4 @@ const ChatRoom: React.FC = () => {
   );
 };
 
-export default ChatRoom;
+export default ChatRoomComponent;
