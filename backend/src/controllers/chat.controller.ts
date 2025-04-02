@@ -42,8 +42,12 @@ export const getChatRooms = async (
   req: ExtendedAuthRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<any> => {
   try {
+    if (!req.user?.id) {
+      throw new ApiError('Unauthorized', 401);
+    }
+
     const rooms = await DatabaseService.find<ChatRoom>({
       selector: {
         type: 'chatroom',
@@ -88,7 +92,7 @@ export const createChatRoom = async (
   req: ExtendedAuthRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<any> => {
   try {
     if (!req.user?.id) {
       throw new ApiError('Unauthorized', 401);
@@ -172,7 +176,7 @@ export const getChatRoom = async (
   req: ExtendedAuthRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<any> => {
   try {
     const roomId = req.params.roomId;
     if (!roomId) {
@@ -256,8 +260,12 @@ export const getChatHistory = async (
   req: ExtendedAuthRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<any> => {
   try {
+    if (!req.user?.id) {
+      throw new ApiError('Unauthorized', 401);
+    }
+
     const roomId = req.params.roomId;
     if (!roomId) {
       throw new ApiError('Room ID is required', 400);
@@ -276,7 +284,7 @@ export const getChatHistory = async (
       throw new ApiError('Not authorized to access this chat room', 403);
     }
 
-    const query: any = {
+    const query = {
       selector: {
         type: 'message',
         roomId: roomId,
@@ -284,7 +292,7 @@ export const getChatHistory = async (
       },
       limit: limit,
       sort: [{ createdAt: 'desc' }] as [{ [key: string]: 'desc' | 'asc' }]
-    };
+    } as const;
 
     const messages = await DatabaseService.find<ChatMessage>(query);
 
@@ -312,7 +320,7 @@ export const sendMessage = async (
   req: ExtendedAuthRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<any> => {
   try {
     if (!req.user?.id) {
       throw new ApiError('Unauthorized', 401);
@@ -402,8 +410,12 @@ export const deleteMessage = async (
   req: ExtendedAuthRequest,
   res: Response,
   next: NextFunction
-) => {
+): Promise<any> => {
   try {
+    if (!req.user?.id) {
+      throw new ApiError('Unauthorized', 401);
+    }
+
     const messageId = req.params.messageId;
     if (!messageId) {
       throw new ApiError('Message ID is required', 400);
