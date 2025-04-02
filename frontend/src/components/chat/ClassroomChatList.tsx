@@ -31,6 +31,7 @@ const ClassroomChatList: React.FC = () => {
     name: classroom.name,
     description: classroom.description,
     type: classroom.type,
+    chatRoomId: classroom.chatRoomId,
     avatar: classroom.avatar,
     createdById: classroom.createdById,
     createdBy: classroom.createdBy,
@@ -174,7 +175,7 @@ const ClassroomChatList: React.FC = () => {
           <Grid item xs={12} md={6} lg={4} key={room._id}>
             <Paper
               component={Link}
-              to={`/chat/${room._id}`}
+              to={`/chat/${room.chatRoomId || room._id}`}
               sx={{
                 p: 3,
                 display: 'block',

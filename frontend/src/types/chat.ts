@@ -31,6 +31,7 @@ export interface ExtendedRoom {
   name: string;
   description?: string;
   type: 'community' | 'classroom';
+  chatRoomId?: string;
   avatar?: string;
   createdById: string;
   createdBy: {

@@ -40,6 +40,7 @@ export interface CommunitySettings {
 export interface Classroom extends BaseRoom {
   type: 'classroom';
   settings: ClassroomSettings;
+  chatRoomId?: string;
   teachers: {
     id: string;
     name: string;

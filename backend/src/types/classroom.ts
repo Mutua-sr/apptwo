@@ -61,6 +61,7 @@ export interface Classroom extends CouchDBDocument {
   name: string;
   description: string;
   code: string;
+  chatRoomId?: string;
   teacher: {
     id: string;
     name: string;

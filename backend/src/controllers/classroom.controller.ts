@@ -10,6 +10,7 @@ import {
   Material,
   ClassroomStudent,
 } from '../types/classroom';
+import { ChatRoom } from '../types/chat';
 import logger from '../config/logger';
 
 type AuthenticatedRequest = Request & AuthRequest;
@@ -81,11 +82,36 @@ export const createClassroom = async (
       throw new ApiError('Description is required', 400);
     }
 
+    // First create a chat room
+    const chatRoomData = {
+      type: 'chatroom',
+      name: req.body.name.trim(),
+      description: req.body.description.trim(),
+      participants: [{
+        userId: req.user.id,
+        name: req.user.name || '',
+        avatar: req.user.avatar || '',
+        role: 'admin',
+        joinedAt: new Date().toISOString()
+      }],
+      settings: {
+        isPrivate: false,
+        allowReactions: true,
+        allowAttachments: true,
+        allowReplies: true,
+        allowEditing: true,
+        allowDeletion: true
+      }
+    };
+
+    const chatRoom = await DatabaseService.create(chatRoomData);
+
     const classroomData: Omit<Classroom, '_id' | '_rev' | 'createdAt' | 'updatedAt'> = {
       type: 'classroom',
       name: req.body.name.trim(),
       description: req.body.description.trim(),
       code: generateClassroomCode(),
+      chatRoomId: chatRoom._id,
       teacher: {
         id: req.user.id,
         name: req.user.name,
@@ -242,6 +268,22 @@ export const joinClassroom = async (
     const updatedClassroom = await DatabaseService.update<Classroom>(classroom._id, {
       students: [...classroom.students, newStudent]
     });
+
+    // Add student to chat room if it exists
+    if (classroom.chatRoomId) {
+      const chatRoom = await DatabaseService.read<ChatRoom>(classroom.chatRoomId);
+      if (chatRoom && chatRoom.type === 'chatroom') {
+        await DatabaseService.update<ChatRoom>(classroom.chatRoomId, {
+          participants: [...chatRoom.participants, {
+            userId: req.user!.id,
+            name: req.user!.name || '',
+            avatar: req.user?.avatar || '',
+            role: 'member',
+            joinedAt: new Date().toISOString()
+          }]
+        });
+      }
+    }
 
     // Notify about new student
     RealtimeService.getInstance().broadcastToRoom(classroom._id, 'student_joined', {
