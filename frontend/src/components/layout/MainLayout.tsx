@@ -38,9 +38,6 @@ const MainLayout: React.FC<MainLayoutProps> = () => {
               <Avatar src={currentUser.avatar} alt={currentUser.name}>
                 {currentUser.name.charAt(0)}
               </Avatar>
-              <Button color="inherit" onClick={logout}>
-                Logout
-              </Button>
             </Box>
           )}
         </Toolbar>
