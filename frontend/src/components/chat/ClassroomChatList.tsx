@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ExtendedRoom } from '../../types/chat';
-import { Classroom } from '../../types/api';
-import { chatService } from '../../services/chatService';
+import { Classroom } from '../../types/room';
+import apiService from '../../services/apiService';
 import EmptyRoomList from './EmptyRoomList';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -16,30 +16,17 @@ const ClassroomChatList: React.FC = () => {
     _id: classroom._id,
     name: classroom.name,
     description: classroom.description,
-    type: 'classroom',
+    type: classroom.type,
     avatar: classroom.avatar,
-    createdById: classroom.teacher.id,
-    createdBy: {
-      id: classroom.teacher.id,
-      name: classroom.teacher.name,
-      avatar: classroom.teacher.avatar
-    },
+    createdById: classroom.createdById,
+    createdBy: classroom.createdBy,
     createdAt: classroom.createdAt,
     updatedAt: classroom.updatedAt,
-    settings: {
-      isPrivate: false,
-      allowStudentPosts: classroom.settings.allowStudentPosts,
-      allowStudentComments: classroom.settings.allowStudentComments,
-      allowStudentChat: true,
-      requirePostApproval: false,
-      notifications: classroom.settings.notifications
-    },
-    teachers: [{
-      id: classroom.teacher.id,
-      name: classroom.teacher.name,
-      avatar: classroom.teacher.avatar
-    }],
+    settings: classroom.settings,
+    teachers: classroom.teachers,
     students: classroom.students,
+    assignments: classroom.assignments,
+    materials: classroom.materials,
     unreadCount: 0,
     lastMessage: undefined
   });
@@ -47,27 +34,16 @@ const ClassroomChatList: React.FC = () => {
   useEffect(() => {
     const fetchRooms = async () => {
       try {
-        const endpoint = currentUser?.role === 'teacher' 
-          ? '/api/classrooms/teaching'
-          : '/api/classrooms/enrolled';
-        
-        const response = await fetch(endpoint, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!response.ok) {
+        const response = await apiService.classrooms.getUserClassrooms();
+        if (response.data.success) {
+          const extendedRooms = response.data.data.map(mapClassroomToExtendedRoom);
+          setRooms(extendedRooms);
+        } else {
           throw new Error('Failed to fetch classrooms');
         }
-
-        const data = await response.json();
-        const extendedRooms = (data.data || []).map(mapClassroomToExtendedRoom);
-        setRooms(extendedRooms);
       } catch (err) {
-        setError('Failed to load classrooms');
         console.error('Error fetching classrooms:', err);
+        setError('Failed to load classrooms. Please check your connection and try again.');
       } finally {
         setLoading(false);
       }
@@ -80,68 +56,45 @@ const ClassroomChatList: React.FC = () => {
 
   const handleJoinRoom = async (roomId: string) => {
     try {
-      const response = await fetch(`/api/classrooms/${roomId}/join`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to join classroom');
-      }
-
-      const updatedResponse = await fetch(
-        currentUser?.role === 'teacher' ? '/api/classrooms/teaching' : '/api/classrooms/enrolled',
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (updatedResponse.ok) {
-        const data = await updatedResponse.json();
-        const extendedRooms = data.data.map(mapClassroomToExtendedRoom);
+      await apiService.classrooms.join(roomId);
+      const response = await apiService.classrooms.getUserClassrooms();
+      if (response.data.success) {
+        const extendedRooms = response.data.data.map(mapClassroomToExtendedRoom);
         setRooms(extendedRooms);
       }
     } catch (err) {
       console.error('Error joining classroom:', err);
-      setError('Failed to join classroom');
+      setError('Failed to join classroom. Please try again.');
     }
   };
 
   const handleCreateRoom = async (name: string, description: string) => {
     try {
-      const response = await fetch('/api/classrooms', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name,
-          description,
-          settings: {
-            allowStudentChat: true,
-            allowStudentPosts: true,
-            allowStudentComments: true
+      const response = await apiService.classrooms.create({
+        type: 'classroom',
+        name,
+        description,
+        settings: {
+          allowStudentChat: true,
+          allowStudentPosts: true,
+          allowStudentComments: true,
+          isPrivate: false,
+          requirePostApproval: false,
+          notifications: {
+            assignments: true,
+            materials: true,
+            announcements: true
           }
-        })
+        }
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to create classroom');
+      
+      if (response.data.success) {
+        const newExtendedRoom = mapClassroomToExtendedRoom(response.data.data);
+        setRooms([...rooms, newExtendedRoom]);
       }
-
-      const newClassroom = await response.json();
-      const newExtendedRoom = mapClassroomToExtendedRoom(newClassroom.data);
-      setRooms([...rooms, newExtendedRoom]);
     } catch (err) {
       console.error('Error creating classroom:', err);
-      setError('Failed to create classroom');
+      setError('Failed to create classroom. Please try again.');
     }
   };
 
