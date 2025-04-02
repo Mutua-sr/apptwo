@@ -1,32 +1,45 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Box, Typography, Paper, IconButton, Avatar, Divider } from '@mui/material';
+import { Box, Typography, Paper, IconButton, Avatar, CircularProgress } from '@mui/material';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import ChatInterface from '../components/chat/ChatInterface';
 import { chatService } from '../services/chatService';
-import { ChatRoom as ChatRoomType, ChatParticipant } from '../types/chat';
+import { ChatParticipant } from '../types/chat';
+import { Room, Community } from '../types/room';
+import { useAuth } from '../contexts/AuthContext';
+import apiService from '../services/apiService';
 
 const ChatRoom: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const navigate = useNavigate();
-  const [room, setRoom] = useState<ChatRoomType | null>(null);
+  const { currentUser } = useAuth();
+  const [room, setRoom] = useState<Room | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [participants, setParticipants] = useState<ChatParticipant[]>([]);
 
   useEffect(() => {
     const initializeChat = async () => {
-      if (!roomId) return;
+      if (!roomId || !currentUser) {
+        setError('Unable to join chat room');
+        setLoading(false);
+        return;
+      }
 
       try {
         // Connect to chat service
         await chatService.connect();
         
-        // Join the room
-        chatService.joinRoom(roomId);
+        // Get community details
+        const response = await apiService.communities.getById(roomId);
+        if (!response.data.success) {
+          throw new Error(response.data.message || 'Failed to load community');
+        }
         
-        // Get room details
-        const roomData = await chatService.getRoom(roomId);
-        setRoom(roomData);
+        setRoom(response.data.data);
+        
+        // Join the chat room
+        chatService.joinRoom(roomId);
         
         // Get participants
         const participantsData = await chatService.getRoomParticipants(roomId);
@@ -44,18 +57,15 @@ const ChatRoom: React.FC = () => {
           setParticipants(prev => prev.filter(p => p.id !== participant.id));
         });
 
+        setLoading(false);
       } catch (err: any) {
         console.error('Failed to initialize chat:', err);
-        // Handle specific error cases
-        if (err.response?.status === 404) {
-          setError('Chat room not found');
-        } else if (err.response?.status === 403) {
-          setError('You do not have permission to access this chat room');
-        } else if (err.response?.status === 500 && err.response?.data?.message === 'Invalid room structure') {
-          setError('This chat room appears to be corrupted. Please contact support.');
-        } else {
-          setError('Failed to load chat room. Please try again later.');
-        }
+        setError(
+          err.response?.data?.message || 
+          err.message || 
+          'Failed to load chat room'
+        );
+        setLoading(false);
       }
     };
 
@@ -68,9 +78,22 @@ const ChatRoom: React.FC = () => {
         chatService.disconnect();
       }
     };
-  }, [roomId]);
+  }, [roomId, currentUser]);
 
-  if (error) {
+  if (loading) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh' 
+      }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error || !currentUser) {
     return (
       <Box sx={{ 
         p: 3, 
@@ -80,7 +103,7 @@ const ChatRoom: React.FC = () => {
         gap: 2 
       }}>
         <Typography variant="h6" color="error">
-          {error}
+          {error || 'Please log in to access this chat room'}
         </Typography>
         <IconButton 
           onClick={() => navigate(-1)}
@@ -106,6 +129,11 @@ const ChatRoom: React.FC = () => {
     );
   }
 
+  const isCommunity = room.type === 'community';
+  const memberCount = isCommunity 
+    ? (room as Community).members.length 
+    : participants.length;
+
   return (
     <Paper sx={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Header */}
@@ -122,9 +150,12 @@ const ChatRoom: React.FC = () => {
         <IconButton onClick={() => navigate(-1)} sx={{ color: 'inherit' }}>
           <ArrowBackIcon />
         </IconButton>
-        <Typography variant="h6" sx={{ flex: 1 }}>{room.name}</Typography>
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="h6">{room.name}</Typography>
+          <Typography variant="body2">{room.description}</Typography>
+        </Box>
         <Typography variant="body2">
-          {participants.length} members
+          {memberCount} members • {participants.length} online
         </Typography>
       </Box>
 
@@ -152,7 +183,7 @@ const ChatRoom: React.FC = () => {
                 width: 32, 
                 height: 32,
                 border: '2px solid',
-                borderColor: 'primary.main'
+                borderColor: participant.status === 'online' ? 'success.main' : 'grey.300'
               }}
             />
             <Typography variant="caption" sx={{ mt: 0.5 }}>
@@ -164,8 +195,8 @@ const ChatRoom: React.FC = () => {
 
       {/* Chat Interface */}
       <Box sx={{ flex: 1, overflow: 'hidden' }}>
-        {roomId && room.id && (
-          <ChatInterface roomId={roomId} userId={room.id} />
+        {roomId && currentUser && (
+          <ChatInterface roomId={roomId} userId={currentUser.id} />
         )}
       </Box>
     </Paper>
