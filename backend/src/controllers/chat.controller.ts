@@ -4,6 +4,7 @@ import { RealtimeService } from '../services/realtime.service';
 import { ApiError } from '../middleware/errorHandler';
 import { AuthRequest } from '../types';
 import { ChatMessage, ChatRoom } from '../types/chat';
+import logger from '../config/logger';
 
 interface ExtendedAuthRequest extends AuthRequest {
   params: {
@@ -187,22 +188,26 @@ export const getChatRoom = async (
       throw new ApiError('Unauthorized', 401);
     }
 
-    // Use find with index to get the room
-    const rooms = await DatabaseService.find<ChatRoom>({
-      selector: {
-        type: 'chatroom',
-        _id: roomId
-      },
-      use_index: 'chatrooms-by-id-index',
-      limit: 1
-    });
-
-    const room = rooms[0];
+    // Get the room by ID
+    const room = await DatabaseService.read<ChatRoom>(roomId);
+    
     if (!room) {
+      logger.error(`Chat room not found with ID: ${roomId}`);
       return res.status(404).json({
         success: false,
         error: {
           message: 'Chat room not found'
+        }
+      });
+    }
+
+    // Verify it's a chat room
+    if (room.type !== 'chatroom') {
+      logger.error(`Invalid room type for ID ${roomId}: ${room.type}`);
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: 'Invalid chat room'
         }
       });
     }

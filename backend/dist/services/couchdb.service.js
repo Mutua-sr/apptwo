@@ -6,19 +6,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.initializeDatabase = exports.DatabaseService = void 0;
 const logger_1 = __importDefault(require("../config/logger"));
 const errorHandler_1 = require("../middleware/errorHandler");
-const couchdbConfig = {
-    url: process.env.COUCHDB_URL || 'http://localhost:5984',
-    requestDefaults: {
-        auth: {
-            username: process.env.COUCHDB_USERNAME || 'admin',
-            password: process.env.COUCHDB_PASSWORD || 'password'
-        }
-    }
-};
+const config_1 = __importDefault(require("../config/config"));
 // Import nano as a require to avoid TypeScript issues
 const nano = require('nano');
-const couchdb = nano(couchdbConfig);
-const db = couchdb.use(process.env.DB_NAME || 'eduapp');
+const couchdb = nano({
+    url: config_1.default.couchdb.url,
+    requestDefaults: {
+        auth: {
+            username: config_1.default.couchdb.username,
+            password: config_1.default.couchdb.password
+        }
+    }
+});
+const db = couchdb.use(config_1.default.couchdb.dbName);
 exports.DatabaseService = {
     // Create a document
     async create(doc) {
@@ -186,23 +186,60 @@ exports.DatabaseService = {
 // Create required indexes
 const createRequiredIndexes = async () => {
     try {
-        // Create index for posts sorted by createdAt
-        await db.createIndex({
-            index: {
+        const indexes = [
+            {
+                name: 'posts-by-date-index',
                 fields: ['type', 'createdAt']
             },
-            ddoc: 'posts-by-date-index',
-            type: 'json'
-        });
-        // Create index for posts by type
-        await db.createIndex({
-            index: {
+            {
+                name: 'posts-by-type-index',
                 fields: ['type']
             },
-            ddoc: 'posts-by-type-index',
-            type: 'json'
-        });
-        logger_1.default.info('Created/Updated required database indexes');
+            {
+                name: 'classrooms-by-teacher-index',
+                fields: ['type', 'teacher.id', 'settings.isArchived', 'updatedAt']
+            },
+            {
+                name: 'classrooms-by-student-index',
+                fields: ['type', 'students.id', 'settings.isArchived']
+            },
+            {
+                name: 'active-classrooms-index',
+                fields: ['type', 'settings.isArchived', 'updatedAt']
+            },
+            // Add index for $or queries
+            {
+                name: 'classrooms-by-user-index',
+                fields: ['type', 'settings.isArchived', 'teacher.id', 'students']
+            },
+            // Add index for chat rooms
+            {
+                name: 'chatrooms-by-id-index',
+                fields: ['type', '_id']
+            },
+            {
+                name: 'chatrooms-by-participant-index',
+                fields: ['type', 'participants.userId']
+            }
+        ];
+        for (const index of indexes) {
+            try {
+                await db.createIndex({
+                    index: { fields: index.fields },
+                    ddoc: index.name,
+                    name: index.name,
+                    type: 'json'
+                });
+                logger_1.default.info(`Created/Updated index: ${index.name}`);
+            }
+            catch (error) {
+                // If index already exists, that's okay
+                if (error.statusCode !== 409) {
+                    throw error;
+                }
+            }
+        }
+        logger_1.default.info('All required database indexes are ready');
     }
     catch (error) {
         logger_1.default.error('Error creating indexes:', error);

@@ -1,8 +1,5 @@
 import { Server as HttpServer } from 'http';
-import { ChatMessage } from '../types';
-interface ServerToClientEvents {
-    message: (message: ChatMessage) => void;
-}
+import { ServerToClientEvents } from '../types/socket';
 export declare class SocketService {
     private static instance;
     private io;

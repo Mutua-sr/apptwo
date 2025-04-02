@@ -29,16 +29,16 @@ const getClassrooms = async (req, res, next) => {
                 classrooms = await classroom_service_1.ClassroomService.getByStudent(req.user.id);
                 break;
             default:
-                classrooms = await classroom_service_1.ClassroomService.getAll(req.user.id);
+                // Get both teacher and student classrooms
+                const teacherClassrooms = await classroom_service_1.ClassroomService.getByTeacher(req.user.id);
+                const studentClassrooms = await classroom_service_1.ClassroomService.getByStudent(req.user.id);
+                classrooms = [...teacherClassrooms, ...studentClassrooms];
         }
         // Add real-time data like unread messages count
-        const classroomsWithMeta = await Promise.all(classrooms.map(async (classroom) => {
-            const unreadCount = await realtime_service_1.RealtimeService.getInstance().getUnreadCount(`classroom-${classroom._id}`, req.user.id);
-            return {
-                ...classroom,
-                unreadCount
-            };
-        }));
+        const classroomsWithMeta = await Promise.all(classrooms.map(async (classroom) => ({
+            ...classroom,
+            unreadCount: 0 // Default to 0 since getUnreadCount is not available
+        })));
         res.json({
             success: true,
             data: classroomsWithMeta
@@ -62,11 +62,34 @@ const createClassroom = async (req, res, next) => {
         if (!((_c = req.body.description) === null || _c === void 0 ? void 0 : _c.trim())) {
             throw new errorHandler_1.ApiError('Description is required', 400);
         }
+        // First create a chat room
+        const chatRoomData = {
+            type: 'chatroom',
+            name: req.body.name.trim(),
+            description: req.body.description.trim(),
+            participants: [{
+                    userId: req.user.id,
+                    name: req.user.name || '',
+                    avatar: req.user.avatar || '',
+                    role: 'admin',
+                    joinedAt: new Date().toISOString()
+                }],
+            settings: {
+                isPrivate: false,
+                allowReactions: true,
+                allowAttachments: true,
+                allowReplies: true,
+                allowEditing: true,
+                allowDeletion: true
+            }
+        };
+        const chatRoom = await database_1.DatabaseService.create(chatRoomData);
         const classroomData = {
             type: 'classroom',
             name: req.body.name.trim(),
             description: req.body.description.trim(),
             code: generateClassroomCode(),
+            chatRoomId: chatRoom._id,
             teacher: {
                 id: req.user.id,
                 name: req.user.name,
@@ -114,13 +137,11 @@ const getClassroom = async (req, res, next) => {
             !classroom.students.some(student => { var _a; return student.id === ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id); })) {
             throw new errorHandler_1.ApiError('Not authorized to access this classroom', 403);
         }
-        // Add real-time data
-        const unreadCount = await realtime_service_1.RealtimeService.getInstance().getUnreadCount(`classroom-${classroom._id}`, req.user.id);
         res.json({
             success: true,
             data: {
                 ...classroom,
-                unreadCount
+                unreadCount: 0 // Default to 0 since getUnreadCount is not available
             }
         });
     }
@@ -172,7 +193,7 @@ const updateClassroom = async (req, res, next) => {
 };
 exports.updateClassroom = updateClassroom;
 const joinClassroom = async (req, res, next) => {
-    var _a;
+    var _a, _b;
     try {
         const { code } = req.params;
         // Find classroom by code
@@ -201,6 +222,21 @@ const joinClassroom = async (req, res, next) => {
         const updatedClassroom = await database_1.DatabaseService.update(classroom._id, {
             students: [...classroom.students, newStudent]
         });
+        // Add student to chat room if it exists
+        if (classroom.chatRoomId) {
+            const chatRoom = await database_1.DatabaseService.read(classroom.chatRoomId);
+            if (chatRoom && chatRoom.type === 'chatroom') {
+                await database_1.DatabaseService.update(classroom.chatRoomId, {
+                    participants: [...chatRoom.participants, {
+                            userId: req.user.id,
+                            name: req.user.name || '',
+                            avatar: ((_b = req.user) === null || _b === void 0 ? void 0 : _b.avatar) || '',
+                            role: 'member',
+                            joinedAt: new Date().toISOString()
+                        }]
+                });
+            }
+        }
         // Notify about new student
         realtime_service_1.RealtimeService.getInstance().broadcastToRoom(classroom._id, 'student_joined', {
             classroomId: classroom._id,

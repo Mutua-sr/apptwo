@@ -44,11 +44,9 @@ class SocketService {
             socket.on('message', (message) => {
                 this.io.to(message.roomId).emit('message', {
                     ...message,
-                    sender: {
-                        id: socket.data.user.id,
-                        name: socket.data.user.name,
-                        avatar: socket.data.user.avatar
-                    }
+                    senderId: socket.data.user.id,
+                    senderName: socket.data.user.name,
+                    senderAvatar: socket.data.user.avatar
                 });
             });
             socket.on('disconnect', () => {

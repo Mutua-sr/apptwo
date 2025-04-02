@@ -68,12 +68,9 @@ router.post('/classrooms', auth_1.auth, classroomController.createClassroom);
 router.get('/classrooms/:id', auth_1.auth, classroomController.getClassroom);
 router.put('/classrooms/:id', auth_1.auth, classroomController.updateClassroom);
 router.delete('/classrooms/:id', auth_1.auth, classroomController.deleteClassroom);
-router.post('/classrooms/join', auth_1.auth, classroomController.joinClassroom);
+router.post('/classrooms/:code/join', auth_1.auth, classroomController.joinClassroom);
 router.post('/classrooms/:id/assignments', auth_1.auth, classroomController.addAssignment);
 router.post('/classrooms/:id/materials', auth_1.auth, classroomController.addMaterial);
-router.post('/classrooms/:id/schedule', auth_1.auth, classroomController.addScheduleEvent);
-router.post('/classrooms/:classroomId/assignments/:assignmentId/submit', auth_1.auth, classroomController.submitAssignment);
-router.put('/classrooms/:classroomId/assignments/:assignmentId/submissions/:studentId/grade', auth_1.auth, classroomController.gradeSubmission);
 // Posts routes
 router.get('/posts', auth_1.auth, feedController.getPosts);
 router.post('/posts', auth_1.auth, feedController.createPost);
@@ -93,7 +90,7 @@ router.delete('/communities/:id', auth_1.auth, communityController.deleteCommuni
 router.post('/communities/:id/join', auth_1.auth, communityController.joinCommunity);
 router.post('/communities/:id/leave', auth_1.auth, communityController.leaveCommunity);
 // Chat routes
-router.get('/chat/rooms/:id', auth_1.auth, chatController.getChatRoom);
+router.get('/chat/rooms/:roomId', auth_1.auth, chatController.getChatRoom);
 router.get('/chat/rooms/:roomId/messages', auth_1.auth, chatController.getChatHistory);
 router.post('/chat/rooms/:roomId/messages', auth_1.auth, chatController.sendMessage);
 router.delete('/chat/messages/:messageId', auth_1.auth, chatController.deleteMessage);
