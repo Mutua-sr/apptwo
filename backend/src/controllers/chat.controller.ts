@@ -174,8 +174,8 @@ export const getChatRoom = async (
   next: NextFunction
 ) => {
   try {
-    const id = req.params.id;
-    if (!id) {
+    const roomId = req.params.roomId;
+    if (!roomId) {
       throw new ApiError('Room ID is required', 400);
     }
     
@@ -183,7 +183,7 @@ export const getChatRoom = async (
       throw new ApiError('Unauthorized', 401);
     }
 
-    const room = await DatabaseService.read<ChatRoom>(id);
+    const room = await DatabaseService.read<ChatRoom>(roomId);
 
     if (!room || !room.participants) {
       throw new ApiError('Chat room not found', 404);
@@ -211,8 +211,8 @@ export const getChatRoom = async (
       })),
       lastMessage: room.lastMessage,
       unreadCount: 0,
-      createdAt: room.createdAt,
-      updatedAt: room.updatedAt
+      createdAt: room.createdAt || new Date().toISOString(),
+      updatedAt: room.updatedAt || new Date().toISOString()
     };
 
     res.json({

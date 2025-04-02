@@ -61,7 +61,7 @@ const ChatRoomComponent: React.FC = () => {
         console.error('Failed to initialize chat:', err);
         const errorMessage = err.message?.includes('connect') 
           ? 'Unable to connect to chat service. Please try again later.'
-          : err.response?.data?.message || err.message || 'Failed to load chat room';
+          : err.response?.data?.error?.message || err.message || 'Failed to load chat room';
         
         chatService.disconnect();
         setError(errorMessage);

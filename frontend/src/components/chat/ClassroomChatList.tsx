@@ -1,5 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { 
+  Box, 
+  Typography, 
+  Grid, 
+  Paper, 
+  CircularProgress,
+  Chip,
+  Button
+} from '@mui/material';
+import {
+  People as PeopleIcon,
+  Chat as ChatIcon,
+  Refresh as RefreshIcon
+} from '@mui/icons-material';
 import { ExtendedRoom } from '../../types/chat';
 import { Classroom } from '../../types/room';
 import apiService from '../../services/apiService';
@@ -31,24 +45,27 @@ const ClassroomChatList: React.FC = () => {
     lastMessage: undefined
   });
 
-  useEffect(() => {
-    const fetchRooms = async () => {
-      try {
-        const response = await apiService.classrooms.getUserClassrooms();
-        if (response.data.success) {
-          const extendedRooms = response.data.data.map(mapClassroomToExtendedRoom);
-          setRooms(extendedRooms);
-        } else {
-          throw new Error('Failed to fetch classrooms');
-        }
-      } catch (err) {
-        console.error('Error fetching classrooms:', err);
-        setError('Failed to load classrooms. Please check your connection and try again.');
-      } finally {
-        setLoading(false);
+  const fetchRooms = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await apiService.classrooms.getUserClassrooms();
+      if (response.data.success) {
+        const extendedRooms = response.data.data.map(mapClassroomToExtendedRoom);
+        setRooms(extendedRooms);
+      } else {
+        throw new Error(response.data.error?.message || 'Failed to fetch classrooms');
       }
-    };
+    } catch (err: any) {
+      console.error('Error fetching classrooms:', err);
+      const errorMessage = err.response?.data?.error?.message || err.message || 'Failed to load classrooms';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     if (currentUser) {
       fetchRooms();
     }
@@ -100,17 +117,38 @@ const ClassroomChatList: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[200px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-      </div>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: 200 
+      }}>
+        <CircularProgress />
+      </Box>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center p-4 text-red-500">
-        <p>{error}</p>
-      </div>
+      <Box sx={{ 
+        p: 4, 
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        alignItems: 'center'
+      }}>
+        <Typography color="error">
+          {error}
+        </Typography>
+        <Button 
+          variant="contained" 
+          onClick={fetchRooms}
+          startIcon={<RefreshIcon />}
+        >
+          Retry
+        </Button>
+      </Box>
     );
   }
 
@@ -126,54 +164,77 @@ const ClassroomChatList: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" sx={{ mb: 4, fontWeight: 'bold' }}>
         {currentUser?.role === 'teacher' ? 'Your Teaching Classrooms' : 'Your Enrolled Classrooms'}
-      </h2>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      </Typography>
+      
+      <Grid container spacing={3}>
         {rooms.map((room) => (
-          <Link
-            to={`/chat/${room._id}`}
-            key={room._id}
-            className="block p-6 bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800">{room.name}</h3>
-                {room.description && (
-                  <p className="text-gray-600 mt-1 text-sm">{room.description}</p>
+          <Grid item xs={12} md={6} lg={4} key={room._id}>
+            <Paper
+              component={Link}
+              to={`/chat/${room._id}`}
+              sx={{
+                p: 3,
+                display: 'block',
+                textDecoration: 'none',
+                transition: 'box-shadow 0.2s',
+                '&:hover': {
+                  boxShadow: 6
+                }
+              }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Box>
+                  <Typography variant="h6" sx={{ color: 'text.primary' }}>
+                    {room.name}
+                  </Typography>
+                  {room.description && (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      {room.description}
+                    </Typography>
+                  )}
+                </Box>
+                {room.unreadCount && room.unreadCount > 0 && (
+                  <Chip 
+                    label={room.unreadCount}
+                    color="primary"
+                    size="small"
+                  />
                 )}
-              </div>
-              {room.unreadCount && room.unreadCount > 0 && (
-                <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                  {room.unreadCount}
-                </span>
-              )}
-            </div>
-            
-            <div className="mt-4 flex items-center text-sm text-gray-500">
-              <i className="fas fa-users mr-2"></i>
-              <span>{room.students?.length || 0} students</span>
-              
-              {room.settings?.allowStudentChat && (
-                <span className="ml-4 text-green-600 flex items-center">
-                  <i className="fas fa-comments mr-1"></i>
-                  Chat enabled
-                </span>
-              )}
-            </div>
+              </Box>
 
-            {room.lastMessage && (
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                <p className="text-sm text-gray-600 truncate">
-                  <span className="font-medium">{room.lastMessage}</span>
-                </p>
-              </div>
-            )}
-          </Link>
+              <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                  <PeopleIcon sx={{ fontSize: 'small', mr: 0.5 }} />
+                  <Typography variant="body2">
+                    {room.students?.length || 0} students
+                  </Typography>
+                </Box>
+
+                {room.settings?.allowStudentChat && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', color: 'success.main' }}>
+                    <ChatIcon sx={{ fontSize: 'small', mr: 0.5 }} />
+                    <Typography variant="body2">
+                      Chat enabled
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+
+              {room.lastMessage && (
+                <Box sx={{ mt: 2, pt: 2, borderTop: 1, borderColor: 'divider' }}>
+                  <Typography variant="body2" color="text.secondary" noWrap>
+                    {room.lastMessage}
+                  </Typography>
+                </Box>
+              )}
+            </Paper>
+          </Grid>
         ))}
-      </div>
-    </div>
+      </Grid>
+    </Box>
   );
 };
 

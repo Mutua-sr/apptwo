@@ -10,7 +10,11 @@ import {
   ListItem,
   CircularProgress,
 } from '@mui/material';
-import { Send as SendIcon, EmojiEmotions as EmojiIcon } from '@mui/icons-material';
+import { 
+  Send as SendIcon, 
+  EmojiEmotions as EmojiIcon,
+  Refresh as RefreshIcon 
+} from '@mui/icons-material';
 import { ChatMessage } from '../../types/chat';
 import { chatService } from '../../services/chatService';
 
@@ -23,25 +27,28 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ roomId, userId }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  useEffect(() => {
-    const fetchMessages = async () => {
-      try {
-        const fetchedMessages = await chatService.getMessages(roomId);
-        setMessages(fetchedMessages);
-        setIsLoading(false);
-        scrollToBottom();
-      } catch (error) {
-        console.error('Error fetching messages:', error);
-        setIsLoading(false);
-      }
-    };
+  const fetchMessages = async () => {
+    try {
+      const fetchedMessages = await chatService.getMessages(roomId);
+      setMessages(fetchedMessages);
+      setIsLoading(false);
+      scrollToBottom();
+    } catch (err: any) {
+      console.error('Error fetching messages:', err);
+      const errorMessage = err.response?.data?.error?.message || err.message || 'Failed to load messages';
+      setError(errorMessage);
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchMessages();
 
     // Subscribe to new messages
@@ -57,8 +64,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ roomId, userId }) => {
     try {
       await chatService.sendMessage(roomId, newMessage);
       setNewMessage('');
-    } catch (error) {
-      console.error('Error sending message:', error);
+    } catch (err: any) {
+      console.error('Error sending message:', err);
+      const errorMessage = err.response?.data?.error?.message || err.message || 'Failed to send message';
+      setError(errorMessage);
     }
   };
 
@@ -73,6 +82,37 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ roomId, userId }) => {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
         <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100%',
+        flexDirection: 'column',
+        gap: 2
+      }}>
+        <Typography color="error" align="center">
+          {error}
+        </Typography>
+        <IconButton 
+          onClick={() => {
+            setError(null);
+            setIsLoading(true);
+            fetchMessages();
+          }}
+          sx={{ 
+            bgcolor: 'primary.main',
+            color: 'white',
+            '&:hover': { bgcolor: 'primary.dark' }
+          }}
+        >
+          <RefreshIcon />
+        </IconButton>
       </Box>
     );
   }

@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Tabs, Tab, Typography } from '@mui/material';
+import { 
+  Box, 
+  Tabs, 
+  Tab, 
+  Typography, 
+  CircularProgress,
+  Button
+} from '@mui/material';
+import { 
+  Refresh as RefreshIcon 
+} from '@mui/icons-material';
 import ChatInterface from './ChatInterface';
 import { useAuth } from '../../contexts/AuthContext';
 import { chatService } from '../../services/chatService';
@@ -18,15 +28,23 @@ const ClassroomChat: React.FC<ClassroomChatProps> = ({ classroom }) => {
   const { currentUser } = useAuth() as AuthContextType;
   const [activeTab, setActiveTab] = useState<number>(0);
   const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const connectToChat = async () => {
       try {
+        setIsLoading(true);
+        setError(null);
         await chatService.connect();
         chatService.joinRoom(classroom._id);
         setIsConnected(true);
-      } catch (error) {
-        console.error('Failed to connect to chat:', error);
+      } catch (err: any) {
+        console.error('Failed to connect to chat:', err);
+        const errorMessage = err.response?.data?.error?.message || err.message || 'Failed to connect to chat';
+        setError(errorMessage);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -34,11 +52,31 @@ const ClassroomChat: React.FC<ClassroomChatProps> = ({ classroom }) => {
 
     return () => {
       if (isConnected) {
-        chatService.leaveRoom(classroom._id);
-        chatService.disconnect();
+        try {
+          chatService.leaveRoom(classroom._id);
+          chatService.disconnect();
+        } catch (err) {
+          console.error('Error during cleanup:', err);
+        }
       }
     };
-  }, [classroom._id, isConnected]);
+  }, [classroom._id]);
+
+  const handleRetryConnection = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      await chatService.connect();
+      chatService.joinRoom(classroom._id);
+      setIsConnected(true);
+    } catch (err: any) {
+      console.error('Failed to reconnect to chat:', err);
+      const errorMessage = err.response?.data?.error?.message || err.message || 'Failed to reconnect to chat';
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number): void => {
     setActiveTab(newValue);
@@ -46,8 +84,47 @@ const ClassroomChat: React.FC<ClassroomChatProps> = ({ classroom }) => {
 
   if (!currentUser) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Typography>Please log in to access chat.</Typography>
+      <Box sx={{ p: 3, textAlign: 'center' }}>
+        <Typography color="error">
+          Please log in to access chat.
+        </Typography>
+      </Box>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100%' 
+      }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box sx={{ 
+        p: 3, 
+        textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        alignItems: 'center'
+      }}>
+        <Typography color="error">
+          {error}
+        </Typography>
+        <Button 
+          variant="contained" 
+          onClick={handleRetryConnection}
+          startIcon={<RefreshIcon />}
+        >
+          Retry Connection
+        </Button>
       </Box>
     );
   }
