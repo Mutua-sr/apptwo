@@ -15,6 +15,13 @@ const Communities: React.FC = () => {
 
   useEffect(() => {
     const fetchCommunities = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Authentication token not found. Please log in again.');
+        setLoading(false);
+        return;
+      }
+
       try {
         await unifiedChatService.connect();
         const fetchedCommunities = await unifiedChatService.getRooms();
@@ -26,8 +33,10 @@ const Communities: React.FC = () => {
       }
     };
 
-    if (currentUser) {
+    if (currentUser && localStorage.getItem('token')) {
       fetchCommunities();
+    } else {
+      setLoading(false);
     }
 
     return () => {

@@ -21,12 +21,16 @@ class UnifiedChatServiceImpl implements UnifiedChatService {
     if (this.socket?.connected) return;
 
     return new Promise((resolve, reject) => {
+      const token = localStorage.getItem('token');
       this.socket = io(API_URL, {
         transports: ['websocket'],
         autoConnect: true,
         reconnection: true,
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
+        auth: {
+          token
+        }
       });
 
       this.socket.on('connect', () => {
