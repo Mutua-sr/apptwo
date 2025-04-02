@@ -19,29 +19,33 @@ import { chatService } from '../services/chatService';
 import apiService from '../services/apiService';
 
 const transformCommunity = (apiCommunity: ApiCommunity): Community => {
+  if (!apiCommunity) {
+    throw new Error('Invalid community data received');
+  }
+
   return {
     _id: apiCommunity._id,
     name: apiCommunity.name,
     description: apiCommunity.description || '',
     coverImage: apiCommunity.avatar,
     creator: {
-      id: apiCommunity.createdBy.id,
-      name: apiCommunity.createdBy.name,
-      avatar: apiCommunity.createdBy.avatar
+      id: apiCommunity.createdById || apiCommunity.createdBy?.id || '',
+      name: apiCommunity.createdBy?.name || 'Unknown',
+      avatar: apiCommunity.createdBy?.avatar
     },
-    members: apiCommunity.members.map(member => ({
-      id: member.id,
-      name: member.name,
+    members: (apiCommunity.members || []).map(member => ({
+      id: member.id || '',
+      name: member.name || 'Unknown Member',
       avatar: member.avatar,
-      role: member.role
+      role: member.role || 'member'
     })),
     settings: {
-      isPrivate: apiCommunity.settings.isPrivate,
-      requiresApproval: apiCommunity.settings.requirePostApproval,
-      allowInvites: apiCommunity.settings.allowMemberInvites
+      isPrivate: apiCommunity.settings?.isPrivate || false,
+      requiresApproval: apiCommunity.settings?.requirePostApproval || false,
+      allowInvites: apiCommunity.settings?.allowMemberInvites || false
     },
-    createdAt: apiCommunity.createdAt,
-    updatedAt: apiCommunity.updatedAt
+    createdAt: apiCommunity.createdAt || new Date().toISOString(),
+    updatedAt: apiCommunity.updatedAt || new Date().toISOString()
   };
 };
 
@@ -60,11 +64,12 @@ const Communities: React.FC = () => {
         
         // Fetch communities
         const response = await apiService.communities.getAll();
-        if (!response.data.success) {
-          throw new Error(response.data.message || 'Failed to fetch communities');
+        if (!response?.data?.success) {
+          throw new Error(response?.data?.message || 'Failed to fetch communities');
         }
         
-        const transformedCommunities = response.data.data.map(transformCommunity);
+        const communities = response.data.data || [];
+        const transformedCommunities = communities.map(transformCommunity);
         setCommunities(transformedCommunities);
         setLoading(false);
 
@@ -72,12 +77,14 @@ const Communities: React.FC = () => {
         chatService.onMessageReceived(() => {
           // Refresh communities to get updated unread counts
           apiService.communities.getAll().then(response => {
-            if (response.data.success) {
-              const updatedCommunities = response.data.data.map(transformCommunity);
+            if (response?.data?.success) {
+              const communities = response.data.data || [];
+              const updatedCommunities = communities.map(transformCommunity);
               setCommunities(updatedCommunities);
             }
           }).catch(error => {
             console.error('Error refreshing communities:', error);
+            setError(error instanceof Error ? error.message : 'Failed to refresh communities');
           });
         });
       } catch (error) {
