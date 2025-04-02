@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import { Save as SaveIcon } from '@mui/icons-material';
 import apiService from '../../services/apiService';
-import type { AdminSettings } from '../../types/api';
+import type { AdminSettings } from '../../types/admin';
 
 const Section = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(3),

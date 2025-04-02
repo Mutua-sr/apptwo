@@ -1,6 +1,8 @@
 import axios, { InternalAxiosRequestConfig } from 'axios';
 import { Community, CreateRoomData, UpdateRoomData } from '../types/room';
 import { User, ApiResponse, LoginResponse, RegisterResponse, UserStatus } from '../types/api';
+import { Report, AdminSettings, PaginatedResponse } from '../types/admin';
+import { AdminDashboardStats } from '../types/api';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
@@ -113,22 +115,34 @@ const apiService = {
 
   admin: {
     getStats: () => 
-      api.get('/admin/stats'),
+      api.get<ApiResponse<AdminDashboardStats>>('/admin/stats'),
     
+    getDashboardStats: () =>
+      api.get<ApiResponse<AdminDashboardStats>>('/admin/dashboard/stats'),
+
     getUsers: (params?: { page?: number; limit?: number; status?: UserStatus }) => 
-      api.get('/admin/users', { params }),
+      api.get<ApiResponse<PaginatedResponse<User>>>('/admin/users', { params }),
     
-    updateUserStatus: (userId: string, status: UserStatus) => 
-      api.put(`/admin/users/${userId}/status`, { status }),
+    updateUserStatus: (userId: string, data: { status?: UserStatus; role?: User['role'] }) => 
+      api.put<ApiResponse<User>>(`/admin/users/${userId}`, data),
     
     getCommunities: (params?: { page?: number; limit?: number }) => 
-      api.get('/admin/communities', { params }),
+      api.get<ApiResponse<PaginatedResponse<Community>>>('/admin/communities', { params }),
     
     getReports: (params?: { page?: number; limit?: number; status?: string }) => 
-      api.get('/admin/reports', { params }),
+      api.get<ApiResponse<PaginatedResponse<Report>>>('/admin/reports', { params }),
     
     handleReport: (reportId: string, action: 'approve' | 'reject') => 
-      api.put(`/admin/reports/${reportId}`, { action })
+      api.put<ApiResponse<Report>>(`/admin/reports/${reportId}`, { action }),
+
+    updateReport: (reportId: string, status: 'approved' | 'rejected') =>
+      api.put<ApiResponse<Report>>(`/admin/reports/${reportId}`, { status }),
+
+    getSettings: () =>
+      api.get<ApiResponse<AdminSettings>>('/admin/settings'),
+
+    updateSettings: (settings: Partial<AdminSettings>) =>
+      api.put<ApiResponse<AdminSettings>>('/admin/settings', settings)
   }
 };
 

@@ -101,17 +101,30 @@ export interface AdminDashboardStats {
     total: number;
     active: number;
     newThisMonth: number;
+    banned: number;
+    suspended: number;
   };
   content: {
     posts: number;
     comments: number;
     communities: number;
-    reports: number;
+    reports: {
+      total: number;
+      pending: number;
+      resolved: number;
+    };
   };
   engagement: {
     dailyActiveUsers: number;
     monthlyActiveUsers: number;
     averageSessionDuration: number;
+    totalInteractions: number;
+  };
+  system: {
+    lastBackup: string;
+    storageUsed: number;
+    cpuUsage: number;
+    memoryUsage: number;
   };
 }
 

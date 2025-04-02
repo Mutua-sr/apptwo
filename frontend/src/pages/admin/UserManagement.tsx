@@ -46,8 +46,12 @@ const UserManagement: React.FC = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const response = await apiService.auth.getAllUsers();
-      setUsers(response.data.data);
+      const response = await apiService.admin.getUsers();
+      if (response.data.success && response.data.data) {
+        setUsers(response.data.data.data); // Access the data array from PaginatedResponse
+      } else {
+        setError('Failed to fetch users: Invalid response format');
+      }
     } catch (error) {
       setError('Failed to fetch users');
       console.error(error);
@@ -58,12 +62,24 @@ const UserManagement: React.FC = () => {
 
   const handleStatusChange = async (userId: string, newStatus: UserStatus) => {
     try {
-      await apiService.auth.updateUserStatus(userId, newStatus);
+      await apiService.admin.updateUserStatus(userId, { status: newStatus });
       setUsers(users.map(user => 
         user.id === userId ? { ...user, status: newStatus } : user
       ));
     } catch (error) {
       setError('Failed to update user status');
+      console.error(error);
+    }
+  };
+
+  const handleUserUpdate = async (userId: string, data: { status?: UserStatus; role?: User['role'] }) => {
+    try {
+      await apiService.admin.updateUserStatus(userId, data);
+      setUsers(users.map(user => 
+        user.id === userId ? { ...user, ...data } : user
+      ));
+    } catch (error) {
+      setError('Failed to update user');
       console.error(error);
     }
   };
@@ -196,10 +212,11 @@ const UserManagement: React.FC = () => {
                   label="Role"
                   onChange={(e) => setSelectedUser({
                     ...selectedUser,
-                    role: e.target.value as 'student' | 'admin'
+                    role: e.target.value as User['role']
                   })}
                 >
-                  <MenuItem value="student">Student</MenuItem>
+                  <MenuItem value="member">Member</MenuItem>
+                  <MenuItem value="moderator">Moderator</MenuItem>
                   <MenuItem value="admin">Admin</MenuItem>
                 </Select>
               </FormControl>
@@ -228,19 +245,11 @@ const UserManagement: React.FC = () => {
           <Button
             onClick={async () => {
               if (selectedUser) {
-                try {
-                  await apiService.auth.updateUser(selectedUser.id, {
-                    role: selectedUser.role,
-                    status: selectedUser.status
-                  });
-                  setUsers(users.map(user =>
-                    user.id === selectedUser.id ? selectedUser : user
-                  ));
-                  setDialogOpen(false);
-                } catch (error) {
-                  setError('Failed to update user');
-                  console.error(error);
-                }
+                await handleUserUpdate(selectedUser.id, {
+                  status: selectedUser.status,
+                  role: selectedUser.role
+                });
+                setDialogOpen(false);
               }
             }}
             variant="contained"
