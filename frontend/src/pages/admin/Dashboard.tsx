@@ -150,8 +150,8 @@ const Dashboard: React.FC = () => {
             <Typography variant="h6" gutterBottom>
               Reports
             </Typography>
-            <Typography variant="h3" color={stats?.content.reports ? 'error' : 'inherit'}>
-              {loading ? <CircularProgress size={30} /> : stats?.content.reports || 0}
+            <Typography variant="h3" color={stats?.content.reports.total ? 'error' : 'inherit'}>
+              {loading ? <CircularProgress size={30} /> : stats?.content.reports.total || 0}
             </Typography>
           </Paper>
         </GridItem>

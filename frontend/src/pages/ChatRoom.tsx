@@ -331,7 +331,7 @@ const ChatRoomComponent: React.FC = () => {
 
       <Box sx={{ flex: 1, overflow: 'hidden' }}>
         {roomId && currentUser?.id && (
-          <ChatInterface roomId={roomId} userId={currentUser.id} />
+          <ChatInterface roomId={roomId} userId={currentUser.id} type="community" />
         )}
       </Box>
     </Paper>

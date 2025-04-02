@@ -42,7 +42,7 @@ const CreateCommunity: React.FC = () => {
     try {
       const response = await apiService.communities.create(formData);
       if (!response.data.success) {
-        throw new Error(response.data.message || 'Failed to create community');
+        throw new Error(response.data.error?.message || 'Failed to create community');
       }
       
       // Navigate to the new community's chat

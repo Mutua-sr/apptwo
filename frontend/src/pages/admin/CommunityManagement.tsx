@@ -57,7 +57,7 @@ const CommunityManagement: React.FC = () => {
   const fetchCommunities = async () => {
     try {
       setLoading(true);
-      const response = await apiService.communities.getAll();
+      const response = await apiService.communities.list();
       setCommunities(response.data.data);
     } catch (error) {
       setError('Failed to fetch communities');

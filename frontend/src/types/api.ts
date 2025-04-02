@@ -246,3 +246,26 @@ export interface ActivityResponse {
   };
   createdAt: string;
 }
+
+export interface UpdateProfileData {
+  name?: string;
+  bio?: string;
+  avatar?: string;
+  interests?: string[];
+  location?: string;
+  website?: string;
+  social?: {
+    twitter?: string;
+    facebook?: string;
+    linkedin?: string;
+    github?: string;
+  };
+  settings?: {
+    emailNotifications?: boolean;
+    pushNotifications?: boolean;
+    privacy?: {
+      profileVisibility?: string;
+      showLocation?: boolean;
+    };
+  };
+}

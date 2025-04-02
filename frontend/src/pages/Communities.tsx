@@ -17,7 +17,7 @@ const Communities: React.FC = () => {
     const fetchCommunities = async () => {
       try {
         await unifiedChatService.connect();
-        const fetchedCommunities = await unifiedChatService.getRooms('community');
+        const fetchedCommunities = await unifiedChatService.getRooms();
         setCommunities(fetchedCommunities);
         setLoading(false);
       } catch (error) {
