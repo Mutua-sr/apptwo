@@ -1,21 +1,17 @@
-import { classroomResolvers } from './classroom.resolvers';
 import { communityResolvers } from './community.resolvers';
 import { postResolvers } from './post.resolvers';
 
 // Merge resolvers
 const resolvers = {
   Query: {
-    ...classroomResolvers.Query,
     ...communityResolvers.Query,
     ...postResolvers.Query,
   },
   Mutation: {
-    ...classroomResolvers.Mutation,
     ...communityResolvers.Mutation,
     ...postResolvers.Mutation,
   },
   // Type resolvers
-  Classroom: classroomResolvers.Classroom,
   Community: communityResolvers.Community,
   Post: postResolvers.Post,
   // Scalar resolvers for dates

@@ -28,14 +28,13 @@ import reportService, { ReportOptions } from '../../services/reportService';
 
 const AdminDashboard: React.FC = () => {
   const [openDialog, setOpenDialog] = useState(false);
-  const [reportType, setReportType] = useState<'users' | 'classrooms' | 'communities' | 'activities'>('users');
+  const [reportType, setReportType] = useState<'users' | 'communities' | 'activities'>('users');
   const [reportFormat, setReportFormat] = useState<'pdf' | 'csv' | 'excel'>('pdf');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const reportTypes = [
     { value: 'users', label: 'Users Report', description: 'User registration and activity statistics' },
-    { value: 'classrooms', label: 'Classrooms Report', description: 'Classroom participation and engagement metrics' },
     { value: 'communities', label: 'Communities Report', description: 'Community growth and interaction data' },
     { value: 'activities', label: 'Activities Report', description: 'User actions and system events log' }
   ];
@@ -79,7 +78,7 @@ const AdminDashboard: React.FC = () => {
 
       <Grid container spacing={3}>
         {reportTypes.map((type) => (
-          <Grid item xs={12} sm={6} md={3} key={type.value}>
+          <Grid item xs={12} sm={6} md={4} key={type.value}>
             <Paper
               sx={{
                 p: 3,

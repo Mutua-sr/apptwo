@@ -1,5 +1,4 @@
 import { Community } from './community';
-import { Classroom } from './classroom';
 
 export interface ChatMessage {
   id: string;
@@ -30,7 +29,7 @@ export interface ExtendedRoom {
   _id: string;
   name: string;
   description?: string;
-  type: 'community' | 'classroom';
+  type: 'community';
   chatRoomId?: string;
   avatar?: string;
   createdById: string;
@@ -43,35 +42,15 @@ export interface ExtendedRoom {
   updatedAt: string;
   settings: {
     isPrivate: boolean;
-    allowStudentPosts?: boolean;
-    allowStudentComments?: boolean;
-    allowStudentChat?: boolean;
     allowMemberPosts?: boolean;
     allowMemberInvites?: boolean;
     requirePostApproval: boolean;
     notifications?: {
-      assignments: boolean;
-      materials: boolean;
       announcements: boolean;
     };
   };
   unreadCount?: number;
   lastMessage?: string;
-  // Classroom specific properties
-  teachers?: Array<{
-    id: string;
-    name: string;
-    avatar?: string;
-  }>;
-  students?: Array<{
-    id: string;
-    name: string;
-    avatar?: string;
-    status?: string;
-    joinedAt?: string;
-  }>;
-  assignments?: string[];
-  materials?: string[];
   // Community specific properties
   members?: Array<{
     id: string;
@@ -101,7 +80,7 @@ export interface ExtendedRoom {
 export interface ChatRoom {
   id: string;
   name: string;
-  type: 'community' | 'classroom';
+  type: 'community';
   description?: string;
   currentUserId: string;
   participants: ChatParticipant[];

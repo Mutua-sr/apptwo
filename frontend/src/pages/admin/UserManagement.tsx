@@ -196,11 +196,10 @@ const UserManagement: React.FC = () => {
                   label="Role"
                   onChange={(e) => setSelectedUser({
                     ...selectedUser,
-                    role: e.target.value as 'student' | 'teacher' | 'admin'
+                    role: e.target.value as 'student' | 'admin'
                   })}
                 >
                   <MenuItem value="student">Student</MenuItem>
-                  <MenuItem value="teacher">Teacher</MenuItem>
                   <MenuItem value="admin">Admin</MenuItem>
                 </Select>
               </FormControl>

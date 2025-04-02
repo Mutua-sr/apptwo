@@ -17,10 +17,6 @@ const Navbar: React.FC = () => {
             <i className="fas fa-users mr-1"></i>
             Communities
           </Link>
-          <Link to="/classrooms" className="hover:text-gray-300 transition-colors">
-            <i className="fas fa-chalkboard mr-1"></i>
-            Classrooms
-          </Link>
           <Link 
             to="/profile" 
             className="hover:text-gray-300 transition-colors flex items-center"

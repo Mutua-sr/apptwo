@@ -7,7 +7,7 @@ import { ChatMessage } from '../../types/chat';
 interface ChatInterfaceProps {
   roomId: string;
   userId: string;
-  type: 'community' | 'classroom';
+  type: 'community';
 }
 
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ roomId, userId, type }) => {

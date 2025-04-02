@@ -12,7 +12,6 @@ import {
 } from '@mui/material';
 import {
   Home as HomeIcon,
-  School as SchoolIcon,
   Group as GroupIcon,
   Person as PersonIcon,
   AdminPanelSettings as AdminIcon,
@@ -31,14 +30,12 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
 
   const menuItems = [
     { text: 'Home', icon: <HomeIcon />, path: '/' },
-    { text: 'Classrooms', icon: <SchoolIcon />, path: '/classrooms' },
     { text: 'Communities', icon: <GroupIcon />, path: '/communities' },
     { text: 'Profile', icon: <PersonIcon />, path: '/profile' },
   ];
 
   const adminMenuItems = [
     { text: 'Admin Dashboard', icon: <AdminIcon />, path: '/admin' },
-    { text: 'Manage Classrooms', icon: <SchoolIcon />, path: '/admin/classrooms' },
     { text: 'Manage Communities', icon: <GroupIcon />, path: '/admin/communities' },
     { text: 'Manage Users', icon: <PersonIcon />, path: '/admin/users' },
   ];

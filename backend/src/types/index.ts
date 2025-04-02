@@ -76,7 +76,6 @@ export interface Context {
 }
 
 // Re-export types from other files
-export * from './classroom';
 export * from './community';
 export * from './feed';
 export * from './chat';
@@ -111,11 +110,10 @@ export interface ValidationError {
 }
 
 // Role type
-export type UserRole = 'student' | 'teacher' | 'admin';
+export type UserRole = 'student' | 'admin';
 
 // Role enum
 export const UserRole = {
   STUDENT: 'student' as UserRole,
-  TEACHER: 'teacher' as UserRole,
   ADMIN: 'admin' as UserRole
 };

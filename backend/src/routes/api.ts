@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { auth } from '../middleware/auth';
 import * as videoController from '../controllers/video.controller';
 import * as authController from '../controllers/auth.controller';
-import * as classroomController from '../controllers/classroom.controller';
 import * as feedController from '../controllers/feed.controller';
 import * as communityController from '../controllers/community.controller';
 import * as chatController from '../controllers/chat.controller';
@@ -27,16 +26,6 @@ router.get('/profile/:id/activities', auth, profileController.getActivities);
 router.get('/profile/notifications', auth, profileController.getNotifications);
 router.put('/profile/notifications/:notificationId/read', auth, profileController.markNotificationRead);
 router.put('/profile/notifications/read-all', auth, profileController.markAllNotificationsRead);
-
-// Classroom routes
-router.get('/classrooms', auth, classroomController.getClassrooms);
-router.post('/classrooms', auth, classroomController.createClassroom);
-router.get('/classrooms/:id', auth, classroomController.getClassroom);
-router.put('/classrooms/:id', auth, classroomController.updateClassroom);
-router.delete('/classrooms/:id', auth, classroomController.deleteClassroom);
-router.post('/classrooms/:code/join', auth, classroomController.joinClassroom);
-router.post('/classrooms/:id/assignments', auth, classroomController.addAssignment);
-router.post('/classrooms/:id/materials', auth, classroomController.addMaterial);
 
 // Posts routes
 router.get('/posts', auth, feedController.getPosts);

@@ -1,5 +1,4 @@
 import { Request, Response } from 'express';
-import { ClassroomService } from '../services/classroom.service';
 import { CommunityService } from '../services/community.service';
 import { DatabaseService } from '../services/database';
 import logger from '../config/logger';
@@ -8,13 +7,12 @@ import {
   ActivityData,
   ReportDateRange,
   UserReportData,
-  ClassroomReportData,
   CommunityReportData,
   ActivityReportData
 } from '../types/report';
 
 interface ReportQuery {
-  type: 'users' | 'classrooms' | 'communities' | 'activities';
+  type: 'users' | 'communities' | 'activities';
   format: 'json' | 'pdf' | 'csv';
   startDate?: string;
   endDate?: string;
@@ -44,9 +42,6 @@ class ReportController {
       switch (type) {
         case 'users':
           data = await this.generateUsersReport(dateRange);
-          break;
-        case 'classrooms':
-          data = await this.generateClassroomsReport(dateRange);
           break;
         case 'communities':
           data = await this.generateCommunitiesReport(dateRange);
@@ -115,41 +110,6 @@ class ReportController {
     };
   }
 
-  private async generateClassroomsReport(dateRange: ReportDateRange): Promise<ClassroomReportData> {
-    const classrooms = await ClassroomService.getActiveClassrooms();
-    
-    // Filter by date range
-    const filteredClassrooms = classrooms.filter(classroom => 
-      new Date(classroom.createdAt) >= dateRange.start &&
-      new Date(classroom.createdAt) <= dateRange.end
-    );
-
-    // Calculate statistics
-    const totalClassrooms = filteredClassrooms.length;
-    const totalStudents = filteredClassrooms.reduce((sum, classroom) => 
-      sum + classroom.students.length, 0
-    );
-    const averageStudentsPerClass = totalClassrooms > 0 
-      ? totalStudents / totalClassrooms 
-      : 0;
-
-    return {
-      summary: {
-        totalClassrooms,
-        totalStudents,
-        averageStudentsPerClass
-      },
-      details: filteredClassrooms.map(classroom => ({
-        id: classroom._id,
-        name: classroom.name,
-        teacher: classroom.teacher,
-        studentsCount: classroom.students.length,
-        createdAt: classroom.createdAt,
-        settings: classroom.settings
-      }))
-    };
-  }
-
   private async generateCommunitiesReport(dateRange: ReportDateRange): Promise<CommunityReportData> {
     // Get all communities by using a large limit
     const communities = await CommunityService.list(1, 1000);
@@ -200,29 +160,25 @@ class ReportController {
 
     const activities = await DatabaseService.find<DBActivityData>(query);
 
-    // Calculate statistics
+    // Group activities by type
     const activityTypes = activities.reduce((acc, activity) => {
       acc[activity.action] = (acc[activity.action] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const userActivities = activities.reduce((acc, activity) => {
-      acc[activity.userId] = (acc[activity.userId] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
     return {
       summary: {
         totalActivities: activities.length,
-        activityTypes,
-        uniqueUsers: Object.keys(userActivities).length
+        activityTypes
       },
       details: activities.map(activity => ({
         id: activity._id,
-        timestamp: activity.timestamp,
         userId: activity.userId,
         action: activity.action,
-        details: activity.details
+        targetType: activity.targetType,
+        targetId: activity.targetId,
+        timestamp: activity.timestamp,
+        metadata: activity.metadata
       }))
     };
   }

@@ -8,9 +8,8 @@ const BottomNav: React.FC = () => {
   const getCurrentValue = () => {
     const path = location.pathname;
     if (path === '/' || path === '/feed') return 0;
-    if (path === '/classrooms') return 1;
-    if (path === '/communities') return 2;
-    if (path === '/profile') return 3;
+    if (path === '/communities') return 1;
+    if (path === '/profile') return 2;
     return 0;
   };
 
@@ -22,7 +21,7 @@ const BottomNav: React.FC = () => {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
       <div className="bg-white border-t border-gray-200 shadow-lg backdrop-blur-lg bg-white/90">
-        <div className="grid grid-cols-4 h-16 px-2">
+        <div className="grid grid-cols-3 h-16 px-2">
           <button
             onClick={() => navigate('/feed')}
             className={`flex flex-col items-center justify-center transition-all duration-200 relative ${
@@ -36,21 +35,9 @@ const BottomNav: React.FC = () => {
           </button>
 
           <button
-            onClick={() => navigate('/classrooms')}
-            className={`flex flex-col items-center justify-center transition-all duration-200 relative ${
-              getCurrentValue() === 1 
-                ? 'text-blue-600 scale-110 before:absolute before:h-1 before:w-6 before:-top-2 before:rounded-full before:bg-blue-600' 
-                : 'text-gray-600 hover:text-blue-500 hover:scale-105 active:scale-95'
-            }`}
-          >
-            <i className="fas fa-chalkboard-user text-xl mb-1"></i>
-            <span className="text-xs font-medium">Classes</span>
-          </button>
-
-          <button
             onClick={() => navigate('/communities')}
             className={`flex flex-col items-center justify-center transition-all duration-200 relative ${
-              getCurrentValue() === 2 
+              getCurrentValue() === 1 
                 ? 'text-blue-600 scale-110 before:absolute before:h-1 before:w-6 before:-top-2 before:rounded-full before:bg-blue-600' 
                 : 'text-gray-600 hover:text-blue-500 hover:scale-105 active:scale-95'
             }`}
@@ -62,7 +49,7 @@ const BottomNav: React.FC = () => {
           <button
             onClick={() => navigate('/profile')}
             className={`flex flex-col items-center justify-center transition-all duration-200 relative ${
-              getCurrentValue() === 3 
+              getCurrentValue() === 2 
                 ? 'text-blue-600 scale-110 before:absolute before:h-1 before:w-6 before:-top-2 before:rounded-full before:bg-blue-600' 
                 : 'text-gray-600 hover:text-blue-500 hover:scale-105 active:scale-95'
             }`}

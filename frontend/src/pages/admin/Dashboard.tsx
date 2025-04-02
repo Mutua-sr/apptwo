@@ -10,9 +10,9 @@ import {
 } from '@mui/material';
 import {
   People as PeopleIcon,
-  School as SchoolIcon,
   Group as GroupIcon,
   Message as MessageIcon,
+  Report as ReportIcon,
 } from '@mui/icons-material';
 import apiService from '../../services/apiService';
 import type { AdminDashboardStats } from '../../types/api';
@@ -112,7 +112,15 @@ const Dashboard: React.FC = () => {
           <StatCard
             title="Active Users"
             value={stats?.users.active || 0}
-            icon={<SchoolIcon />}
+            icon={<PeopleIcon />}
+            loading={loading}
+          />
+        </GridItem>
+        <GridItem xs={12} sm={6} md={3}>
+          <StatCard
+            title="Communities"
+            value={stats?.content.communities || 0}
+            icon={<GroupIcon />}
             loading={loading}
           />
         </GridItem>
@@ -120,14 +128,6 @@ const Dashboard: React.FC = () => {
           <StatCard
             title="Total Posts"
             value={stats?.content.posts || 0}
-            icon={<GroupIcon />}
-            loading={loading}
-          />
-        </GridItem>
-        <GridItem xs={12} sm={6} md={3}>
-          <StatCard
-            title="Total Comments"
-            value={stats?.content.comments || 0}
             icon={<MessageIcon />}
             loading={loading}
           />
@@ -148,7 +148,7 @@ const Dashboard: React.FC = () => {
         <GridItem xs={12} md={6}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="h6" gutterBottom>
-              Total Reports
+              Reports
             </Typography>
             <Typography variant="h3" color={stats?.content.reports ? 'error' : 'inherit'}>
               {loading ? <CircularProgress size={30} /> : stats?.content.reports || 0}

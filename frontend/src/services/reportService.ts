@@ -4,7 +4,7 @@ import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 
 export interface ReportOptions {
-  type: 'users' | 'classrooms' | 'communities' | 'activities';
+  type: 'users' | 'communities' | 'activities';
   format: 'pdf' | 'csv' | 'excel';
   dateRange?: {
     start: Date;

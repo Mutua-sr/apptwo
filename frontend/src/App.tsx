@@ -11,13 +11,10 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Profile from './pages/Profile';
 import Feed from './pages/Feed';
-import Classrooms from './pages/Classrooms';
-import ClassroomChats from './pages/ClassroomChats';
 import Communities from './pages/Communities';
 import CreateCommunity from './pages/CreateCommunity';
 import ChatRoomComponent from './pages/ChatRoom';
 import AdminDashboard from './pages/admin/AdminDashboard';
-import ClassroomManagement from './pages/admin/ClassroomManagement';
 import CommunityManagement from './pages/admin/CommunityManagement';
 import UserManagement from './pages/admin/UserManagement';
 
@@ -40,17 +37,13 @@ const App: React.FC = () => {
               <Route element={<PrivateRoute><MainLayout /></PrivateRoute>}>
                 <Route path="/" element={<Feed />} />
                 <Route path="/profile" element={<Profile />} />
-                <Route path="/classrooms" element={<Classrooms />} />
-                <Route path="/classrooms/chat" element={<ClassroomChats />} />
                 <Route path="/communities" element={<Communities />} />
                 <Route path="/create-community" element={<CreateCommunity />} />
-                <Route path="/chat/classroom/:roomId" element={<ChatRoomComponent />} />
                 <Route path="/chat/community/:roomId" element={<ChatRoomComponent />} />
 
                 {/* Admin Routes */}
                 <Route element={<AdminRoute />}>
                   <Route path="/admin" element={<AdminDashboard />} />
-                  <Route path="/admin/classrooms" element={<ClassroomManagement />} />
                   <Route path="/admin/communities" element={<CommunityManagement />} />
                   <Route path="/admin/users" element={<UserManagement />} />
                 </Route>

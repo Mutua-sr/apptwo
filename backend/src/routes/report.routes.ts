@@ -28,7 +28,7 @@ const validateReportOptions = (req: ReportAuthRequest, res: Response, next: Next
   const { type, format } = req.query;
   
   // Validate report type
-  if (!type || !['users', 'classrooms', 'communities', 'activities'].includes(type)) {
+  if (!type || !['users', 'communities', 'activities'].includes(type)) {
     return res.status(400).json({ error: 'Invalid report type' });
   }
 

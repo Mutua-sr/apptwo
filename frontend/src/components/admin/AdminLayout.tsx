@@ -19,7 +19,6 @@ import {
   Menu as MenuIcon,
   Dashboard as DashboardIcon,
   People as PeopleIcon,
-  School as SchoolIcon,
   Group as GroupIcon,
   Report as ReportIcon,
   Analytics as AnalyticsIcon,
@@ -33,7 +32,6 @@ const drawerWidth = 240;
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/admin' },
   { text: 'Users', icon: <PeopleIcon />, path: '/admin/users' },
-  { text: 'Classrooms', icon: <SchoolIcon />, path: '/admin/classrooms' },
   { text: 'Communities', icon: <GroupIcon />, path: '/admin/communities' },
   { text: 'Moderation', icon: <ReportIcon />, path: '/admin/moderation' },
   { text: 'Analytics', icon: <AnalyticsIcon />, path: '/admin/analytics' },

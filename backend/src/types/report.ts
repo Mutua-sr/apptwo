@@ -24,7 +24,7 @@ export interface ReportDateRange {
 }
 
 export interface ReportOptions {
-  type: 'users' | 'classrooms' | 'communities' | 'activities';
+  type: 'users' | 'communities' | 'activities';
   format: 'json' | 'pdf' | 'csv';
   dateRange: ReportDateRange;
 }
@@ -48,25 +48,6 @@ export interface UserReportData {
     role: UserRole;
     createdAt: string;
     lastActive: string;
-  }>;
-}
-
-export interface ClassroomReportData {
-  summary: {
-    totalClassrooms: number;
-    totalStudents: number;
-    averageStudentsPerClass: number;
-  };
-  details: Array<{
-    id: string;
-    name: string;
-    teacher: {
-      id: string;
-      name: string;
-    };
-    studentsCount: number;
-    createdAt: string;
-    settings: Record<string, any>;
   }>;
 }
 
@@ -104,4 +85,4 @@ export interface ActivityReportData {
   }>;
 }
 
-export type ReportData = UserReportData | ClassroomReportData | CommunityReportData | ActivityReportData;
+export type ReportData = UserReportData | CommunityReportData | ActivityReportData;
