@@ -221,6 +221,15 @@ const createRequiredIndexes = async () => {
       {
         name: 'classrooms-by-user-index',
         fields: ['type', 'settings.isArchived', 'teacher.id', 'students']
+      },
+      // Add index for chat rooms
+      {
+        name: 'chatrooms-by-id-index',
+        fields: ['type', '_id']
+      },
+      {
+        name: 'chatrooms-by-participant-index',
+        fields: ['type', 'participants.userId']
       }
     ];
 

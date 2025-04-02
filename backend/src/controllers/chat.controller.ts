@@ -183,16 +183,44 @@ export const getChatRoom = async (
       throw new ApiError('Unauthorized', 401);
     }
 
-    const room = await DatabaseService.read<ChatRoom>(roomId);
+    // Use find with index to get the room
+    const rooms = await DatabaseService.find<ChatRoom>({
+      selector: {
+        type: 'chatroom',
+        _id: roomId
+      },
+      use_index: 'chatrooms-by-id-index',
+      limit: 1
+    });
 
-    if (!room || !room.participants) {
-      throw new ApiError('Chat room not found', 404);
+    const room = rooms[0];
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: 'Chat room not found'
+        }
+      });
+    }
+
+    if (!room.participants) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          message: 'Invalid chat room data'
+        }
+      });
     }
 
     // Check if user is a participant
     const isParticipant = room.participants.some(p => p.userId === req.user?.id);
     if (!isParticipant) {
-      throw new ApiError('Not authorized to access this chat room', 403);
+      return res.status(403).json({
+        success: false,
+        error: {
+          message: 'Not authorized to access this chat room'
+        }
+      });
     }
 
     // Transform the room data to match frontend expectations
