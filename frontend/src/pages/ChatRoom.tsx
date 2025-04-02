@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import type { FC } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Typography, Paper, IconButton, Avatar, CircularProgress, Tooltip } from '@mui/material';
 import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
@@ -30,42 +31,66 @@ const ChatRoomComponent: React.FC = () => {
           throw new Error('You must be logged in to join a chat room');
         }
 
-        await chatService.connect();
-        const roomResponse = await chatService.getRoom(roomId);
+        // First try to connect to chat service
+        try {
+          await chatService.connect();
+        } catch (err) {
+          throw new Error('Unable to connect to chat service. Please try again later.');
+        }
+
+        // Then try to get room data
+        let roomResponse;
+        try {
+          roomResponse = await chatService.getRoom(roomId);
+        } catch (err) {
+          if (err instanceof Error && err.message.includes('404')) {
+            throw new Error(`Chat room with ID ${roomId} was not found. It may have been deleted or you may not have access to it.`);
+          }
+          throw err;
+        }
+
         setRoom(roomResponse);
-        
         chatService.joinRoom(roomId);
-        const participantsData = await chatService.getRoomParticipants(roomId);
-        setParticipants(participantsData);
-        
-        await chatService.markAsRead(roomId);
+
+        // Get participants after successfully joining
+        try {
+          const participantsData = await chatService.getRoomParticipants(roomId);
+          setParticipants(participantsData);
+        } catch (err) {
+          console.error('Failed to get participants:', err);
+          // Don't throw here, as we already have the room
+        }
+
+        try {
+          await chatService.markAsRead(roomId);
+        } catch (err) {
+          console.error('Failed to mark as read:', err);
+          // Don't throw here, as it's not critical
+        }
 
         const handlers = {
           handleUserJoined: (participant: ChatParticipant) => {
-            setParticipants(prev => {
-              if (prev.some(p => p.id === participant.id)) {
+            setParticipants((prev: ChatParticipant[]) => {
+              if (prev.some((p: ChatParticipant) => p.id === participant.id)) {
                 return prev;
               }
               return [...prev, participant];
             });
           },
           handleUserLeft: (participant: ChatParticipant) => {
-            setParticipants(prev => prev.filter(p => p.id !== participant.id));
+            setParticipants((prev: ChatParticipant[]) => 
+              prev.filter((p: ChatParticipant) => p.id !== participant.id)
+            );
           }
         };
 
         chatService.onUserJoined(handlers.handleUserJoined);
         chatService.onUserLeft(handlers.handleUserLeft);
         eventHandlersRef.current = handlers;
-      } catch (err: any) {
+
+      } catch (err) {
         console.error('Failed to initialize chat:', err);
-        const errorMessage = err.message?.includes('connect') 
-          ? 'Unable to connect to chat service. Please try again later.'
-          : err.response?.data?.error?.message || 
-            err.response?.data?.message ||
-            err.message || 
-            'Failed to load chat room';
-        
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load chat room';
         chatService.disconnect();
         setError(errorMessage);
       } finally {
@@ -242,7 +267,7 @@ const ChatRoomComponent: React.FC = () => {
         background: 'rgba(30, 41, 59, 0.6)',
         backdropFilter: 'blur(12px)'
       }}>
-        {participants.map((participant) => (
+        {participants.map((participant: ChatParticipant) => (
           <Box 
             key={participant.id} 
             sx={{ 

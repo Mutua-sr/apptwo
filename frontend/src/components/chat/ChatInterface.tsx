@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
+import type { FC, ChangeEvent, ReactElement } from 'react';
 import {
   Box,
   TextField,
@@ -23,12 +24,18 @@ interface ChatInterfaceProps {
   userId: string;
 }
 
-const ChatInterface: React.FC<ChatInterfaceProps> = ({ roomId, userId }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const messagesEndRef = useRef<null | HTMLDivElement>(null);
+interface MessageType extends ChatMessage {
+  isDeleted?: boolean;
+  isEdited?: boolean;
+}
+
+const ChatInterface = ({ roomId, userId }: ChatInterfaceProps): ReactElement => {
+
+  const [messages, setMessages] = React.useState<MessageType[]>([]);
+  const [newMessage, setNewMessage] = React.useState('');
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -40,22 +47,45 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ roomId, userId }) => {
       setMessages(fetchedMessages);
       setIsLoading(false);
       scrollToBottom();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error fetching messages:', err);
-      const errorMessage = err.response?.data?.error?.message || err.message || 'Failed to load messages';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load messages';
       setError(errorMessage);
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
     fetchMessages();
 
-    // Subscribe to new messages
-    chatService.onMessageReceived((message) => {
-      setMessages(prev => [...prev, message]);
+    // Subscribe to all chat events
+    const messageHandler = (message: MessageType) => {
+      setMessages((prev: MessageType[]) => [...prev, message]);
       scrollToBottom();
-    });
+    };
+
+    const updateHandler = (updatedMessage: MessageType) => {
+      setMessages((prev: MessageType[]) => prev.map(msg => 
+        msg.id === updatedMessage.id ? updatedMessage : msg
+      ));
+    };
+
+    const deleteHandler = (messageId: string) => {
+      setMessages((prev: MessageType[]) => prev.map(msg => 
+        msg.id === messageId ? { ...msg, isDeleted: true } : msg
+      ));
+    };
+
+    chatService.onMessageReceived(messageHandler);
+    chatService.onMessageUpdated(updateHandler);
+    chatService.onMessageDeleted(deleteHandler);
+
+    // Cleanup event listeners
+    return () => {
+      chatService.onMessageReceived(() => {});
+      chatService.onMessageUpdated(() => {});
+      chatService.onMessageDeleted(() => {});
+    };
   }, [roomId]);
 
   const handleSendMessage = async () => {
@@ -64,14 +94,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ roomId, userId }) => {
     try {
       await chatService.sendMessage(roomId, newMessage);
       setNewMessage('');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Error sending message:', err);
-      const errorMessage = err.response?.data?.error?.message || err.message || 'Failed to send message';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to send message';
       setError(errorMessage);
     }
   };
 
-  const handleKeyPress = (event: React.KeyboardEvent) => {
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
       handleSendMessage();
@@ -128,9 +158,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ roomId, userId }) => {
         }}
       >
         <List>
-          {messages.map((message, index) => (
+          {messages.map((message: MessageType) => (
             <ListItem
-              key={message.id || index}
+              key={message.id}
               sx={{
                 display: 'flex',
                 flexDirection: message.senderId === userId ? 'row-reverse' : 'row',
@@ -138,7 +168,17 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ roomId, userId }) => {
                 mb: 1,
               }}
             >
-              <Avatar src={message.senderAvatar} alt={message.senderName} />
+              {!message.isDeleted && (
+                <Avatar 
+                  src={message.senderAvatar} 
+                  alt={message.senderName}
+                  sx={{ 
+                    width: 32, 
+                    height: 32,
+                    opacity: message.isDeleted ? 0.5 : 1 
+                  }}
+                />
+              )}
               <Box
                 sx={{
                   backgroundColor: message.senderId === userId ? 'primary.main' : 'grey.200',
@@ -148,15 +188,24 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ roomId, userId }) => {
                   maxWidth: '70%',
                 }}
               >
-                <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
-                  {message.senderName}
-                </Typography>
-                <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                  {message.content}
-                </Typography>
-                <Typography variant="caption" color="inherit" sx={{ opacity: 0.7 }}>
-                  {new Date(message.timestamp).toLocaleTimeString()}
-                </Typography>
+                {message.isDeleted ? (
+                  <Typography variant="body2" sx={{ fontStyle: 'italic', opacity: 0.7 }}>
+                    This message has been deleted
+                  </Typography>
+                ) : (
+                  <>
+                    <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
+                      {message.senderName}
+                    </Typography>
+                    <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                      {message.content}
+                    </Typography>
+                    <Typography variant="caption" color="inherit" sx={{ opacity: 0.7 }}>
+                      {new Date(message.timestamp).toLocaleTimeString()}
+                      {message.isEdited && ' (edited)'}
+                    </Typography>
+                  </>
+                )}
               </Box>
             </ListItem>
           ))}
@@ -176,8 +225,10 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ roomId, userId }) => {
             variant="outlined"
             placeholder="Type a message..."
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setNewMessage(e.target.value)}
+            InputProps={{
+              onKeyDown: handleKeyDown
+            }}
             sx={{
               '& .MuiOutlinedInput-root': {
                 borderRadius: 2,
