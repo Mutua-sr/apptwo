@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { groupService } from '../../services/groupService';
-import { Classroom, Community, CreateClassroomData, CreateCommunityData } from '../../types/room';
+import { Community, CreateCommunityData } from '../../types/room';
 
 interface GroupFormProps {
-  type: 'classroom' | 'community';
-  group?: Classroom | Community;
-  onSuccess?: (group: Community | Classroom) => void;
+  type: 'community';
+  group?: Community;
+  onSuccess?: (group: Community) => void;
   onCancel?: () => void;
   className?: string;
 }
@@ -48,50 +48,26 @@ export const GroupForm: React.FC<GroupFormProps> = ({
           description: description.trim() || ''
         };
         
-        result = type === 'classroom'
-          ? await groupService.updateClassroom(group._id, updateData)
-          : await groupService.updateCommunity(group._id, updateData);
+        result = await groupService.updateCommunity(group._id, updateData);
       } else {
-        // Create new group with default settings
-        if (type === 'classroom') {
-          const classroomData: CreateClassroomData = {
-            name: name.trim(),
-            description: description.trim() || '',
-            type: 'classroom',
-            settings: {
-              isPrivate: false,
-              allowStudentPosts: true,
-              allowStudentComments: true,
-              allowStudentChat: true,
-              requirePostApproval: false,
-              notifications: {
-                assignments: true,
-                materials: true,
-                announcements: true
-              }
-            }
-          };
-          result = await groupService.createClassroom(classroomData);
-        } else {
-          const communityData: CreateCommunityData = {
-            name: name.trim(),
-            description: description.trim() || '',
-            type: 'community',
-            settings: {
-              isPrivate: false,
-              allowMemberPosts: true,
-              allowMemberInvites: true,
-              requirePostApproval: false
-            }
-          };
-          result = await groupService.createCommunity(communityData);
-        }
+        // Create new community with default settings
+        const communityData: CreateCommunityData = {
+          name: name.trim(),
+          description: description.trim() || '',
+          type: 'community',
+          settings: {
+            isPrivate: false,
+            allowMemberPosts: true,
+            allowMemberInvites: true,
+            requirePostApproval: false
+          }
+        };
+        result = await groupService.createCommunity(communityData);
       }
 
-      // Type assertion since we know the result matches our Room types
-      onSuccess?.(result as Community | Classroom);
+      onSuccess?.(result as Community);
     } catch (err: any) {
-      setError(err.message || `Failed to ${group ? 'update' : 'create'} ${type}`);
+      setError(err.message || `Failed to ${group ? 'update' : 'create'} community`);
     } finally {
       setIsSubmitting(false);
     }
@@ -100,7 +76,7 @@ export const GroupForm: React.FC<GroupFormProps> = ({
   return (
     <div className={`bg-white rounded-lg shadow p-6 ${className}`}>
       <h2 className="text-2xl font-bold text-gray-900 mb-4">
-        {group ? 'Edit' : 'Create'} {type === 'classroom' ? 'Classroom' : 'Community'}
+        {group ? 'Edit' : 'Create'} Community
       </h2>
 
       {error && (
@@ -121,7 +97,7 @@ export const GroupForm: React.FC<GroupFormProps> = ({
             onChange={(e) => setName(e.target.value)}
             disabled={isSubmitting}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder={`Enter ${type} name`}
+            placeholder="Enter community name"
           />
         </div>
 
@@ -136,7 +112,7 @@ export const GroupForm: React.FC<GroupFormProps> = ({
             onChange={(e) => setDescription(e.target.value)}
             disabled={isSubmitting}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder={`Describe your ${type}...`}
+            placeholder="Describe your community..."
           />
         </div>
 

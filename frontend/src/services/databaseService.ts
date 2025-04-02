@@ -12,7 +12,7 @@ export const transformApiPost = (apiPost: ApiPost): Post => {
     },
     tags: apiPost.tags || [],
     likes: apiPost.likes,  // Now directly using the number
-    comments: apiPost.comments?.map(comment => ({
+    comments: apiPost.comments?.map((comment: ApiPost['comments'][0]) => ({
       id: comment._id,
       content: comment.content,
       author: {

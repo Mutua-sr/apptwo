@@ -100,7 +100,7 @@ const ProfilePage: React.FC = () => {
                 Interests
               </h2>
               <div className="flex flex-wrap gap-2">
-                {profile.interests.map((interest, index) => (
+                {profile.interests.map((interest: string, index: number) => (
                   <span
                     key={index}
                     className="px-4 py-2 bg-primary-500 bg-opacity-20 text-primary-300 rounded-full text-sm flex items-center hover:bg-opacity-30 transition-all duration-300"

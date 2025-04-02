@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 interface UnifiedChatRoomProps {
   roomId: string;
-  type: 'community' | 'classroom';
+  type: 'community';
 }
 
 const UnifiedChatRoom: React.FC<UnifiedChatRoomProps> = ({ roomId, type }) => {
@@ -76,9 +76,7 @@ const UnifiedChatRoom: React.FC<UnifiedChatRoomProps> = ({ roomId, type }) => {
         color: 'primary.contrastText'
       }}>
         <Typography variant="h6">
-          {currentRoom.name}
-          {type === 'classroom' && ' (Classroom)'}
-          {type === 'community' && ' (Community)'}
+          {currentRoom.name} (Community)
         </Typography>
         <Typography variant="caption">
           {currentRoom.participants.length} participants

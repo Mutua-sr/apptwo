@@ -3,7 +3,7 @@ import { ChatMessage, ChatParticipant } from './chat';
 export interface UnifiedChatRoom {
   id: string;
   name: string;
-  type: 'community' | 'classroom';
+  type: 'community';
   description?: string;
   avatar?: string;
   participants: ChatParticipant[];
@@ -52,7 +52,7 @@ export interface UnifiedChatService {
   leaveRoom(roomId: string): void;
   sendMessage(roomId: string, content: string): Promise<UnifiedChatMessage>;
   getMessages(roomId: string, limit?: number, before?: string): Promise<UnifiedChatMessage[]>;
-  getRooms(type: 'community' | 'classroom'): Promise<UnifiedChatRoom[]>;
+  getRooms(): Promise<UnifiedChatRoom[]>;
   getRoom(roomId: string): Promise<UnifiedChatRoom>;
   getRoomParticipants(roomId: string): Promise<UnifiedChatParticipant[]>;
   markAsRead(roomId: string, messageId: string): Promise<void>;

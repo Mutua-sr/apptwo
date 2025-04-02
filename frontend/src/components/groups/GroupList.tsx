@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { groupService } from '../../services/groupService';
-import { Classroom, Community } from '../../types/room';
+import { Community } from '../../types/room';
 import { GroupForm } from './GroupForm';
 
 // Define display-specific types that contain only the properties we need
@@ -8,15 +8,15 @@ interface DisplayGroup {
   _id: string;
   name: string;
   description?: string;
-  type: 'classroom' | 'community';
+  type: 'community';
   displayDate?: string;
 }
 
 interface GroupListProps {
-  type: 'classroom' | 'community';
+  type: 'community';
   userId?: string;
   className?: string;
-  onGroupSelect?: (group: Community | Classroom) => void;
+  onGroupSelect?: (group: Community) => void;
 }
 
 export const GroupList: React.FC<GroupListProps> = ({ 
@@ -35,27 +35,16 @@ export const GroupList: React.FC<GroupListProps> = ({
     try {
       setLoading(true);
       setError(null);
-      if (type === 'classroom') {
-        const classrooms = await groupService.getClassrooms(userId);
-        setGroups(classrooms.map(classroom => ({
-          _id: classroom._id,
-          name: classroom.name,
-          description: classroom.description,
-          type: 'classroom' as const,
-          displayDate: classroom.createdAt
-        })));
-      } else {
-        const communities = await groupService.getCommunities(userId);
-        setGroups(communities.map(community => ({
-          _id: community._id,
-          name: community.name,
-          description: community.description,
-          type: 'community' as const,
-          displayDate: community.createdAt
-        })));
-      }
+      const communities = await groupService.getCommunities(userId);
+      setGroups(communities.map(community => ({
+        _id: community._id,
+        name: community.name,
+        description: community.description,
+        type: 'community' as const,
+        displayDate: community.createdAt
+      })));
     } catch (err: any) {
-      setError(err.message || `Failed to load ${type}s`);
+      setError(err.message || 'Failed to load communities');
     } finally {
       setLoading(false);
     }
@@ -63,15 +52,13 @@ export const GroupList: React.FC<GroupListProps> = ({
 
   useEffect(() => {
     loadGroups();
-  }, [type, userId]);
+  }, [userId]);
 
   const handleGroupClick = async (group: DisplayGroup) => {
     setSelectedGroup(group._id);
     if (onGroupSelect) {
       try {
-        const originalGroup = type === 'classroom'
-          ? await groupService.getClassroom(group._id)
-          : await groupService.getCommunity(group._id);
+        const originalGroup = await groupService.getCommunity(group._id);
         onGroupSelect(originalGroup);
       } catch (error) {
         console.error('Error fetching group details:', error);
@@ -79,13 +66,13 @@ export const GroupList: React.FC<GroupListProps> = ({
     }
   };
 
-  const handleGroupCreated = (newGroup: Community | Classroom) => {
+  const handleGroupCreated = (newGroup: Community) => {
     setGroups(prev => [...prev, {
       _id: newGroup._id,
       name: newGroup.name,
       description: newGroup.description,
-      type: type,
-      displayDate: type === 'community' && 'createdAt' in newGroup ? newGroup.createdAt : undefined
+      type: 'community',
+      displayDate: newGroup.createdAt
     }]);
     setShowCreateForm(false);
   };
@@ -93,7 +80,7 @@ export const GroupList: React.FC<GroupListProps> = ({
   if (showCreateForm) {
     return (
       <GroupForm
-        type={type}
+        type="community"
         onSuccess={handleGroupCreated}
         onCancel={() => setShowCreateForm(false)}
         className={className}
@@ -121,14 +108,14 @@ export const GroupList: React.FC<GroupListProps> = ({
     <div className={`bg-white rounded-lg shadow ${className}`}>
       <div className="p-4 border-b">
         <h2 className="text-lg font-semibold text-gray-800">
-          {type === 'classroom' ? 'Classrooms' : 'Communities'}
+          Communities
         </h2>
       </div>
       
       <div className="divide-y">
         {groups.length === 0 ? (
           <div className="p-4 text-center text-gray-500">
-            No {type}s found
+            No communities found
           </div>
         ) : (
           groups.map(group => (
@@ -175,7 +162,7 @@ export const GroupList: React.FC<GroupListProps> = ({
           className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
         >
           <i className="fas fa-plus"></i>
-          <span>Create New {type === 'classroom' ? 'Classroom' : 'Community'}</span>
+          <span>Create New Community</span>
         </button>
       </div>
     </div>

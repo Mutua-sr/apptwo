@@ -21,7 +21,7 @@ import {
 import { ExtendedRoom } from '../../types/chat';
 
 interface EmptyRoomListProps {
-  type: 'classroom' | 'community';
+  type: 'community';
   availableRooms: ExtendedRoom[];
   onJoin: (roomId: string) => void;
   onCreate: (name: string, description: string) => void;
@@ -59,12 +59,12 @@ const EmptyRoomList: FC<EmptyRoomListProps> = ({
         textAlign: 'center',
       }}
     >
-      <i className={`fas fa-${type === 'classroom' ? 'chalkboard' : 'users'} text-6xl mb-4 text-gray-400`} />
+      <i className="fas fa-users text-6xl mb-4 text-gray-400" />
       <Typography variant="h6" color="textSecondary" gutterBottom>
-        No {type}s joined yet
+        No communities joined yet
       </Typography>
       <Typography variant="body2" color="textSecondary" paragraph>
-        Join an existing {type} or create a new one
+        Join an existing community or create a new one
       </Typography>
       
       <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
@@ -74,7 +74,7 @@ const EmptyRoomList: FC<EmptyRoomListProps> = ({
           startIcon={<JoinIcon />}
           onClick={() => setJoinDialogOpen(true)}
         >
-          Join {type}
+          Join Community
         </Button>
         <Button
           variant="outlined"
@@ -94,12 +94,12 @@ const EmptyRoomList: FC<EmptyRoomListProps> = ({
         fullWidth
       >
         <DialogTitle>
-          Available {type}s
+          Available Communities
         </DialogTitle>
         <DialogContent>
           {availableRooms.length === 0 ? (
             <Typography color="textSecondary" align="center" sx={{ py: 3 }}>
-              No available {type}s to join
+              No available communities to join
             </Typography>
           ) : (
             <List>
@@ -122,9 +122,7 @@ const EmptyRoomList: FC<EmptyRoomListProps> = ({
                           {room.description}
                         </Typography>
                         <Typography variant="caption" color="text.secondary" component="div">
-                          {room.type === 'classroom' 
-                            ? `${room.students?.length || 0} students`
-                            : `${room.members?.length || 0} members`} · 
+                          {`${room.members?.length || 0} members`} · 
                           Created {new Date(room.createdAt).toLocaleDateString()}
                         </Typography>
                       </>
@@ -163,7 +161,7 @@ const EmptyRoomList: FC<EmptyRoomListProps> = ({
         fullWidth
       >
         <DialogTitle>
-          Create New {type}
+          Create New Community
         </DialogTitle>
         <DialogContent>
           <TextField

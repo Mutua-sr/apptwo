@@ -7,137 +7,102 @@ const logger_1 = __importDefault(require("../config/logger"));
 const database_1 = __importDefault(require("../services/database"));
 const resolvers = {
     Query: {
-        // Classroom queries
-        classrooms: async (_, { page = 1, limit = 10 }) => {
-            try {
-                const classrooms = await database_1.default.list({ limit, skip: (page - 1) * limit });
-                return classrooms;
-            }
-            catch (error) {
-                logger_1.default.error('Error fetching classrooms:', error);
-                throw new Error('Failed to fetch classrooms');
-            }
-        },
-        classroom: async (_, { id }) => {
-            try {
-                const classroom = await database_1.default.read(id);
-                return classroom;
-            }
-            catch (error) {
-                logger_1.default.error(`Error fetching classroom ${id}:`, error);
-                throw new Error('Failed to fetch classroom');
-            }
-        },
         // Community queries
-        communities: async (_, { page = 1, limit = 10 }) => {
-            try {
-                const communities = await database_1.default.list({ limit, skip: (page - 1) * limit });
-                return communities;
-            }
-            catch (error) {
-                logger_1.default.error('Error fetching communities:', error);
-                throw new Error('Failed to fetch communities');
-            }
-        },
         community: async (_, { id }) => {
             try {
-                const community = await database_1.default.read(id);
-                return community;
+                return await database_1.default.read(id);
             }
             catch (error) {
-                logger_1.default.error(`Error fetching community ${id}:`, error);
-                throw new Error('Failed to fetch community');
+                logger_1.default.error(`Error in community query: ${error}`);
+                throw error;
+            }
+        },
+        communities: async (_, { page, limit }) => {
+            try {
+                const skip = page ? (page - 1) * (limit || 10) : 0;
+                const query = {
+                    selector: {
+                        type: 'community'
+                    },
+                    skip,
+                    limit: limit || 10,
+                    sort: [{ createdAt: 'desc' }]
+                };
+                return await database_1.default.find(query);
+            }
+            catch (error) {
+                logger_1.default.error(`Error in communities query: ${error}`);
+                throw error;
             }
         },
         // Post queries
-        posts: async (_, { page = 1, limit = 10 }) => {
-            try {
-                const posts = await database_1.default.list({ limit, skip: (page - 1) * limit });
-                return posts;
-            }
-            catch (error) {
-                logger_1.default.error('Error fetching posts:', error);
-                throw new Error('Failed to fetch posts');
-            }
-        },
         post: async (_, { id }) => {
             try {
-                const post = await database_1.default.read(id);
-                return post;
+                return await database_1.default.read(id);
             }
             catch (error) {
-                logger_1.default.error(`Error fetching post ${id}:`, error);
-                throw new Error('Failed to fetch post');
+                logger_1.default.error(`Error in post query: ${error}`);
+                throw error;
             }
         },
-        postsByTag: async (_, { tag }) => {
+        posts: async (_, { page, limit }) => {
             try {
-                const posts = await database_1.default.find({
+                const skip = page ? (page - 1) * (limit || 10) : 0;
+                const query = {
                     selector: {
-                        type: 'post',
-                        tags: { $elemMatch: { $eq: tag } }
+                        type: 'post'
                     },
-                    sort: [{ createdAt: "desc" }]
-                });
-                return posts;
+                    skip,
+                    limit: limit || 10,
+                    sort: [{ createdAt: 'desc' }]
+                };
+                return await database_1.default.find(query);
             }
             catch (error) {
-                logger_1.default.error(`Error fetching posts by tag ${tag}:`, error);
-                throw new Error('Failed to fetch posts by tag');
+                logger_1.default.error(`Error in posts query: ${error}`);
+                throw error;
             }
         }
     },
     Mutation: {
-        // Classroom mutations
-        createClassroom: async (_, { input }) => {
-            try {
-                const newClassroom = await database_1.default.create(input);
-                return newClassroom;
-            }
-            catch (error) {
-                logger_1.default.error('Error creating classroom:', error);
-                throw new Error('Failed to create classroom');
-            }
-        },
-        updateClassroom: async (_, { id, input }) => {
-            try {
-                const updatedClassroom = await database_1.default.update(id, input);
-                return updatedClassroom;
-            }
-            catch (error) {
-                logger_1.default.error(`Error updating classroom ${id}:`, error);
-                throw new Error('Failed to update classroom');
-            }
-        },
-        deleteClassroom: async (_, { id }) => {
-            try {
-                await database_1.default.delete(id);
-                return true;
-            }
-            catch (error) {
-                logger_1.default.error(`Error deleting classroom ${id}:`, error);
-                throw new Error('Failed to delete classroom');
-            }
-        },
         // Community mutations
         createCommunity: async (_, { input }) => {
+            var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
             try {
-                const newCommunity = await database_1.default.create(input);
-                return newCommunity;
+                const communityData = {
+                    type: 'community',
+                    name: input.name || '',
+                    description: input.description || '',
+                    creator: input.creator,
+                    members: [],
+                    settings: {
+                        isPrivate: (_b = (_a = input.settings) === null || _a === void 0 ? void 0 : _a.isPrivate) !== null && _b !== void 0 ? _b : false,
+                        requiresApproval: (_d = (_c = input.settings) === null || _c === void 0 ? void 0 : _c.requiresApproval) !== null && _d !== void 0 ? _d : false,
+                        allowPosts: (_f = (_e = input.settings) === null || _e === void 0 ? void 0 : _e.allowPosts) !== null && _f !== void 0 ? _f : true,
+                        allowEvents: (_h = (_g = input.settings) === null || _g === void 0 ? void 0 : _g.allowEvents) !== null && _h !== void 0 ? _h : true,
+                        allowPolls: (_k = (_j = input.settings) === null || _j === void 0 ? void 0 : _j.allowPolls) !== null && _k !== void 0 ? _k : true
+                    },
+                    stats: {
+                        memberCount: 1, // Creator is first member
+                        postCount: 0,
+                        activeMembers: 1
+                    },
+                    tags: input.tags || []
+                };
+                return await database_1.default.create(communityData);
             }
             catch (error) {
-                logger_1.default.error('Error creating community:', error);
-                throw new Error('Failed to create community');
+                logger_1.default.error(`Error in createCommunity mutation: ${error}`);
+                throw error;
             }
         },
         updateCommunity: async (_, { id, input }) => {
             try {
-                const updatedCommunity = await database_1.default.update(id, input);
-                return updatedCommunity;
+                return await database_1.default.update(id, input);
             }
             catch (error) {
-                logger_1.default.error(`Error updating community ${id}:`, error);
-                throw new Error('Failed to update community');
+                logger_1.default.error(`Error in updateCommunity mutation: ${error}`);
+                throw error;
             }
         },
         deleteCommunity: async (_, { id }) => {
@@ -146,29 +111,39 @@ const resolvers = {
                 return true;
             }
             catch (error) {
-                logger_1.default.error(`Error deleting community ${id}:`, error);
-                throw new Error('Failed to delete community');
+                logger_1.default.error(`Error in deleteCommunity mutation: ${error}`);
+                throw error;
             }
         },
         // Post mutations
         createPost: async (_, { input }) => {
             try {
-                const newPost = await database_1.default.create(input);
-                return newPost;
+                const postData = {
+                    type: 'post',
+                    title: input.title,
+                    content: input.content,
+                    author: input.author,
+                    tags: input.tags,
+                    likes: 0,
+                    comments: [],
+                    likedBy: [],
+                    status: input.status || 'draft',
+                    visibility: input.visibility || 'private'
+                };
+                return await database_1.default.create(postData);
             }
             catch (error) {
-                logger_1.default.error('Error creating post:', error);
-                throw new Error('Failed to create post');
+                logger_1.default.error(`Error in createPost mutation: ${error}`);
+                throw error;
             }
         },
         updatePost: async (_, { id, input }) => {
             try {
-                const updatedPost = await database_1.default.update(id, input);
-                return updatedPost;
+                return await database_1.default.update(id, input);
             }
             catch (error) {
-                logger_1.default.error(`Error updating post ${id}:`, error);
-                throw new Error('Failed to update post');
+                logger_1.default.error(`Error in updatePost mutation: ${error}`);
+                throw error;
             }
         },
         deletePost: async (_, { id }) => {
@@ -177,8 +152,8 @@ const resolvers = {
                 return true;
             }
             catch (error) {
-                logger_1.default.error(`Error deleting post ${id}:`, error);
-                throw new Error('Failed to delete post');
+                logger_1.default.error(`Error in deletePost mutation: ${error}`);
+                throw error;
             }
         }
     }

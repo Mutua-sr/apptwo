@@ -17,7 +17,7 @@ const transformApiPost = (apiPost: ApiPost): Post => {
     author: author,
     tags: apiPost.tags || [],
     likes: apiPost.likedBy?.length || 0,
-    comments: apiPost.comments?.map(comment => ({
+    comments: apiPost.comments?.map((comment: ApiPost['comments'][0]) => ({
       id: comment._id,
       content: comment.content,
       author: {

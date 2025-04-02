@@ -19,7 +19,7 @@ import { ExtendedRoom } from '../../types/chat';
 import EmptyRoomList from './EmptyRoomList';
 
 interface ChatSidebarProps {
-  type: 'classroom' | 'community';
+  type: 'community';
   rooms: ExtendedRoom[];
   availableRooms: ExtendedRoom[];
   selectedRoomId?: string;
@@ -63,7 +63,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
       <AppBar position="static" color="inherit" elevation={1}>
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            {type === 'classroom' ? 'Classrooms' : 'Communities'}
+            Communities
           </Typography>
           <Button
             color="primary"
@@ -127,7 +127,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                       noWrap
                       sx={{ fontSize: '0.875rem' }}
                     >
-                      {room.lastMessage || `${room.type === 'classroom' ? 'Classroom' : 'Community'} chat`}
+                      {room.lastMessage || 'Community chat'}
                     </Typography>
                   }
                 />

@@ -1,11 +1,13 @@
 import { io, Socket } from 'socket.io-client';
-import { API_URL } from './apiService';
+import apiService from './apiService';
 import { 
   UnifiedChatMessage, 
   UnifiedChatRoom, 
   UnifiedChatParticipant,
   UnifiedChatService 
 } from '../types/unifiedChat';
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 class UnifiedChatServiceImpl implements UnifiedChatService {
   private socket: Socket | null = null;
@@ -106,13 +108,13 @@ class UnifiedChatServiceImpl implements UnifiedChatService {
     });
   }
 
-  async getRooms(type: 'community' | 'classroom'): Promise<UnifiedChatRoom[]> {
+  async getRooms(): Promise<UnifiedChatRoom[]> {
     if (!this.socket?.connected) {
       throw new Error('Not connected to chat server');
     }
 
     return new Promise((resolve, reject) => {
-      this.socket!.emit('get_rooms', { type }, (response: { rooms?: UnifiedChatRoom[], error?: string }) => {
+      this.socket!.emit('get_rooms', { type: 'community' }, (response: { rooms?: UnifiedChatRoom[], error?: string }) => {
         if (response.error) {
           reject(new Error(response.error));
         } else if (response.rooms) {

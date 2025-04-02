@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { groupService } from '../../services/groupService';
-import { Room, Community, Classroom } from '../../types/room';
+import { Room, Community } from '../../types/room';
 import { User } from '../../types/api';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -17,7 +17,7 @@ import {
 } from '@mui/material';
 
 interface GroupDetailsProps {
-  type: 'classroom' | 'community';
+  type: 'community';
   groupId: string;
   onClose: () => void;
 }
@@ -35,14 +35,12 @@ export const GroupDetails: React.FC<GroupDetailsProps> = ({
 
   useEffect(() => {
     loadGroup();
-  }, [groupId, type]);
+  }, [groupId]);
 
   const loadGroup = async () => {
     try {
       setLoading(true);
-      const fetchedGroup = type === 'classroom'
-        ? await groupService.getClassroom(groupId)
-        : await groupService.getCommunity(groupId);
+      const fetchedGroup = await groupService.getCommunity(groupId);
       setGroup(fetchedGroup);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load group');
@@ -51,32 +49,18 @@ export const GroupDetails: React.FC<GroupDetailsProps> = ({
     }
   };
 
-  const getMembers = (group: Room): User[] => {
-    if (group.type === 'classroom') {
-      return (group as Classroom).students.map(student => ({
-        id: student.id,
-        name: student.name,
-        email: '', // These fields are required by User type
-        role: 'student',
-        status: student.status,
-        profileId: student.id,
-        avatar: student.avatar,
-        createdAt: student.joinedAt,
-        updatedAt: student.joinedAt
-      }));
-    } else {
-      return (group as Community).members.map(member => ({
-        id: member.id,
-        name: member.name,
-        email: '', // These fields are required by User type
-        role: member.role,
-        status: 'active',
-        profileId: member.id,
-        avatar: member.avatar,
-        createdAt: member.joinedAt,
-        updatedAt: member.joinedAt
-      }));
-    }
+  const getMembers = (group: Community): User[] => {
+    return group.members.map(member => ({
+      id: member.id,
+      name: member.name,
+      email: '', // These fields are required by User type
+      role: member.role,
+      status: 'active',
+      profileId: member.id,
+      avatar: member.avatar,
+      createdAt: member.joinedAt,
+      updatedAt: member.joinedAt
+    }));
   };
 
   if (loading) {
@@ -111,24 +95,11 @@ export const GroupDetails: React.FC<GroupDetailsProps> = ({
           {group.settings.isPrivate && (
             <Chip label="Private" size="small" color="primary" />
           )}
-          {group.type === 'classroom' ? (
-            <>
-              {(group as Classroom).settings.allowStudentPosts && (
-                <Chip label="Student Posts" size="small" color="success" />
-              )}
-              {(group as Classroom).settings.requirePostApproval && (
-                <Chip label="Post Approval" size="small" color="warning" />
-              )}
-            </>
-          ) : (
-            <>
-              {(group as Community).settings.allowMemberPosts && (
-                <Chip label="Member Posts" size="small" color="success" />
-              )}
-              {(group as Community).settings.requirePostApproval && (
-                <Chip label="Post Approval" size="small" color="warning" />
-              )}
-            </>
+          {group.settings.allowMemberPosts && (
+            <Chip label="Member Posts" size="small" color="success" />
+          )}
+          {group.settings.requirePostApproval && (
+            <Chip label="Post Approval" size="small" color="warning" />
           )}
         </Box>
       </Box>
@@ -165,7 +136,7 @@ export const GroupDetails: React.FC<GroupDetailsProps> = ({
               variant="outlined"
               onClick={() => setIsEditing(true)}
             >
-              Edit {group.type === 'classroom' ? 'Classroom' : 'Community'}
+              Edit Community
             </Button>
             <Button
               variant="outlined"

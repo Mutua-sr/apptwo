@@ -1,7 +1,8 @@
 import logger from '../config/logger';
 import DatabaseService from '../services/database';
-import { Community, Post } from '../types';
-import { SortOrder } from '../types/database';
+import { Community, CreateCommunity } from '../types/community';
+import { Post, CreatePost } from '../types/feed';
+import { DatabaseQuery } from '../types/database';
 
 const resolvers = {
   Query: {
@@ -18,13 +19,13 @@ const resolvers = {
     communities: async (_: any, { page, limit }: { page?: number; limit?: number }) => {
       try {
         const skip = page ? (page - 1) * (limit || 10) : 0;
-        const query = {
+        const query: DatabaseQuery = {
           selector: {
             type: 'community'
           },
           skip,
           limit: limit || 10,
-          sort: [{ createdAt: 'desc' } as SortOrder]
+          sort: [{ createdAt: 'desc' }]
         };
         return await DatabaseService.find<Community>(query);
       } catch (error) {
@@ -46,13 +47,13 @@ const resolvers = {
     posts: async (_: any, { page, limit }: { page?: number; limit?: number }) => {
       try {
         const skip = page ? (page - 1) * (limit || 10) : 0;
-        const query = {
+        const query: DatabaseQuery = {
           selector: {
             type: 'post'
           },
           skip,
           limit: limit || 10,
-          sort: [{ createdAt: 'desc' } as SortOrder]
+          sort: [{ createdAt: 'desc' }]
         };
         return await DatabaseService.find<Post>(query);
       } catch (error) {
@@ -64,19 +65,27 @@ const resolvers = {
 
   Mutation: {
     // Community mutations
-    createCommunity: async (_: any, { input }: { input: Partial<Community> }) => {
+    createCommunity: async (_: any, { input }: { input: Partial<CreateCommunity> }) => {
       try {
         const communityData: Omit<Community, '_id' | '_rev' | 'createdAt' | 'updatedAt'> = {
           type: 'community',
           name: input.name || '',
           description: input.description || '',
-          members: input.members || [],
-          topics: input.topics || [],
-          settings: input.settings || {
-            isPrivate: false,
-            requiresApproval: false,
-            allowInvites: true
-          }
+          creator: input.creator!,
+          members: [],
+          settings: {
+            isPrivate: input.settings?.isPrivate ?? false,
+            requiresApproval: input.settings?.requiresApproval ?? false,
+            allowPosts: input.settings?.allowPosts ?? true,
+            allowEvents: input.settings?.allowEvents ?? true,
+            allowPolls: input.settings?.allowPolls ?? true
+          },
+          stats: {
+            memberCount: 1, // Creator is first member
+            postCount: 0,
+            activeMembers: 1
+          },
+          tags: input.tags || []
         };
         return await DatabaseService.create<Community>(communityData);
       } catch (error) {
@@ -105,17 +114,19 @@ const resolvers = {
     },
 
     // Post mutations
-    createPost: async (_: any, { input }: { input: Partial<Post> }) => {
+    createPost: async (_: any, { input }: { input: CreatePost }) => {
       try {
         const postData: Omit<Post, '_id' | '_rev' | 'createdAt' | 'updatedAt'> = {
           type: 'post',
-          title: input.title || '',
-          content: input.content || '',
-          author: input.author!,
-          tags: input.tags || [],
+          title: input.title,
+          content: input.content,
+          author: input.author,
+          tags: input.tags,
           likes: 0,
           comments: [],
-          likedBy: []
+          likedBy: [],
+          status: input.status || 'draft',
+          visibility: input.visibility || 'private'
         };
         return await DatabaseService.create<Post>(postData);
       } catch (error) {

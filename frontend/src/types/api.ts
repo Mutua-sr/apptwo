@@ -5,14 +5,42 @@ export interface User {
   email: string;
   username?: string;
   avatar?: string;
-  role: 'student' | 'admin';
+  role: 'admin' | 'moderator' | 'member';
   status: UserStatus;
+  profileId?: string;
   lastActive?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export type UserStatus = 'active' | 'inactive' | 'pending' | 'suspended' | 'banned';
+
+export interface Profile {
+  id: string;
+  userId: string;
+  name: string;
+  bio?: string;
+  avatar?: string;
+  interests: string[];
+  location?: string;
+  website?: string;
+  social?: {
+    twitter?: string;
+    facebook?: string;
+    linkedin?: string;
+    github?: string;
+  };
+  settings: {
+    emailNotifications: boolean;
+    pushNotifications: boolean;
+    privacy: {
+      profileVisibility: string;
+      showLocation: boolean;
+    };
+  };
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface LoginResponse {
   token: string;
@@ -22,6 +50,50 @@ export interface LoginResponse {
 export interface RegisterResponse {
   token: string;
   user: User;
+}
+
+export interface Community {
+  _id: string;
+  name: string;
+  description: string;
+  avatar?: string;
+  creator: {
+    id: string;
+    name: string;
+    avatar?: string;
+  };
+  members: Array<{
+    id: string;
+    name: string;
+    avatar?: string;
+    role: 'admin' | 'moderator' | 'member';
+    joinedAt: string;
+  }>;
+  settings: {
+    isPrivate: boolean;
+    allowPosts: boolean;
+    requiresApproval: boolean;
+  };
+  stats: {
+    members: number;
+    posts: number;
+    activeMembers: number;
+  };
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCommunityData {
+  name: string;
+  description: string;
+  settings: {
+    isPrivate: boolean;
+    requiresApproval: boolean;
+    allowPosts: boolean;
+    allowEvents: boolean;
+    allowPolls: boolean;
+  };
 }
 
 export interface AdminDashboardStats {
@@ -73,6 +145,38 @@ export interface CommunityResponse {
   isPrivate: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Post {
+  _id: string;
+  content: string;
+  createdBy: string;
+  author: {
+    id: string;
+    name: string;
+    avatar?: string;
+  };
+  tags: string[];
+  likes: number;
+  comments: Array<{
+    _id: string;
+    content: string;
+    author: {
+      id: string;
+      name: string;
+      avatar?: string;
+    };
+    likes: number;
+    createdAt: string;
+  }>;
+  likedBy: string[];
+  sharedTo?: {
+    type: 'classroom' | 'community';
+    id: string;
+    name: string;
+  };
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface PostResponse {

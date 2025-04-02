@@ -1,6 +1,6 @@
 import axios, { InternalAxiosRequestConfig } from 'axios';
 import { Community, CreateRoomData, UpdateRoomData } from '../types/room';
-import { User, ApiResponse, LoginResponse, RegisterResponse } from '../types/api';
+import { User, ApiResponse, LoginResponse, RegisterResponse, UserStatus } from '../types/api';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 

@@ -4,7 +4,6 @@ import { RealtimeService } from '../services/realtime.service';
 import { ApiError } from '../middleware/errorHandler';
 import { AuthRequest, ApiResponse } from '../types';
 import { Post, UpdatePost, Comment } from '../types/feed';
-import { Classroom } from '../types/classroom';
 import { Community } from '../types/community';
 import logger from '../config/logger';
 
@@ -334,29 +333,24 @@ export const sharePost = async (
 ) => {
   try {
     const { id } = req.params;
-    const { type, targetId } = req.body;
+    const { targetId } = req.body;
 
     const post = await DatabaseService.read<Post>(id);
     if (!post) {
       throw new ApiError('Post not found', 404);
     }
 
-    // Verify target exists and has correct type
-    const target = await DatabaseService.read<Classroom | Community>(targetId);
-    if (!target) {
-      throw new ApiError(`${type} not found`, 404);
-    }
-
-    // Verify the target type matches the requested type
-    if (target.type !== type) {
-      throw new ApiError(`Invalid ${type} ID`, 400);
+    // Verify community exists
+    const community = await DatabaseService.read<Community>(targetId);
+    if (!community) {
+      throw new ApiError('Community not found', 404);
     }
 
     const updatedPost = await DatabaseService.update<Post>(id, {
       sharedTo: {
-        type,
+        type: 'community',
         id: targetId,
-        name: target.name
+        name: community.name
       }
     });
 

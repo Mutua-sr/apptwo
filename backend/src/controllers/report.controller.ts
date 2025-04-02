@@ -27,6 +27,9 @@ interface DBUserData extends UserData {
 interface DBActivityData extends ActivityData {
   type: 'activity';
   _id: string;
+  targetType?: string;
+  targetId?: string;
+  metadata?: Record<string, any>;
 }
 
 class ReportController {
@@ -166,21 +169,34 @@ class ReportController {
       return acc;
     }, {} as Record<string, number>);
 
+    // Calculate unique users
+    const uniqueUsers = new Set(activities.map(a => a.userId)).size;
+
     return {
       summary: {
         totalActivities: activities.length,
-        activityTypes
+        activityTypes,
+        uniqueUsers
       },
       details: activities.map(activity => ({
         id: activity._id,
+        timestamp: activity.timestamp,
         userId: activity.userId,
         action: activity.action,
-        targetType: activity.targetType,
-        targetId: activity.targetId,
-        timestamp: activity.timestamp,
-        metadata: activity.metadata
+        details: this.formatActivityDetails(activity)
       }))
     };
+  }
+
+  private formatActivityDetails(activity: DBActivityData): string {
+    let details = `${activity.action}`;
+    if (activity.targetType && activity.targetId) {
+      details += ` on ${activity.targetType} (${activity.targetId})`;
+    }
+    if (activity.metadata) {
+      details += ` - ${JSON.stringify(activity.metadata)}`;
+    }
+    return details;
   }
 }
 
