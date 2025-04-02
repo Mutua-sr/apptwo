@@ -201,13 +201,13 @@ export const getChatRoom = async (
       });
     }
 
-    // Verify it's a chat room
-    if (room.type !== 'chatroom') {
+    // Verify it's a valid room type
+    if (!['chatroom', 'community', 'classroom'].includes(room.type)) {
       logger.error(`Invalid room type for ID ${roomId}: ${room.type}`);
       return res.status(404).json({
         success: false,
         error: {
-          message: 'Invalid chat room'
+          message: 'Invalid room type'
         }
       });
     }
@@ -236,7 +236,7 @@ export const getChatRoom = async (
     const transformedRoom = {
       id: room._id,
       name: room.name,
-      type: room.type || 'community',
+      type: room.type,  // Keep the original type (chatroom, community, or classroom)
       description: room.description || '',
       currentUserId: req.user.id,
       participants: room.participants.map(p => ({

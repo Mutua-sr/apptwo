@@ -26,7 +26,7 @@ export interface ChatMessage extends CouchDBDocument {
 }
 
 export interface ChatRoom extends CouchDBDocument {
-  type: 'chatroom';
+  type: 'chatroom' | 'community' | 'classroom';
   name: string;
   description?: string;
   avatar?: string;
