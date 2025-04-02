@@ -4,6 +4,8 @@ import { RealtimeService } from '../services/realtime.service';
 import { ApiError } from '../middleware/errorHandler';
 import { AuthRequest } from '../types';
 import { ChatMessage, ChatRoom } from '../types/chat';
+import { Community } from '../types/community';
+import { Classroom } from '../types/classroom';
 import logger from '../config/logger';
 
 interface ExtendedAuthRequest extends AuthRequest {
@@ -188,9 +190,107 @@ export const getChatRoom = async (
       throw new ApiError('Unauthorized', 401);
     }
 
-    // Get the room by ID
-    const room = await DatabaseService.read<ChatRoom>(roomId);
+    // Try to find the room - first check if it's a direct chat room
+    let room = await DatabaseService.read<ChatRoom>(roomId);
     
+    // If not found, try to find a community or classroom with this ID
+    if (!room) {
+      // Try to find as Community
+      const communityResults = await DatabaseService.find<Community>({
+        selector: {
+          _id: roomId,
+          type: 'community',
+          'members': {
+            $elemMatch: {
+              id: req.user.id
+            }
+          }
+        }
+      });
+
+      if (communityResults.length > 0) {
+        const community = communityResults[0];
+        room = {
+          _id: community._id,
+          _rev: community._rev,
+          type: 'community',
+          name: community.name,
+          description: community.description,
+          avatar: community.avatar,
+          participants: community.members.map(member => ({
+            userId: member.id,
+            name: member.name,
+            avatar: member.avatar,
+            role: member.role,
+            joinedAt: member.joinedAt
+          })),
+          settings: {
+            isPrivate: community.settings.isPrivate,
+            allowReactions: true,
+            allowAttachments: true,
+            allowReplies: true,
+            allowEditing: true,
+            allowDeletion: true
+          },
+          createdAt: community.createdAt,
+          updatedAt: community.updatedAt
+        };
+      } else {
+        // Try to find as Classroom
+        const classroomResults = await DatabaseService.find<Classroom>({
+          selector: {
+            _id: roomId,
+            type: 'classroom',
+            $or: [
+              {
+                'teacher.id': req.user.id
+              },
+              {
+                'students': {
+                  $elemMatch: {
+                    id: req.user.id
+                  }
+                }
+              }
+            ]
+          }
+        });
+
+        if (classroomResults.length > 0) {
+          const classroom = classroomResults[0];
+          const allMembers = [
+            { ...classroom.teacher, role: 'admin' as const },
+            ...classroom.students.map(s => ({ ...s, role: 'member' as const }))
+          ];
+
+          room = {
+            _id: classroom._id,
+            _rev: classroom._rev,
+            type: 'classroom',
+            name: classroom.name,
+            description: classroom.description,
+            participants: allMembers.map(member => ({
+              userId: member.id,
+              name: member.name,
+              avatar: member.avatar,
+              role: member.role,
+              joinedAt: 'joinedAt' in member ? member.joinedAt : classroom.createdAt
+            })),
+            settings: {
+              isPrivate: true,
+              allowReactions: true,
+              allowAttachments: true,
+              allowReplies: true,
+              allowEditing: true,
+              allowDeletion: true
+            },
+            createdAt: classroom.createdAt,
+            updatedAt: classroom.updatedAt
+          };
+        }
+      }
+    }
+
     if (!room) {
       logger.error(`Chat room not found with ID: ${roomId}`);
       return res.status(404).json({
